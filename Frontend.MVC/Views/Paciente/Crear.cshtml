@@ -1,0 +1,75 @@
+﻿@model TurnoMolar.Models.PacienteViewModel
+
+@{
+    ViewData["Title"] = "Alta de Paciente - TurnoMolar";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 50px;">
+
+    <div style="background-color: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+        <h2 style="text-align: center; color: #333;">Registrar Paciente</h2>
+
+        <form asp-controller="Paciente" asp-action="Crear" method="post">
+
+            <div style="margin-bottom: 15px;">
+                <label asp-for="NombrePers">Nombre</label><br />
+                <input asp-for="NombrePers" style="width: 100%; padding: 8px; margin-top: 5px;" />
+                <span asp-validation-for="NombrePers" style="color: red; font-size: 0.9em;"></span>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label asp-for="Apellido">Apellido</label><br />
+                <input asp-for="Apellido" style="width: 100%; padding: 8px; margin-top: 5px;" />
+                <span asp-validation-for="Apellido" style="color: red; font-size: 0.9em;"></span>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label asp-for="DniPers">DNI</label><br />
+                <input asp-for="DniPers" style="width: 100%; padding: 8px; margin-top: 5px;" />
+                <span asp-validation-for="DniPers" style="color: red; font-size: 0.9em;"></span>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label asp-for="TelefonoPers">Teléfono</label><br />
+                <input asp-for="TelefonoPers" style="width: 100%; padding: 8px; margin-top: 5px;" />
+                <span asp-validation-for="TelefonoPers" style="color: red; font-size: 0.9em;"></span>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label asp-for="MailPer">Correo Electrónico</label><br />
+                <input asp-for="MailPer" type="email" style="width: 100%; padding: 8px; margin-top: 5px;" />
+                <span asp-validation-for="MailPer" style="color: red; font-size: 0.9em;"></span>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label asp-for="Domicilio">Domicilio</label><br />
+                <input asp-for="Domicilio" style="width: 100%; padding: 8px; margin-top: 5px;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label asp-for="IdObraSocial">Obra Social</label><br />
+                <select asp-for="IdObraSocial" style="width: 100%; padding: 8px; margin-top: 5px;">
+                    <option value="">Seleccione una obra social...</option>
+                    <option value="1">OSDE</option>
+                    <option value="2">IAPOS</option>
+                    <option value="3">Swiss Medical</option>
+                    <option value="4">Particular (Sin Obra Social)</option>
+                </select>
+            </div>
+
+            <button type="submit" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Guardar Paciente
+            </button>
+        </form>
+    </div>
+
+</body>
+</html>

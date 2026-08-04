@@ -1,0 +1,173 @@
+﻿@model TurnoMolar.Models.LoginViewModel
+
+@{
+    ViewData["Title"] = "Iniciar Sesión - TurnoMolar";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+
+        .login-card {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 400px;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+            color: #004694;
+            background: #e6f0fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #002d62;
+            margin: 10px 0 5px 0;
+        }
+
+        p.subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #444;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+
+        .form-control:focus {
+            border-color: #004694;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 70, 148, 0.2);
+        }
+
+        .forgot-password {
+            display: block;
+            text-align: right;
+            font-size: 0.8rem;
+            color: #004694;
+            text-decoration: none;
+            margin-top: 5px;
+        }
+
+        .btn-primary {
+            background-color: #004694;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #003370;
+        }
+
+        .register-link {
+            display: block;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .register-link a {
+            color: #004694;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        footer {
+            margin-top: 2rem;
+            font-size: 0.7rem;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo-container">
+            <div class="logo-icon">🦷</div>
+            <h1>TurnoMolar</h1>
+            <p class="subtitle">Gestión odontológica profesional</p>
+        </div>
+
+        <form asp-action="Login" asp-controller="Auth" method="post">
+            <div class="form-group">
+                <label asp-for="Dni">Número de Documento</label>
+                <input asp-for="Dni" class="form-control" placeholder="Ingresá tu DNI sin puntos" />
+                <span asp-validation-for="Dni" style="color: red; font-size: 0.8rem; margin-top: 4px; display: block;"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Contrasena">Contraseña</label>
+                <input asp-for="Contrasena" class="form-control" placeholder="Tu contraseña" />
+                <span asp-validation-for="Contrasena" style="color: red; font-size: 0.8rem; margin-top: 4px; display: block;"></span>
+                <a href="#" class="forgot-password">¿Olvidé mi contraseña?</a>
+            </div>
+
+            <button type="submit" class="btn-primary">Iniciar Sesión →</button>
+
+            <div class="register-link">
+                ¿No tenés una cuenta? <a href="#">Crear una cuenta</a>
+            </div>
+        </form>
+
+        <footer>
+            © 2026 TurnoMolar. Todos los derechos reservados.<br />
+            Sistema Integrado de Gestión Clínica
+        </footer>
+    </div>
+
+</body>
+</html>

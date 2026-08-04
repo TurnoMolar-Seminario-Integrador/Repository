@@ -1,0 +1,37 @@
+# Visual Studio
+.vs/
+*.sln
+*.user
+obj/
+bin/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Backup files
+*.backup.json
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-shm
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db-shm
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-wal
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-shm
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-wal
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db-shm
+/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db-wal
+
+# Backup / temporales
+*.backup.json
+*.tmp
+
+# Resultados de tests
+TestResults/
+
+# Otros IDEs
+.idea/
+.vscode/

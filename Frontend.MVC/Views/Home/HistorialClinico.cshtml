@@ -1,0 +1,344 @@
+﻿@{
+    ViewData["Title"] = "Historial Clínico - Clínica Dental Rosario";
+    Layout = null;
+
+    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
+    var idPaciente = ViewData["IdPaciente"] ?? "10042";
+    var estadoPaciente = "HABILITADO";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <!-- Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar (Mismos estilos que Index) */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info h6 {
+            font-size: 0.95rem;
+            font-weight: bold;
+            margin: 0;
+            color: #212529;
+        }
+
+        .profile-info small {
+            font-size: 0.78rem;
+            color: #6c757d;
+        }
+
+        .badge-habilitado {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 3px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+            .nav-link:hover {
+                background-color: #f1f3f5;
+                color: #0d6efd;
+            }
+
+            .nav-link.active {
+                background-color: #0d6efd;
+                color: #ffffff;
+            }
+
+        /* Contenido Principal */
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .brand-title {
+            color: #0d3b66;
+            font-weight: bold;
+            font-size: 1.3rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: auto;
+        }
+
+        /* Estilos específicos del Historial */
+        .summary-card {
+            background: #ffffff;
+            border: 1px solid #eaeaea;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .summary-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background-color: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #0d6efd;
+        }
+
+        .table-custom {
+            background-color: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            border: 1px solid #eaeaea;
+        }
+
+            .table-custom th {
+                background-color: #f8f9fa;
+                color: #495057;
+                font-weight: 600;
+                border-bottom: 2px solid #e9ecef;
+                padding: 15px;
+            }
+
+            .table-custom td {
+                padding: 15px;
+                vertical-align: middle;
+                color: #333;
+            }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .status-completed {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR DE NAVEGACIÓN -->
+    <div class="sidebar">
+        <div class="profile-section">
+            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" alt="Perfil" class="profile-avatar" />
+            <div class="profile-info">
+                <h6>@nombrePaciente</h6>
+                <small>ID: #@idPaciente</small><br>
+                <span class="badge-habilitado">ESTADO: @estadoPaciente</span>
+            </div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a>
+            </li>
+            <!-- ACÁ ESTÁ LA MAGIA: ESTA PESTAÑA AHORA ES LA ACTIVA -->
+            <li class="nav-item">
+                <a href="@Url.Action("HistorialClinico", "Home")" class="nav-link active"><i class="bi bi-file-medical"></i> Historial Clínico</a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a>
+            </li>
+            <li class="nav-item">
+                <!-- El inicio deja de ser activo y se le agrega el link al controlador -->
+                <a href="@Url.Action("Index", "Home")" class="nav-link"><i class="bi bi-house-door"></i> Inicio</a>
+            </li>
+            <li class="nav-item" style="margin-top: auto;">
+                <a href="#" class="nav-link"><i class="bi bi-gear"></i> Configuración</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
+
+        <!-- Header -->
+        <div class="top-header">
+            <h5 class="brand-title">
+                <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" />
+                Clínica Dental Rosario
+            </h5>
+            <button class="btn btn-light rounded-circle shadow-sm" style="width: 40px; height: 40px;">
+                <i class="bi bi-bell"></i>
+            </button>
+        </div>
+
+        <!-- Título de la Sección y Botón de Descarga -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark mb-1">Mi Historial Clínico</h2>
+                <p class="text-muted small">Registro completo de tus atenciones y tratamientos.</p>
+            </div>
+            <button class="btn btn-outline-primary rounded-pill px-4 shadow-sm">
+                <i class="bi bi-file-earmark-pdf me-2"></i>Descargar PDF
+            </button>
+        </div>
+
+        <!-- Tarjetas de Resumen -->
+        <div class="row mb-4 g-3">
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <div class="summary-icon bg-primary text-white"><i class="bi bi-clipboard2-check"></i></div>
+                    <div>
+                        <h6 class="text-muted mb-1 small fw-bold">Tratamientos Realizados</h6>
+                        <h4 class="mb-0 fw-bold">12</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <div class="summary-icon"><i class="bi bi-clock-history"></i></div>
+                    <div>
+                        <h6 class="text-muted mb-1 small fw-bold">Última Visita</h6>
+                        <h4 class="mb-0 fw-bold fs-5">15 Oct, 2025</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <div class="summary-icon"><i class="bi bi-droplet"></i></div>
+                    <div>
+                        <h6 class="text-muted mb-1 small fw-bold">Grupo Sanguíneo</h6>
+                        <h4 class="mb-0 fw-bold fs-5">A Positivo (+)</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Registros Médicos -->
+        <h5 class="fw-bold mb-3 mt-2">Últimos Registros</h5>
+        <div class="table-responsive">
+            <table class="table table-custom table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Fecha</th>
+                        <th scope="col">Profesional</th>
+                        <th scope="col">Tratamiento</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><i class="bi bi-calendar-event me-2 text-muted"></i>15 Oct, 2025</td>
+                        <td><img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" width="30" class="rounded-circle me-2"> Dra. Elena Silva</td>
+                        <td class="fw-semibold">Control de Ortodoncia</td>
+                        <td><span class="status-badge status-completed">Completado</span></td>
+                        <td><button class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i> Ver receta</button></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-calendar-event me-2 text-muted"></i>02 Sep, 2025</td>
+                        <td><img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=random" width="30" class="rounded-circle me-2"> Dr. Martín López</td>
+                        <td class="fw-semibold">Extracción 3er Molar</td>
+                        <td><span class="status-badge status-completed">Completado</span></td>
+                        <td><button class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i> Ver informe</button></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-calendar-event me-2 text-muted"></i>10 Ago, 2025</td>
+                        <td><img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" width="30" class="rounded-circle me-2"> Dra. Elena Silva</td>
+                        <td class="fw-semibold">Limpieza General (Profilaxis)</td>
+                        <td><span class="status-badge status-completed">Completado</span></td>
+                        <td><button class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i> Ver receta</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

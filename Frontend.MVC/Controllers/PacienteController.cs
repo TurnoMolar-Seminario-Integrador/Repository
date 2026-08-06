@@ -28,19 +28,30 @@ namespace TurnoMolar.Controllers
         [HttpPost]
         public async Task<IActionResult> Crear(PacienteViewModel modelo)
         {
+            // Validación personalizada: si eligió "Otra" obra social pero no escribió cuál en el campo de texto
+            if (modelo.IdObraSocial == "Otra" && string.IsNullOrWhiteSpace(modelo.OtraObraSocial))
+            {
+                ModelState.AddModelError("OtraObraSocial", "Por favor, especificá el nombre de la obra social.");
+            }
+
             if (ModelState.IsValid)
             {
-                // 1. Armamos un objeto anónimo (o DTO) que coincida con lo que espera tu API
+                // Determinamos qué valor de obra social enviar al backend
+                string obraSocialFinal = modelo.IdObraSocial == "Otra" ? modelo.OtraObraSocial : modelo.IdObraSocial;
+
+                // 1. Armamos el objeto anónimo (DTO) agregando los campos nuevos
                 var pacienteDto = new
                 {
                     NombrePers = modelo.NombrePers,
                     Apellido = modelo.Apellido,
+                    TipoDocumento = modelo.TipoDocumento, // Nuevo campo
                     DniPers = modelo.DniPers,
+                    FechaNacimiento = modelo.FechaNacimiento, // Nuevo campo
                     TelefonoPers = modelo.TelefonoPers,
                     MailPer = modelo.MailPer,
                     Domicilio = modelo.Domicilio,
                     EstadoHabilitacion = modelo.EstadoHabilitacion,
-                    IdObraSocial = modelo.IdObraSocial
+                    ObraSocial = obraSocialFinal // Mandamos el nombre final de la obra social
                 };
 
                 // 2. Convertimos los datos a formato JSON
@@ -49,29 +60,39 @@ namespace TurnoMolar.Controllers
 
                 try
                 {
-                    // 3. Disparamos la petición POST al endpoint de Pacientes[cite: 1]
+                    // 3. Disparamos la petición POST al endpoint de Pacientes
                     // (Asegurate de que la ruta coincida con la que definiste en PacienteEndpoints.cs)
                     var response = await _httpClient.PostAsync("api/paciente", content);
 
                     if (response.IsSuccessStatusCode)
                     {
-                        // ¡Golazo! Se guardó bien. Redirigimos al inicio.
-                        return RedirectToAction("Index", "Home");
+                        // ¡Golazo! Se guardó bien. 
+                        // En vez de redirigir, mostramos el cartel de éxito que agregamos en la vista.
+                        TempData["MensajeExito"] = "¡Paciente registrado correctamente!";
+
+                        // Limpiamos el formulario para que quede en blanco para cargar un próximo paciente
+                        ModelState.Clear();
+                        return View(new PacienteViewModel());
                     }
                     else
                     {
                         // Si la API tira un código de error (ej. 400 Bad Request o 500 Internal Error)
-                        ModelState.AddModelError(string.Empty, $"Error de la API: {response.StatusCode}. Revisá los datos.");
+                        TempData["MensajeError"] = $"Error de la API: {response.StatusCode}. Revisá los datos.";
                     }
                 }
                 catch (Exception ex)
                 {
                     // Por si la API está apagada o no hay conexión
-                    ModelState.AddModelError(string.Empty, $"No se pudo conectar con el servidor: {ex.Message}");
+                    TempData["MensajeError"] = $"No se pudo conectar con el servidor: {ex.Message}";
                 }
             }
+            else
+            {
+                // Si el ModelState es inválido (faltan datos requeridos)
+                TempData["MensajeError"] = "Por favor, revisá los campos marcados en rojo.";
+            }
 
-            // Si falla la validación o hubo un error, devolvemos la vista con los avisos
+            // Si falla la validación o hubo un error, devolvemos la vista con los avisos y los datos que ya había escrito
             return View(modelo);
         }
     }

@@ -4,16 +4,22 @@ namespace TurnoMolar.Models
 {
     public class PacienteViewModel
     {
-        // Datos heredados de Persona
         [Required(ErrorMessage = "El nombre es obligatorio.")]
         public string NombrePers { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El apellido es obligatorio.")]
         public string Apellido { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El DNI es obligatorio.")]
-        [RegularExpression(@"^\d+$", ErrorMessage = "El DNI debe contener solo números.")]
+        [Required(ErrorMessage = "Seleccioná un tipo de documento.")]
+        public string TipoDocumento { get; set; } = "DNI";
+
+        [Required(ErrorMessage = "El número de documento es obligatorio.")]
+        [RegularExpression(@"^\d+$", ErrorMessage = "Solo se permiten números.")]
         public string DniPers { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La fecha de nacimiento es obligatoria.")]
+        [DataType(DataType.Date)]
+        public DateTime? FechaNacimiento { get; set; }
 
         [Required(ErrorMessage = "El teléfono es obligatorio.")]
         public string TelefonoPers { get; set; } = string.Empty;
@@ -24,11 +30,12 @@ namespace TurnoMolar.Models
 
         public string Domicilio { get; set; } = string.Empty;
 
-        // Datos específicos de Paciente
-        // Para el alta (CUF01), generalmente el estado de habilitación arranca en true
         public bool EstadoHabilitacion { get; set; } = true;
 
-        // Relación con Obra Social (usualmente un desplegable en la vista)
-        public int? IdObraSocial { get; set; }
+        [Required(ErrorMessage = "Seleccioná una obra social.")]
+        public string IdObraSocial { get; set; } = string.Empty;
+
+        // Propiedad extra para cuando eligen "Otra"
+        public string OtraObraSocial { get; set; } = string.Empty;
     }
 }

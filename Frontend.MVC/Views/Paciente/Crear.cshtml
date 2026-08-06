@@ -1,7 +1,7 @@
 ﻿@model TurnoMolar.Models.PacienteViewModel
 
 @{
-    ViewData["Title"] = "Alta de Paciente - TurnoMolar";
+    ViewData["Title"] = "Alta de Paciente - Clínica Odontológica Rosario";
     Layout = null;
 }
 
@@ -11,65 +11,273 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-</head>
-<body style="font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 50px;">
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #cccccc;
+            --input-bg: #ffffff;
+        }
 
-    <div style="background-color: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-        <h2 style="text-align: center; color: #333;">Registrar Paciente</h2>
+        /* Adaptación automática para pantallas/sistemas en modo oscuro */
+        @@media (prefers-color-scheme: dark) {
+            : root
+
+        {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #444444;
+            --input-bg: #2d2d2d;
+        }
+
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .registro-card {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            gap: 15px;
+        }
+
+            .header-container img {
+                width: 50px;
+                height: auto;
+            }
+
+        h2 {
+            margin: 0;
+            color: #004694;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+
+            .form-control:focus {
+                border-color: #004694;
+                outline: none;
+            }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background-color: #004694;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+            .btn-primary:hover {
+                background-color: #003370;
+            }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="registro-card">
+
+        <!-- Título y Logo -->
+        <div class="header-container">
+            <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo Diente" />
+            <h2>Registrar Paciente</h2>
+        </div>
+
+        <!-- Alertas de Éxito o Error -->
+        @if (TempData["MensajeExito"] != null)
+        {
+            <div class="alert alert-success">
+                @TempData["MensajeExito"]
+            </div>
+        }
+
+        @if (TempData["MensajeError"] != null)
+        {
+            <div class="alert alert-danger">
+                @TempData["MensajeError"]
+            </div>
+        }
 
         <form asp-controller="Paciente" asp-action="Crear" method="post">
 
-            <div style="margin-bottom: 15px;">
-                <label asp-for="NombrePers">Nombre</label><br />
-                <input asp-for="NombrePers" style="width: 100%; padding: 8px; margin-top: 5px;" />
-                <span asp-validation-for="NombrePers" style="color: red; font-size: 0.9em;"></span>
+            <div class="input-group">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="NombrePers">Nombre</label>
+                    <input asp-for="NombrePers" class="form-control" />
+                    <span asp-validation-for="NombrePers" style="color: red; font-size: 0.8em;"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="Apellido">Apellido</label>
+                    <input asp-for="Apellido" class="form-control" />
+                    <span asp-validation-for="Apellido" style="color: red; font-size: 0.8em;"></span>
+                </div>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label asp-for="Apellido">Apellido</label><br />
-                <input asp-for="Apellido" style="width: 100%; padding: 8px; margin-top: 5px;" />
-                <span asp-validation-for="Apellido" style="color: red; font-size: 0.9em;"></span>
+            <!-- Nuevo Grupo: Tipo y Número de Documento -->
+            <div class="form-group">
+                <label>Documento de Identidad</label>
+                <div class="input-group">
+                    <select asp-for="TipoDocumento" class="form-control" style="flex: 0.3;">
+                        <option value="DNI">DNI</option>
+                        <option value="CUIL">CUIL</option>
+                        <option value="Pasaporte">Pasaporte</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                    <input asp-for="DniPers" class="form-control" placeholder="Número de documento" style="flex: 0.7;" />
+                </div>
+                <span asp-validation-for="DniPers" style="color: red; font-size: 0.8em;"></span>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label asp-for="DniPers">DNI</label><br />
-                <input asp-for="DniPers" style="width: 100%; padding: 8px; margin-top: 5px;" />
-                <span asp-validation-for="DniPers" style="color: red; font-size: 0.9em;"></span>
+            <!-- Nuevo Campo: Fecha de Nacimiento -->
+            <div class="form-group">
+                <label asp-for="FechaNacimiento">Fecha de Nacimiento</label>
+                <!-- HTML5 input type="date" levanta el calendario nativo del navegador -->
+                <input asp-for="FechaNacimiento" type="date" class="form-control" />
+                <span asp-validation-for="FechaNacimiento" style="color: red; font-size: 0.8em;"></span>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label asp-for="TelefonoPers">Teléfono</label><br />
-                <input asp-for="TelefonoPers" style="width: 100%; padding: 8px; margin-top: 5px;" />
-                <span asp-validation-for="TelefonoPers" style="color: red; font-size: 0.9em;"></span>
+            <div class="input-group">
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="TelefonoPers">Teléfono</label>
+                    <input asp-for="TelefonoPers" class="form-control" />
+                    <span asp-validation-for="TelefonoPers" style="color: red; font-size: 0.8em;"></span>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label asp-for="MailPer">Correo Electrónico</label>
+                    <input asp-for="MailPer" type="email" class="form-control" />
+                    <span asp-validation-for="MailPer" style="color: red; font-size: 0.8em;"></span>
+                </div>
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label asp-for="MailPer">Correo Electrónico</label><br />
-                <input asp-for="MailPer" type="email" style="width: 100%; padding: 8px; margin-top: 5px;" />
-                <span asp-validation-for="MailPer" style="color: red; font-size: 0.9em;"></span>
+            <div class="form-group">
+                <label asp-for="Domicilio">Domicilio</label>
+                <input asp-for="Domicilio" class="form-control" />
             </div>
 
-            <div style="margin-bottom: 15px;">
-                <label asp-for="Domicilio">Domicilio</label><br />
-                <input asp-for="Domicilio" style="width: 100%; padding: 8px; margin-top: 5px;" />
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <label asp-for="IdObraSocial">Obra Social</label><br />
-                <select asp-for="IdObraSocial" style="width: 100%; padding: 8px; margin-top: 5px;">
+            <!-- Grupo: Obra Social con la opción "Otra" -->
+            <div class="form-group">
+                <label asp-for="IdObraSocial">Obra Social</label>
+                <select asp-for="IdObraSocial" class="form-control" id="selectObraSocial">
                     <option value="">Seleccione una obra social...</option>
-                    <option value="1">OSDE</option>
-                    <option value="2">IAPOS</option>
-                    <option value="3">Swiss Medical</option>
-                    <option value="4">Particular (Sin Obra Social)</option>
+                    <option value="OSDE">OSDE</option>
+                    <option value="IAPOS">IAPOS (Estatales y provinciales)</option>
+                    <option value="Sancor Salud">Sancor Salud</option>
+                    <option value="Federada Salud">Federada Salud</option>
+                    <option value="Jerarquicos Salud">Jerárquicos Salud</option>
+                    <option value="Swiss Medical">Swiss Medical</option>
+                    <option value="Union Personal">Unión Personal (Accord Salud)</option>
+                    <option value="Galeno">Galeno</option>
+                    <option value="Particular">Particular (Sin Obra Social)</option>
+                    <option value="Otra">Otra (Especificar)</option>
                 </select>
+                <span asp-validation-for="IdObraSocial" style="color: red; font-size: 0.8em;"></span>
             </div>
 
-            <button type="submit" style="width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                Guardar Paciente
-            </button>
+            <!-- Este campo está oculto por defecto, se muestra por JS -->
+            <div class="form-group" id="divOtraObraSocial" style="display: none;">
+                <label asp-for="OtraObraSocial">Especifique su Obra Social</label>
+                <input asp-for="OtraObraSocial" class="form-control" placeholder="Escriba el nombre de su cobertura..." />
+                <span asp-validation-for="OtraObraSocial" style="color: red; font-size: 0.8em;"></span>
+            </div>
+
+            <button type="submit" class="btn-primary">Registrar Paciente</button>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a asp-controller="Auth" asp-action="Login" style="color: #004694; text-decoration: none; font-size: 0.9em;">&larr; Volver al inicio de sesión</a>
+            </div>
         </form>
     </div>
+
+    <!-- Script para controlar la lógica del desplegable "Otra" -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var selectOS = document.getElementById("selectObraSocial");
+            var divOtraOS = document.getElementById("divOtraObraSocial");
+
+            // Función que chequea el valor y muestra/oculta
+            function toggleOtraObraSocial() {
+                if (selectOS.value === "Otra") {
+                    divOtraOS.style.display = "block";
+                } else {
+                    divOtraOS.style.display = "none";
+                    // Limpiamos el campo por si había escrito algo y luego se arrepintió
+                    document.getElementById("OtraObraSocial").value = "";
+                }
+            }
+
+            // Ejecutar al cargar la página (por si recarga con errores y ya estaba en "Otra")
+            toggleOtraObraSocial();
+
+            // Escuchar cambios en el select
+            selectOS.addEventListener("change", toggleOtraObraSocial);
+        });
+    </script>
 
 </body>
 </html>

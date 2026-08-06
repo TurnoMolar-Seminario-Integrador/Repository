@@ -1,7 +1,7 @@
 ﻿@model TurnoMolar.Models.LoginViewModel
 
 @{
-    ViewData["Title"] = "Iniciar Sesión - TurnoMolar";
+    ViewData["Title"] = "Iniciar Sesión - Clínica Odontológica Rosario";
     Layout = null;
 }
 
@@ -37,6 +37,7 @@
             margin-bottom: 1.5rem;
         }
 
+        /* Esta clase ya no la usamos para el texto, pero la dejamos por si querés reciclarla */
         .logo-icon {
             font-size: 2rem;
             color: #004694;
@@ -63,13 +64,13 @@
             margin-bottom: 1.2rem;
         }
 
-        .form-group label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #444;
-        }
+            .form-group label {
+                display: block;
+                font-size: 0.85rem;
+                font-weight: 600;
+                margin-bottom: 5px;
+                color: #444;
+            }
 
         .form-control {
             width: 100%;
@@ -80,11 +81,11 @@
             font-size: 0.9rem;
         }
 
-        .form-control:focus {
-            border-color: #004694;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(0, 70, 148, 0.2);
-        }
+            .form-control:focus {
+                border-color: #004694;
+                outline: none;
+                box-shadow: 0 0 0 2px rgba(0, 70, 148, 0.2);
+            }
 
         .forgot-password {
             display: block;
@@ -109,9 +110,9 @@
             transition: background-color 0.2s;
         }
 
-        .btn-primary:hover {
-            background-color: #003370;
-        }
+            .btn-primary:hover {
+                background-color: #003370;
+            }
 
         .register-link {
             display: block;
@@ -120,11 +121,11 @@
             color: #666;
         }
 
-        .register-link a {
-            color: #004694;
-            font-weight: 600;
-            text-decoration: none;
-        }
+            .register-link a {
+                color: #004694;
+                font-weight: 600;
+                text-decoration: none;
+            }
 
         footer {
             margin-top: 2rem;
@@ -137,8 +138,9 @@
 
     <div class="login-card">
         <div class="logo-container">
-            <div class="logo-icon">🦷</div>
-            <h1>TurnoMolar</h1>
+            <!-- Imagen cargada desde la carpeta wwwroot/images -->
+            <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo Clínica" style="width: 75px; height: auto; margin-bottom: 10px;" />
+            <h1>Clínica Odontológica Rosario</h1>
             <p class="subtitle">Gestión odontológica profesional</p>
         </div>
 
@@ -151,20 +153,21 @@
 
             <div class="form-group">
                 <label asp-for="Contrasena">Contraseña</label>
-                <input asp-for="Contrasena" class="form-control" placeholder="Tu contraseña" />
+                <input asp-for="Contrasena" class="form-control" type="password" placeholder="Tu contraseña" />
                 <span asp-validation-for="Contrasena" style="color: red; font-size: 0.8rem; margin-top: 4px; display: block;"></span>
                 <a href="#" class="forgot-password">¿Olvidé mi contraseña?</a>
             </div>
 
             <button type="submit" class="btn-primary">Iniciar Sesión →</button>
 
+            <!-- Acá implementamos la conexión con la UI de dar de alta al paciente -->
             <div class="register-link">
-                ¿No tenés una cuenta? <a href="#">Crear una cuenta</a>
+                ¿No tenés una cuenta? <a asp-controller="Paciente" asp-action="Crear">Crear una cuenta</a>
             </div>
         </form>
 
         <footer>
-            © 2026 TurnoMolar. Todos los derechos reservados.<br />
+            © 2026 Clínica Odontológica Rosario. Todos los derechos reservados.<br />
             Sistema Integrado de Gestión Clínica
         </footer>
     </div>

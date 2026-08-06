@@ -1,0 +1,466 @@
+﻿@{
+    ViewData["Title"] = "Portal del Paciente - Clínica Dental Rosario";
+    Layout = null;
+
+    // Simulación de datos dinámicos que llegarán desde el Login / Sesión
+    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
+    var idPaciente = ViewData["IdPaciente"] ?? "10042"; // ID autoincremental de la base de datos
+    var estadoPaciente = "HABILITADO";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info h6 {
+            font-size: 0.95rem;
+            font-weight: bold;
+            margin: 0;
+            color: #212529;
+        }
+
+        .profile-info small {
+            font-size: 0.78rem;
+            color: #6c757d;
+        }
+
+        .badge-habilitado {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 3px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+            .nav-link:hover {
+                background-color: #f1f3f5;
+                color: #0d6efd;
+            }
+
+            .nav-link.active {
+                background-color: #0d6efd;
+                color: #ffffff;
+            }
+
+        /* Contenido Principal */
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .brand-title {
+            color: #0d3b66;
+            font-weight: bold;
+            font-size: 1.3rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: auto;
+        }
+
+        /* Buscador */
+        .search-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            padding: 12px 20px 12px 45px;
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+        /* Tarjetas de Profesionales */
+        .doc-card {
+            background: #ffffff;
+            border: 1px solid #eaeaea;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+        }
+
+        .doc-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .slot-pill {
+            border: 1px solid #cfe2ff;
+            background-color: #f8fbff;
+            color: #0d6efd;
+            font-size: 0.8rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+            .slot-pill:hover {
+                background-color: #0d6efd;
+                color: #fff;
+            }
+
+        /* Tarjeta Próximo Turno */
+        .next-turno-card {
+            background: linear-gradient(135deg, #0d3b66, #1d6fa5);
+            color: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(13, 59, 102, 0.2);
+        }
+
+        .calendar-btn {
+            color: #ffffff;
+            font-size: 1.3rem;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+            .calendar-btn:hover {
+                transform: scale(1.15);
+                color: #70b8ff;
+            }
+
+        /* Especialidades Odontológicas */
+        .specialty-box {
+            background: #ffffff;
+            border: 1px solid #eaeaea;
+            border-radius: 12px;
+            padding: 18px 8px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            height: 100%;
+        }
+
+            .specialty-box:hover {
+                transform: translateY(-3px);
+                border-color: #0d6efd;
+                box-shadow: 0 4px 10px rgba(13, 110, 253, 0.1);
+            }
+
+        .specialty-icon {
+            font-size: 1.6rem;
+            color: #0d6efd;
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR DE NAVEGACIÓN -->
+    <div class="sidebar">
+        <!-- Perfil del Paciente -->
+        <div class="profile-section">
+            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" alt="Perfil" class="profile-avatar" />
+            <div class="profile-info">
+                <h6>@nombrePaciente</h6>
+                <small>ID: #@idPaciente</small><br>
+                <span class="badge-habilitado">ESTADO: @estadoPaciente</span>
+            </div>
+        </div>
+
+        <!-- Menú de Subpestañas con Tooltips -->
+        <ul class="nav-menu">
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Consultá y gestioná tus turnos reservados">
+                <a href="#" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Accedé a tus odontogramas y fichas médicas">
+                <a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Administrá tus tarjetas y medios de pago">
+                <a href="#" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Verificá la cobertura de tu obra social">
+                <a href="#" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Pantalla principal de búsquedas">
+                <a href="@Url.Action("Index", "Home")" class="nav-link active"><i class="bi bi-house-door"></i> Inicio</a>
+            </li>
+
+            <li class="nav-item" style="margin-top: auto;" data-bs-toggle="tooltip" data-bs-placement="right" title="Ajustes de cuenta y preferencias">
+                <a href="#" class="nav-link"><i class="bi bi-gear"></i> Configuración</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
+
+        <!-- Header superior con Logo e Imagen -->
+        <div class="top-header">
+            <h5 class="brand-title">
+                <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" />
+                Clínica Dental Rosario
+            </h5>
+
+            <!-- Botón Campanita con Tooltip -->
+            <button class="btn btn-light rounded-circle shadow-sm position-relative" style="width: 40px; height: 40px;"
+                    data-bs-toggle="tooltip" data-bs-placement="left" title="Notificaciones: No tenés avisos pendientes">
+                <i class="bi bi-bell"></i>
+            </button>
+        </div>
+
+        <!-- Alerta de Éxito al cancelar turno -->
+        @if (TempData["MensajeExito"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <!-- Búsqueda -->
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">Encuentra tu Especialista</h2>
+            <p class="text-muted small">Busca por nombre, especialidad o tratamiento.</p>
+
+            <div class="search-container mt-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Escribí el nombre del odontólogo o la especialidad requerida">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" class="form-control search-input" placeholder="Ej. Endodoncia, Dr. Silva...">
+            </div>
+        </div>
+
+        <!-- Grilla de Contenido Central -->
+        <div class="row">
+            <!-- Columna Izquierda: Profesionales Disponibles -->
+            <div class="col-lg-8">
+                <h5 class="fw-bold mb-3">Profesionales Disponibles</h5>
+
+                <!-- Profesional 1 -->
+                <div class="doc-card">
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" alt="Dra. Elena Silva" class="doc-avatar me-3">
+                        <div>
+                            <h6 class="fw-bold mb-0">Dra. Elena Silva</h6>
+                            <span class="text-primary small fw-semibold">Ortodoncia y Endodoncia</span><br>
+                            <small class="text-muted">⭐ 4.9 (124 reseñas)</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-2">Próximos turnos disponibles:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar hoy a las 14:30">Hoy, 14:30</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar mañana a las 09:00">Mañana, 09:00</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar el jueves a las 11:15">Jueves, 11:15</a>
+                    </div>
+                </div>
+
+                <!-- Profesional 2 -->
+                <div class="doc-card">
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=random" alt="Dr. Martín López" class="doc-avatar me-3">
+                        <div>
+                            <h6 class="fw-bold mb-0">Dr. Martín López</h6>
+                            <span class="text-primary small fw-semibold">Cirugía Maxilofacial e Implantes</span><br>
+                            <small class="text-muted">⭐ 4.8 (89 reseñas)</small>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-2">Próximos turnos disponibles:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar el viernes a las 10:00">Viernes, 10:00</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar el lunes a las 15:30">Lunes, 15:30</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Próximo Turno y Especialidades -->
+            <div class="col-lg-4">
+
+                <!-- Tarjeta Próximo Turno -->
+                <div class="next-turno-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small opacity-75 fw-semibold">Próximo Turno</span>
+
+                        <!-- Enlace directo a API de Google Calendar -->
+                        <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Turno+Odontologico+-+Clinica+Dental+Rosario&dates=20261112T123000Z/20261112T130000Z&details=Control+General+con+Dra.+Valeria+Gomez+en+Consultorio+3&location=Clinica+Dental+Rosario"
+                           target="_blank"
+                           class="calendar-btn"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
+                           title="Sincronizar este turno en tu Google Calendar">
+                            <i class="bi bi-calendar-plus"></i>
+                        </a>
+                    </div>
+
+                    <h4 class="fw-bold mb-1">12 Nov, 09:30 AM</h4>
+                    <p class="small mb-1">Control General</p>
+                    <p class="small opacity-75 mb-3">Dra. Valeria Gómez • Consultorio 3</p>
+
+                    <!-- Botones de Acción (Ver Detalles y Cancelar) -->
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-light w-100 fw-bold text-primary rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Ver detalles completos de la reserva">
+                            Ver Detalles
+                        </button>
+
+                        <!-- Formulario para cancelar turno con confirmación -->
+                        <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro que querés cancelar este turno? Esta acción no se puede deshacer.');">
+                            <input type="hidden" name="idTurno" value="1" />
+                            <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Cancelar y liberar este horario">
+                                Cancelar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Grilla de Especialidades Odontológicas -->
+                <h5 class="fw-bold mb-3">Especialidades Odontológicas</h5>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="specialty-box" data-bs-toggle="tooltip" title="Tratamientos de conducto y preservación dental">
+                            <div class="specialty-icon"><i class="bi bi-activity"></i></div>
+                            <span class="small fw-semibold text-secondary">Endodoncia</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="specialty-box" data-bs-toggle="tooltip" title="Brackets, alineadores e higiene de mordida">
+                            <div class="specialty-icon"><i class="bi bi-grid-3x3-gap"></i></div>
+                            <span class="small fw-semibold text-secondary">Ortodoncia</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="specialty-box" data-bs-toggle="tooltip" title="Extracciones complejas y cirugías orales">
+                            <div class="specialty-icon"><i class="bi bi-tools"></i></div>
+                            <span class="small fw-semibold text-secondary">Cirugía</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="specialty-box" data-bs-toggle="tooltip" title="Reemplazo de piezas dentales e implantes">
+                            <div class="specialty-icon"><i class="bi bi-shield-plus"></i></div>
+                            <span class="small fw-semibold text-secondary">Implantología</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="specialty-box" data-bs-toggle="tooltip" title="Atención odontológica especializada para niños">
+                            <div class="specialty-icon"><i class="bi bi-person-heart"></i></div>
+                            <span class="small fw-semibold text-secondary">Odontopediatría</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="specialty-box" data-bs-toggle="tooltip" title="Tratamientos de encías y limpieza profunda">
+                            <div class="specialty-icon"><i class="bi bi-bandaid"></i></div>
+                            <span class="small fw-semibold text-secondary">Periodoncia</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Script para inicializar los Tooltips emergentes -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+</body>
+</html>

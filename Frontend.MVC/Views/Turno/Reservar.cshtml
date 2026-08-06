@@ -1,0 +1,99 @@
+﻿@model Frontend.MVC.Models.ReservaTurnoViewModel
+
+@{
+    ViewData["Title"] = "Reserva de Turno";
+}
+
+<div class="container mt-4">
+    <h2>Agendar un nuevo turno</h2>
+    <hr />
+
+    <form asp-controller="Turno" asp-action="Reservar" method="post">
+
+        <!-- PASO 1: Calendario con Flatpickr -->
+        <div class="mb-4">
+            <label asp-for="FechaSeleccionada" class="form-label fw-bold">1. Seleccione una fecha:</label>
+            <!-- Nota: Usamos type="text" para que la librería Flatpickr tome el control de este input -->
+            <input asp-for="FechaSeleccionada" type="text" id="calendario-turnos" class="form-control bg-white" placeholder="Elija un día en el calendario..." readonly />
+            <span asp-validation-for="FechaSeleccionada" class="text-danger"></span>
+        </div>
+
+        <!-- PASO 2: Horario -->
+        <div class="mb-4">
+            <label asp-for="HorarioSeleccionado" class="form-label fw-bold">2. Horario:</label>
+            <input asp-for="HorarioSeleccionado" type="time" class="form-control" />
+            <span asp-validation-for="HorarioSeleccionado" class="text-danger"></span>
+        </div>
+
+        <!-- PASO 4: Método de pago y Políticas -->
+        <div class="mb-4">
+            <label class="form-label fw-bold">3. Método de Pago</label>
+            <select asp-for="MetodoPago" class="form-select">
+                <option value="">Seleccione una opción...</option>
+                <option value="ObraSocial">Obra Social / Seguro</option>
+                <option value="Particular">Particular</option>
+            </select>
+            <span asp-validation-for="MetodoPago" class="text-danger"></span>
+        </div>
+
+        <div class="form-check mb-4">
+            <input asp-for="AceptaPoliticas" class="form-check-input" type="checkbox" />
+            <label class="form-check-label" asp-for="AceptaPoliticas">
+                Acepto las políticas de cancelación y reprogramación.
+            </label>
+            <span asp-validation-for="AceptaPoliticas" class="text-danger d-block"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg w-100">Confirmar Reserva</button>
+    </form>
+</div>
+
+<!-- Scripts y Validaciones -->
+@section Scripts {
+    <!-- CSS y JS de Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+
+    <style>
+        /* CSS para los días resaltados en verde según el Bosquejo */
+        .dia-disponible {
+            border: 2px solid #28a745 !important;
+            border-radius: 5px !important;
+            font-weight: bold;
+            color: #28a745 !important;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // Estas son fechas de prueba. Luego vendrán desde tu WebAPI.
+            // Fijate de poner fechas cercanas al día de hoy para ver el efecto.
+            const fechasDisponibles = ["2026-08-05", "2026-08-07", "2026-08-10", "2026-08-12"];
+
+            // Inicializamos el calendario
+            flatpickr("#calendario-turnos", {
+                locale: "es", // Idioma español
+                minDate: "today", // Deshabilita días anteriores a hoy
+                inline: true, // Deja el calendario expandido siempre (ideal para la vista de reserva)
+
+                // Función que evalúa cada día mientras se dibuja el calendario
+                onDayCreate: function(dObj, dStr, fp, dayElem) {
+                    let formattedDate = dayElem.dateObj.getFullYear() + "-" +
+                                        String(dayElem.dateObj.getMonth() + 1).padStart(2, '0') + "-" +
+                                        String(dayElem.dateObj.getDate()).padStart(2, '0');
+
+                    // Si la fecha coincide con nuestro array, le aplica el estilo verde
+                    if (fechasDisponibles.includes(formattedDate)) {
+                        dayElem.classList.add('dia-disponible');
+                    }
+                }
+            });
+        });
+    </script>
+
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

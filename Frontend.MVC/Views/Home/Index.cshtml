@@ -1,11 +1,12 @@
 ﻿@{
     ViewData["Title"] = "Portal del Paciente - Clínica Dental Rosario";
-    Layout = null;
+    Layout = null; // No usamos un Layout global aún, cada vista es autocontenida
 
-    // Simulación de datos dinámicos que llegarán desde el Login / Sesión
+    // SIMULACIÓN DE DATOS DE SESIÓN:
+    // Estos datos simulan la información que vendría de la Base de Datos al hacer Login.
     var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042"; // ID autoincremental de la base de datos
-    var estadoPaciente = "HABILITADO";
+    var idPaciente = ViewData["IdPaciente"] ?? "10042"; // ID autoincremental de la BD
+    var estadoPaciente = "HABILITADO"; // Puede cambiar a "INHABILITADO" si posee deudas
 }
 
 <!DOCTYPE html>
@@ -14,12 +15,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    <!-- Bootstrap 5 CSS -->
+
+    <!-- LIBRERÍAS EXTERNAS: Usamos Bootstrap 5 para el diseño responsive y Bootstrap Icons para la iconografía -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <style>
+        /* ESTILOS GLOBALES DEL BODY */
         body {
             background-color: #f8f9fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -27,7 +29,9 @@
             overflow-x: hidden;
         }
 
-        /* Sidebar */
+        /* ==========================================
+                   ESTILOS DEL MENÚ LATERAL (SIDEBAR)
+                   ========================================== */
         .sidebar {
             width: 260px;
             height: 100vh;
@@ -42,6 +46,7 @@
             z-index: 100;
         }
 
+        /* Sección de la foto de perfil y datos básicos del paciente */
         .profile-section {
             display: flex;
             align-items: center;
@@ -81,6 +86,7 @@
             margin-top: 3px;
         }
 
+        /* Enlaces de navegación */
         .nav-menu {
             list-style: none;
             padding: 0;
@@ -115,12 +121,15 @@
                 color: #ffffff;
             }
 
-        /* Contenido Principal */
+        /* ==========================================
+                   ESTILOS DEL CONTENIDO PRINCIPAL
+                   ========================================== */
         .main-content {
-            margin-left: 260px;
+            margin-left: 260px; /* Deja espacio para el sidebar fijo */
             padding: 30px;
         }
 
+        /* Encabezado superior con el logo y la campana de notificaciones */
         .top-header {
             display: flex;
             justify-content: space-between;
@@ -143,7 +152,7 @@
             height: auto;
         }
 
-        /* Buscador */
+        /* Barra de búsqueda de especialistas */
         .search-container {
             position: relative;
             margin-bottom: 30px;
@@ -164,7 +173,7 @@
             color: #6c757d;
         }
 
-        /* Tarjetas de Profesionales */
+        /* Tarjetas blancas de los odontólogos */
         .doc-card {
             background: #ffffff;
             border: 1px solid #eaeaea;
@@ -181,6 +190,7 @@
             object-fit: cover;
         }
 
+        /* Botones de horarios (Píldoras) */
         .slot-pill {
             border: 1px solid #cfe2ff;
             background-color: #f8fbff;
@@ -197,7 +207,7 @@
                 color: #fff;
             }
 
-        /* Tarjeta Próximo Turno */
+        /* Tarjeta azul del Próximo Turno */
         .next-turno-card {
             background: linear-gradient(135deg, #0d3b66, #1d6fa5);
             color: #ffffff;
@@ -219,7 +229,7 @@
                 color: #70b8ff;
             }
 
-        /* Especialidades Odontológicas */
+        /* Cuadros interactivos de Especialidades Odontológicas */
         .specialty-box {
             background: #ffffff;
             border: 1px solid #eaeaea;
@@ -246,9 +256,11 @@
 </head>
 <body>
 
-    <!-- SIDEBAR DE NAVEGACIÓN -->
+    <!-- ==========================================
+         SIDEBAR DE NAVEGACIÓN
+         ========================================== -->
     <div class="sidebar">
-        <!-- Perfil del Paciente -->
+        <!-- Perfil del Paciente con datos dinámicos -->
         <div class="profile-section">
             <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" alt="Perfil" class="profile-avatar" />
             <div class="profile-info">
@@ -258,28 +270,32 @@
             </div>
         </div>
 
-        <!-- Menú de Subpestañas con Tooltips -->
+        <!-- Menú de Subpestañas. IMPORTANTE: Los enlaces (href) usan Razor para apuntar al controlador -->
         <ul class="nav-menu">
+
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Consultá y gestioná tus turnos reservados">
-                <a href="#" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a>
+                <!-- Enlace hacia la vista MisTurnos -->
+                <a href="@Url.Action("MisTurnos", "Home")" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Accedé a tus odontogramas y fichas médicas">
+                <!-- Enlace hacia la vista HistorialClinico -->
                 <a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a>
             </li>
 
-            <!-- ACÁ ESTÁ EL ENLACE ACTUALIZADO -->
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Administrá tus tarjetas y medios de pago">
+                <!-- CORRECCIÓN: Enlace hacia la vista MetodosDePago -->
                 <a href="@Url.Action("MetodosDePago", "Home")" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Verificá la cobertura de tu obra social">
+                <!-- Pendiente de implementar: Usamos '#' hasta crear el controlador de Seguros -->
                 <a href="#" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Pantalla principal de búsquedas">
-                <!-- OJO: En Index.cshtml este <a> lleva la clase "nav-link active". En los demás solo "nav-link" -->
-                <a href="@Url.Action("Index", "Home")" class="nav-link"><i class="bi bi-house-door"></i> Inicio</a>
+                <!-- Como estamos en el Index, este enlace tiene la clase 'active' que lo pinta de azul -->
+                <a href="@Url.Action("Index", "Home")" class="nav-link active"><i class="bi bi-house-door"></i> Inicio</a>
             </li>
 
             <li class="nav-item" style="margin-top: auto;" data-bs-toggle="tooltip" data-bs-placement="right" title="Ajustes de cuenta y preferencias">
@@ -288,7 +304,9 @@
         </ul>
     </div>
 
-    <!-- CONTENIDO PRINCIPAL -->
+    <!-- ==========================================
+         CONTENIDO PRINCIPAL
+         ========================================== -->
     <div class="main-content">
 
         <!-- Header superior con Logo e Imagen -->
@@ -298,14 +316,14 @@
                 Clínica Dental Rosario
             </h5>
 
-            <!-- Botón Campanita con Tooltip -->
+            <!-- Botón Campanita -->
             <button class="btn btn-light rounded-circle shadow-sm position-relative" style="width: 40px; height: 40px;"
                     data-bs-toggle="tooltip" data-bs-placement="left" title="Notificaciones: No tenés avisos pendientes">
                 <i class="bi bi-bell"></i>
             </button>
         </div>
 
-        <!-- Alerta de Éxito al cancelar turno -->
+        <!-- ALERTA DE ÉXITO: Se muestra temporalmente cuando el TempData recibe un mensaje del Controlador (ej: al cancelar un turno) -->
         @if (TempData["MensajeExito"] != null)
         {
             <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
@@ -314,7 +332,7 @@
             </div>
         }
 
-        <!-- Búsqueda -->
+        <!-- Sección de Búsqueda -->
         <div class="mb-4">
             <h2 class="fw-bold text-dark mb-1">Encuentra tu Especialista</h2>
             <p class="text-muted small">Busca por nombre, especialidad o tratamiento.</p>
@@ -325,9 +343,10 @@
             </div>
         </div>
 
-        <!-- Grilla de Contenido Central -->
+        <!-- Grilla de Contenido Central (Dividida en 8 columnas para médicos y 4 para próximos turnos) -->
         <div class="row">
-            <!-- Columna Izquierda: Profesionales Disponibles -->
+
+            <!-- COLUMNA IZQUIERDA: Listado de Profesionales -->
             <div class="col-lg-8">
                 <h5 class="fw-bold mb-3">Profesionales Disponibles</h5>
 
@@ -367,46 +386,50 @@
                 </div>
             </div>
 
-            <!-- Columna Derecha: Próximo Turno y Especialidades -->
+            <!-- COLUMNA DERECHA: Widgets de Turno y Especialidades -->
             <div class="col-lg-4">
 
-                <!-- Tarjeta Próximo Turno -->
-                <div class="next-turno-card">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="small opacity-75 fw-semibold">Próximo Turno</span>
+                <!-- LÓGICA DE OCULTAMIENTO: Si el TempData["OcultarTurno"] es NULL, dibuja la tarjeta.
+                     Si es true (porque el paciente acaba de cancelar el turno en el controlador), ignora todo este bloque. -->
+                @if (TempData["OcultarTurno"] == null)
+                {
+                    <div class="next-turno-card">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small opacity-75 fw-semibold">Próximo Turno</span>
 
-                        <!-- Enlace directo a API de Google Calendar -->
-                        <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Turno+Odontologico+-+Clinica+Dental+Rosario&dates=20261112T123000Z/20261112T130000Z&details=Control+General+con+Dra.+Valeria+Gomez+en+Consultorio+3&location=Clinica+Dental+Rosario"
-                           target="_blank"
-                           class="calendar-btn"
-                           data-bs-toggle="tooltip"
-                           data-bs-placement="top"
-                           title="Sincronizar este turno en tu Google Calendar">
-                            <i class="bi bi-calendar-plus"></i>
-                        </a>
-                    </div>
+                            <!-- API Google Calendar: Genera un evento pre-armado con la info del turno -->
+                            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Turno+Odontologico+-+Clinica+Dental+Rosario&dates=20261112T123000Z/20261112T130000Z&details=Control+General+con+Dra.+Valeria+Gomez+en+Consultorio+3&location=Clinica+Dental+Rosario"
+                               target="_blank"
+                               class="calendar-btn"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Sincronizar este turno en tu Google Calendar">
+                                <i class="bi bi-calendar-plus"></i>
+                            </a>
+                        </div>
 
-                    <h4 class="fw-bold mb-1">12 Nov, 09:30 AM</h4>
-                    <p class="small mb-1">Control General</p>
-                    <p class="small opacity-75 mb-3">Dra. Valeria Gómez • Consultorio 3</p>
+                        <h4 class="fw-bold mb-1">12 Nov, 09:30 AM</h4>
+                        <p class="small mb-1">Control General</p>
+                        <p class="small opacity-75 mb-3">Dra. Valeria Gómez • Consultorio 3</p>
 
-                    <!-- Botones de Acción (Ver Detalles y Cancelar) -->
-                    <div class="d-flex gap-2 mt-3">
-                        <button class="btn btn-light w-100 fw-bold text-primary rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Ver detalles completos de la reserva">
-                            Ver Detalles
-                        </button>
-
-                        <!-- Formulario para cancelar turno con confirmación -->
-                        <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro que querés cancelar este turno? Esta acción no se puede deshacer.');">
-                            <input type="hidden" name="idTurno" value="1" />
-                            <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Cancelar y liberar este horario">
-                                Cancelar
+                        <!-- Botones de Interacción del Turno -->
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-light w-100 fw-bold text-primary rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Ver detalles completos de la reserva">
+                                Ver Detalles
                             </button>
-                        </form>
-                    </div>
-                </div>
 
-                <!-- Grilla de Especialidades Odontológicas -->
+                            <!-- Formulario de Cancelación: Apunta a TurnoController -> Cancelar. Posee validación JS nativa. -->
+                            <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro que querés cancelar este turno? Esta acción no se puede deshacer.');">
+                                <input type="hidden" name="idTurno" value="1" />
+                                <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Cancelar y liberar este horario">
+                                    Cancelar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+
+                <!-- Grilla de Especialidades Odontológicas (Siempre visible) -->
                 <h5 class="fw-bold mb-3">Especialidades Odontológicas</h5>
                 <div class="row g-2">
                     <div class="col-6">
@@ -452,10 +475,8 @@
 
     </div>
 
-    <!-- Bootstrap JS Bundle -->
+    <!-- SCRIPT INICIALIZADOR: Carga Bootstrap y activa los Tooltips (mensajes flotantes estilo AdBlock) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Script para inicializar los Tooltips emergentes -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

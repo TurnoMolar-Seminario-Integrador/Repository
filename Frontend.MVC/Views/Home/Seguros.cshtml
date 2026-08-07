@@ -1,0 +1,237 @@
+﻿@{
+    ViewData["Title"] = "Seguros y Obras Sociales - Clínica Dental Rosario";
+    Layout = null;
+    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
+    var idPaciente = ViewData["IdPaciente"] ?? "10042";
+    var estadoPaciente = "HABILITADO";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info h6 {
+            font-size: 0.95rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .profile-info small {
+            font-size: 0.78rem;
+            color: #6c757d;
+        }
+
+        .badge-habilitado {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 3px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 5px;
+        }
+
+            .nav-link:hover {
+                background-color: #f1f3f5;
+                color: #0d6efd;
+            }
+
+            .nav-link.active {
+                background-color: #0d6efd;
+                color: #ffffff;
+            }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .brand-title {
+            color: #0d3b66;
+            font-weight: bold;
+            font-size: 1.3rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: auto;
+        }
+
+        /* Estilos de la Credencial Digital */
+        .credential-card {
+            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+            color: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(43, 88, 118, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .credential-card::after {
+                content: '';
+                position: absolute;
+                top: -50px;
+                right: -50px;
+                width: 150px;
+                height: 150px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 50%;
+            }
+
+        .update-box {
+            background: #fff;
+            border: 1px dashed #ced4da;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="profile-section">
+            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" class="profile-avatar" />
+            <div class="profile-info">
+                <h6>@nombrePaciente</h6>
+                <small>ID: #@idPaciente</small><br>
+                <span class="badge-habilitado">ESTADO: @estadoPaciente</span>
+            </div>
+        </div>
+
+        <!-- MENÚ GLOBAL ACTUALIZADO PARA SEGUROS -->
+        <ul class="nav-menu">
+            <li><a href="@Url.Action("MisTurnos", "Home")" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a></li>
+            <li><a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a></li>
+            <li><a href="@Url.Action("MetodosDePago", "Home")" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a></li>
+            <li><a href="@Url.Action("Seguros", "Home")" class="nav-link active"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a></li>
+            <li><a href="@Url.Action("Index", "Home")" class="nav-link"><i class="bi bi-house-door"></i> Inicio</a></li>
+            <li style="margin-top: auto;"><a href="@Url.Action("Configuracion", "Home")" class="nav-link"><i class="bi bi-gear"></i> Configuración</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <h5 class="brand-title"><img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" /> Clínica Dental Rosario</h5>
+            <button class="btn btn-light rounded-circle shadow-sm" style="width: 40px; height: 40px;"><i class="bi bi-bell"></i></button>
+        </div>
+
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">Mi Cobertura Médica</h2>
+            <p class="text-muted small">Visualizá los datos de tu prepaga u obra social vinculada.</p>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <h5 class="fw-bold mb-3">Credencial Activa</h5>
+                <!-- Tarjeta de Credencial Digital (Basada en diagrama de clases) -->
+                <div class="credential-card">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold mb-0">OSDE</h4>
+                        <i class="bi bi-shield-check fs-2 opacity-75"></i>
+                    </div>
+                    <div class="mb-4">
+                        <p class="small text-uppercase opacity-75 mb-0">Nombre del Titular</p>
+                        <h5 class="fw-bold">Manuel Fernández</h5>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="small text-uppercase opacity-75 mb-0">Nro. Afiliado (Identificador)</p>
+                            <h6 class="fw-bold mb-0">34567890-01</h6>
+                        </div>
+                        <div>
+                            <p class="small text-uppercase opacity-75 mb-0">Plan</p>
+                            <h6 class="fw-bold mb-0">310</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <h5 class="fw-bold mb-3">Actualización de Datos</h5>
+                <div class="update-box">
+                    <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 2.5rem;"></i>
+                    <h6 class="fw-bold mt-3">¿Cambiaste de obra social?</h6>
+                    <p class="text-muted small mb-4">Para mantener tu cobertura al día, envianos una foto de tu nueva credencial física o digital. La secretaría validará tus datos a la brevedad.</p>
+                    <button class="btn btn-outline-primary rounded-pill px-4 fw-bold">Subir nueva credencial</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

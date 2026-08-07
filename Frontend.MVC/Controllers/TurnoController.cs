@@ -56,6 +56,9 @@ namespace Frontend.MVC.Controllers
             // Guardamos el mensaje de éxito para que la vista Index lo muestre arriba de todo
             TempData["MensajeExito"] = "El turno fue cancelado correctamente.";
 
+            // AGREGAR ESTA LÍNEA: Avisamos a la vista que debe ocultar la tarjeta
+            TempData["OcultarTurno"] = true;
+
             // Redirigimos al paciente de vuelta al dashboard (Pestaña Inicio)
             return RedirectToAction("Index", "Home");
         }

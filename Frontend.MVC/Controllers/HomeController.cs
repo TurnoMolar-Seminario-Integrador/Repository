@@ -37,5 +37,21 @@ namespace TurnoMolar.Controllers
 
             return RedirectToAction("MetodosDePago");
         }
+
+        [HttpGet]
+        public IActionResult MisTurnos()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult Configuracion() { return View(); }
+
+        [HttpGet]
+        public IActionResult Seguros()
+        {
+            return View();
+        }
+
     }
 }

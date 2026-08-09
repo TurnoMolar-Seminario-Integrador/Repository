@@ -62,5 +62,15 @@ namespace Frontend.MVC.Controllers
             // Redirigimos al paciente de vuelta al dashboard (Pestaña Inicio)
             return RedirectToAction("Index", "Home");
         }
+
+        [HttpGet]
+        public IActionResult Comprobante(string fecha)
+        {
+            // Simulamos la recepción de los datos del turno recién creado
+            ViewData["FechaTurno"] = fecha ?? "12 Nov, 09:30 AM";
+            ViewData["CodigoReserva"] = "TRN-" + new Random().Next(10000, 99999);
+
+            return View();
+        }
     }
 }

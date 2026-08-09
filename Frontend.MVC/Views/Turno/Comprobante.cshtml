@@ -1,0 +1,271 @@
+﻿@{
+    ViewData["Title"] = "Comprobante de Turno - Clínica Dental Rosario";
+    Layout = null;
+
+    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
+    var idPaciente = ViewData["IdPaciente"] ?? "10042";
+    var estadoPaciente = "HABILITADO";
+    var fechaTurno = ViewData["FechaTurno"];
+    var codigoReserva = ViewData["CodigoReserva"];
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info h6 {
+            font-size: 0.95rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .profile-info small {
+            font-size: 0.78rem;
+            color: #6c757d;
+        }
+
+        .badge-habilitado {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 3px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 5px;
+        }
+
+            .nav-link:hover {
+                background-color: #f1f3f5;
+                color: #0d6efd;
+            }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* Diseño del Ticket / Comprobante */
+        .ticket-container {
+            width: 100%;
+            max-width: 500px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ticket-header {
+            background: linear-gradient(135deg, #0d3b66, #1d6fa5);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .ticket-body {
+            padding: 30px;
+        }
+
+        .ticket-divider {
+            border-top: 2px dashed #e5e5e5;
+            margin: 0;
+            position: relative;
+        }
+
+            .ticket-divider::before, .ticket-divider::after {
+                content: '';
+                position: absolute;
+                top: -15px;
+                width: 30px;
+                height: 30px;
+                background-color: #f8f9fa;
+                border-radius: 50%;
+            }
+
+            .ticket-divider::before {
+                left: -15px;
+            }
+
+            .ticket-divider::after {
+                right: -15px;
+            }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .detail-label {
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-weight: bold;
+            color: #212529;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="profile-section">
+            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" class="profile-avatar" />
+            <div class="profile-info">
+                <h6>@nombrePaciente</h6>
+                <small>ID: #@idPaciente</small><br>
+                <span class="badge-habilitado">ESTADO: @estadoPaciente</span>
+            </div>
+        </div>
+
+        <ul class="nav-menu">
+            <li><a href="@Url.Action("MisTurnos", "Home")" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a></li>
+            <li><a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a></li>
+            <li><a href="@Url.Action("MetodosDePago", "Home")" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a></li>
+            <li><a href="@Url.Action("Seguros", "Home")" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a></li>
+            <li><a href="@Url.Action("Index", "Home")" class="nav-link"><i class="bi bi-house-door"></i> Inicio</a></li>
+            <li style="margin-top: auto;"><a href="@Url.Action("Configuracion", "Home")" class="nav-link"><i class="bi bi-gear"></i> Configuración</a></li>
+        </ul>
+    </div>
+
+    <!-- CONTENIDO: COMPROBANTE -->
+    <div class="main-content">
+
+        <div class="text-center mb-4">
+            <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow" style="width: 70px; height: 70px;">
+                <i class="bi bi-check-lg" style="font-size: 2.5rem;"></i>
+            </div>
+            <h2 class="fw-bold text-dark">¡Turno Confirmado!</h2>
+            <p class="text-muted">Tu reserva ha sido procesada con éxito.</p>
+        </div>
+
+        <!-- TICKET DIGITAL -->
+        <div class="ticket-container mb-4" id="ticketArea">
+            <div class="ticket-header">
+                <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" width="40" class="mb-2 bg-white rounded-circle p-1">
+                <h4 class="fw-bold mb-0">Clínica Dental Rosario</h4>
+                <small class="opacity-75">Comprobante de Atención</small>
+            </div>
+
+            <div class="ticket-divider"></div>
+
+            <div class="ticket-body">
+                <div class="text-center mb-4">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=@codigoReserva" alt="QR Code" class="mb-2">
+                    <p class="small text-muted mb-0">CÓDIGO DE RESERVA</p>
+                    <h5 class="fw-bold tracking-widest">@codigoReserva</h5>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Paciente</span>
+                    <span class="detail-value">@nombrePaciente</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Profesional</span>
+                    <span class="detail-value">Dra. Karina González</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Especialidad</span>
+                    <span class="detail-value">Control General</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Fecha y Hora</span>
+                    <span class="detail-value text-primary">@fechaTurno</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Ubicación</span>
+                    <span class="detail-value">Consultorio 3<br><small class="text-muted fw-normal">Piso 1, Sede Centro</small></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <div class="d-flex gap-3 mt-2">
+            <button onclick="window.print()" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm bg-white">
+                <i class="bi bi-printer me-2"></i>Imprimir Ticket
+            </button>
+            <a href="@Url.Action("MisTurnos", "Home")" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+                Ir a Mis Turnos <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

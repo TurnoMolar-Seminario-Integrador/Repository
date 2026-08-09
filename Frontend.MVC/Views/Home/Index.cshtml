@@ -271,35 +271,31 @@
         </div>
 
         <!-- Menú de Subpestañas. IMPORTANTE: Los enlaces (href) usan Razor para apuntar al controlador -->
+        <!-- MENÚ GLOBAL 100% FUNCIONAL -->
         <ul class="nav-menu">
-
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Consultá y gestioná tus turnos reservados">
-                <!-- Enlace hacia la vista MisTurnos -->
                 <a href="@Url.Action("MisTurnos", "Home")" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Accedé a tus odontogramas y fichas médicas">
-                <!-- Enlace hacia la vista HistorialClinico -->
                 <a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Administrá tus tarjetas y medios de pago">
-                <!-- CORRECCIÓN: Enlace hacia la vista MetodosDePago -->
                 <a href="@Url.Action("MetodosDePago", "Home")" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Verificá la cobertura de tu obra social">
-                <!-- Pendiente de implementar: Usamos '#' hasta crear el controlador de Seguros -->
-                <a href="#" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a>
+                <a href="@Url.Action("Seguros", "Home")" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a>
             </li>
 
             <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Pantalla principal de búsquedas">
-                <!-- Como estamos en el Index, este enlace tiene la clase 'active' que lo pinta de azul -->
+                <!-- Como este es el Index, este link mantiene la clase 'active' -->
                 <a href="@Url.Action("Index", "Home")" class="nav-link active"><i class="bi bi-house-door"></i> Inicio</a>
             </li>
 
             <li class="nav-item" style="margin-top: auto;" data-bs-toggle="tooltip" data-bs-placement="right" title="Ajustes de cuenta y preferencias">
-                <a href="#" class="nav-link"><i class="bi bi-gear"></i> Configuración</a>
+                <a href="@Url.Action("Configuracion", "Home")" class="nav-link"><i class="bi bi-gear"></i> Configuración</a>
             </li>
         </ul>
     </div>
@@ -410,7 +406,7 @@
 
                         <h4 class="fw-bold mb-1">12 Nov, 09:30 AM</h4>
                         <p class="small mb-1">Control General</p>
-                        <p class="small opacity-75 mb-3">Dra. Valeria Gómez • Consultorio 3</p>
+                        <p class="small opacity-75 mb-3">Dra. Karina González • Consultorio 3</p>
 
                         <!-- Botones de Interacción del Turno -->
                         <div class="d-flex gap-2 mt-3">

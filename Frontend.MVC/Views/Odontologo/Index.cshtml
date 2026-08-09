@@ -1,0 +1,410 @@
+@{
+    ViewData["Title"] = "Portal Profesional - Clínica Dental Rosario";
+    Layout = null;
+
+    var nombreDoctor = "Dra. Karina González";
+    var especialidad = "Odontología General";
+    var matricula = "MP 48291";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* SIDEBAR PROFESIONAL: Misma estética limpia y luminosa de la clínica */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #0d6efd;
+        }
+
+        .profile-info h6 {
+            font-size: 0.92rem;
+            font-weight: bold;
+            margin: 0;
+            color: #212529;
+        }
+
+        .profile-info small {
+            font-size: 0.76rem;
+            color: #6c757d;
+        }
+
+        .badge-rol {
+            background-color: #e6f0fa;
+            color: #004694;
+            font-size: 0.65rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 700;
+            display: inline-block;
+            margin-top: 4px;
+            letter-spacing: 0.4px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background-color: #f1f3f5;
+            color: #0d6efd;
+        }
+
+        .nav-link.active {
+            background-color: #0d6efd;
+            color: #ffffff;
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+        }
+
+        .nav-link.active i {
+            color: #ffffff;
+        }
+
+        /* CONTENIDO PRINCIPAL */
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .brand-title {
+            color: #0d3b66;
+            font-weight: bold;
+            font-size: 1.3rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: auto;
+        }
+
+        /* TARJETAS DEL DASHBOARD PROFESIONAL */
+        .dashboard-card {
+            background: #ffffff;
+            border: 1px solid #eaeaea;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            transition: all 0.25s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            border-color: #cbd5e1;
+            color: inherit;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            margin-bottom: 14px;
+            transition: all 0.2s;
+        }
+
+        .card-1 .card-icon { background: #eff6ff; color: #0d6efd; }
+        .card-2 .card-icon { background: #f5f3ff; color: #7c3aed; }
+        .card-3 .card-icon { background: #fffbeb; color: #d97706; }
+        .card-4 .card-icon { background: #ecfdf5; color: #059669; }
+
+        .dashboard-card:hover .card-icon {
+            transform: scale(1.08);
+        }
+
+        .widget-box {
+            background: #ffffff;
+            border: 1px solid #eaeaea;
+            border-radius: 14px;
+            padding: 22px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        .espera-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR PROFESIONAL CON EL MISMO ESTILO -->
+    <div class="sidebar">
+        <div class="profile-section">
+            <img src="https://ui-avatars.com/api/?name=Karina+Gonzalez&background=0d6efd&color=fff" class="profile-avatar" alt="Avatar Profesional" />
+            <div class="profile-info">
+                <h6>@nombreDoctor</h6>
+                <small>@especialidad</small><br />
+                <span class="badge-rol">RESPONSABLE CLÍNICO</span>
+            </div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="@Url.Action("Index", "Odontologo")" class="nav-link active">
+                    <i class="bi bi-grid-1x2"></i> Panel Principal
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("TurnosDelDia", "Odontologo")" class="nav-link">
+                    <i class="bi bi-calendar2-day"></i> Turnos del Día
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-calendar3"></i> Gestión de Turnos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-clipboard2-check"></i> Control de Asistencias
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="bi bi-file-earmark-medical"></i> Gestión Atenciones
+                </a>
+            </li>
+            <li class="nav-item" style="margin-top: auto;">
+                <a href="@Url.Action("Login", "Home")" class="nav-link text-danger fw-semibold">
+                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="main-content">
+
+        <!-- TOP HEADER CON DIENTE AL LADO DE CLÍNICA DENTAL ROSARIO -->
+        <div class="top-header">
+            <h5 class="brand-title">
+                <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" />
+                Clínica Dental Rosario <span class="text-muted fw-normal fs-6 ms-2">| Portal Profesional</span>
+            </h5>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge bg-white text-dark border py-2 px-3 shadow-sm rounded-pill me-2">
+                    <i class="bi bi-calendar-event text-primary me-1"></i> Viernes, 08 de Agosto 2026
+                </span>
+                <button class="btn btn-light rounded-circle shadow-sm position-relative" style="width: 40px; height: 40px;" title="Notificaciones">
+                    <i class="bi bi-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- BIENVENIDA SIN EMOJIS -->
+        <div class="mb-4">
+            <h2 class="fw-bold text-dark mb-1">Hola, Dra. Karina González</h2>
+            <p class="text-muted">Tenés <strong class="text-primary">8 pacientes</strong> agendados para el día de hoy.</p>
+        </div>
+
+        <!-- ACCESOS RÁPIDOS PRINCIPALES -->
+        <h5 class="fw-bold mb-3 text-dark">Accesos Rápidos</h5>
+
+        <div class="row g-3 mb-4">
+
+            <!-- Módulo 1: Turnos del Día -->
+            <div class="col-md-6 col-lg-3">
+                <a href="@Url.Action("TurnosDelDia", "Odontologo")" class="dashboard-card card-1">
+                    <div class="card-icon"><i class="bi bi-calendar2-day"></i></div>
+                    <h6 class="fw-bold mb-1 text-dark">Turnos del Día</h6>
+                    <p class="text-muted small mb-0 flex-grow-1">Visualizá tu agenda de hoy y los pacientes en sala de espera.</p>
+                    <div class="mt-3 text-end"><i class="bi bi-arrow-right text-primary"></i></div>
+                </a>
+            </div>
+
+            <!-- Módulo 2: Gestión de Turnos -->
+            <div class="col-md-6 col-lg-3">
+                <a href="#" class="dashboard-card card-2">
+                    <div class="card-icon"><i class="bi bi-calendar3"></i></div>
+                    <h6 class="fw-bold mb-1 text-dark">Gestión de Turnos</h6>
+                    <p class="text-muted small mb-0 flex-grow-1">Administrá el calendario completo, cancelaciones y reprogramaciones.</p>
+                    <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #7c3aed;"></i></div>
+                </a>
+            </div>
+
+            <!-- Módulo 3: Control Asistencias -->
+            <div class="col-md-6 col-lg-3">
+                <a href="#" class="dashboard-card card-3">
+                    <div class="card-icon"><i class="bi bi-clipboard2-check"></i></div>
+                    <h6 class="fw-bold mb-1 text-dark">Control Asistencias</h6>
+                    <p class="text-muted small mb-0 flex-grow-1">Registrá las llegadas y ausencias de los turnos programados.</p>
+                    <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #d97706;"></i></div>
+                </a>
+            </div>
+
+            <!-- Módulo 4: Gestión Atenciones -->
+            <div class="col-md-6 col-lg-3">
+                <a href="#" class="dashboard-card card-4">
+                    <div class="card-icon"><i class="bi bi-file-earmark-medical"></i></div>
+                    <h6 class="fw-bold mb-1 text-dark">Gestión Atenciones</h6>
+                    <p class="text-muted small mb-0 flex-grow-1">Cargá diagnósticos, historias clínicas y emití comprobantes.</p>
+                    <div class="mt-3 text-end"><i class="bi bi-arrow-right text-success"></i></div>
+                </a>
+            </div>
+
+        </div>
+
+        <!-- SECCIÓN INFORMATIVA DE SALA DE ESPERA Y CONSULTORIO -->
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="widget-box">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-person-lines-fill text-primary me-2"></i>Pacientes en Espera (Admisión confirmada)
+                        </h6>
+                        <a href="@Url.Action("TurnosDelDia", "Odontologo")" class="small text-decoration-none fw-semibold">Ver agenda completa &rarr;</a>
+                    </div>
+
+                    <div class="espera-item">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="fw-bold text-dark fs-6" style="min-width: 75px;">09:30 AM</div>
+                            <div>
+                                <div class="fw-bold text-dark">Manuel Fernández</div>
+                                <small class="text-muted">Control General • OSDE 310 (HC #10042)</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1 rounded-pill small">
+                                En Sala
+                            </span>
+                            <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
+                                Atender
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="espera-item" style="border-left-color: #94a3b8;">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="fw-bold text-muted fs-6" style="min-width: 75px;">10:30 AM</div>
+                            <div>
+                                <div class="fw-bold text-dark">Lucía Martínez</div>
+                                <small class="text-muted">Ortodoncia (Ajuste) • Particular (HC #10058)</small>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small">
+                                Programado
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="widget-box h-100">
+                    <h6 class="fw-bold mb-3 text-dark">
+                        <i class="bi bi-info-circle text-primary me-2"></i>Información del Consultorio
+                    </h6>
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                            <span class="text-muted">Consultorio Asignado:</span>
+                            <span class="fw-semibold text-dark">Box 3 (Planta Alta)</span>
+                        </li>
+                        <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                            <span class="text-muted">Horario de Atención:</span>
+                            <span class="fw-semibold text-dark">08:00 a 16:00 hs</span>
+                        </li>
+                        <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                            <span class="text-muted">Especialidad Activa:</span>
+                            <span class="fw-semibold text-dark">Odontología General</span>
+                        </li>
+                        <li class="d-flex justify-content-between">
+                            <span class="text-muted">Matrícula Profesional:</span>
+                            <span class="fw-semibold text-dark">@matricula</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

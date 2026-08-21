@@ -5,183 +5,303 @@ namespace Data
 {
     public class TurnoMolarDbContext : DbContext
     {
-        public TurnoMolarDbContext(DbContextOptions<TurnoMolarDbContext> options) : base(options)
-        {
-        }
+        public TurnoMolarDbContext(DbContextOptions<TurnoMolarDbContext> options) : base(options) { }
 
+        // === DbSets ===
         public DbSet<Usuario> Usuarios => Set<Usuario>();
+        public DbSet<ObraSocial> ObrasSociales => Set<ObraSocial>();
+        public DbSet<Especialidad> Especialidades => Set<Especialidad>();
+        public DbSet<DisponibilidadHoraria> DisponibilidadesHorarias => Set<DisponibilidadHoraria>();
         public DbSet<Paciente> Pacientes => Set<Paciente>();
         public DbSet<Odontologo> Odontologos => Set<Odontologo>();
-        public DbSet<Especialidad> Especialidades => Set<Especialidad>();
-        public DbSet<Insumo> Insumos => Set<Insumo>();
-        public DbSet<TurnoOdontologico> Turnos => Set<TurnoOdontologico>();
-        public DbSet<Consulta> Consultas => Set<Consulta>();
-        public DbSet<Factura> Facturas => Set<Factura>();
-        public DbSet<ItemFactura> ItemsFactura => Set<ItemFactura>();
-        public DbSet<Multa> Multas => Set<Multa>();
-        public DbSet<ObraSocial> ObrasSociales => Set<ObraSocial>();
         public DbSet<HistoriaClinica> HistoriasClinicas => Set<HistoriaClinica>();
-        public DbSet<Consultorio> Consultorios => Set<Consultorio>();
-        public DbSet<HorarioOdont> HorariosOdont => Set<HorarioOdont>();
+        public DbSet<Turno> Turnos => Set<Turno>();
+        public DbSet<ComprobanteDeTurno> Comprobantes => Set<ComprobanteDeTurno>();
+        public DbSet<Insumo> Insumos => Set<Insumo>();
+        public DbSet<AtencionOdontologica> Atenciones => Set<AtencionOdontologica>();
+        public DbSet<DetalleInsumoUtilizado> DetallesInsumos => Set<DetalleInsumoUtilizado>();
+        public DbSet<Valoracion> Valoraciones => Set<Valoracion>();
+        public DbSet<Pago> Pagos => Set<Pago>();
+        public DbSet<Multa> Multas => Set<Multa>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configuraciones de entidades
-            modelBuilder.Entity<Usuario>(entity =>
+            // === USUARIO ===
+            modelBuilder.Entity<Usuario>(e =>
             {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.Rol).IsRequired().HasMaxLength(30);
+                e.HasKey(u => u.Id);
+                e.Property(u => u.Username).IsRequired().HasMaxLength(50);
+                e.Property(u => u.Rol).IsRequired().HasMaxLength(30);
+                e.HasIndex(u => u.Username).IsUnique();
             });
 
-            modelBuilder.Entity<Paciente>(entity =>
+            // === OBRA SOCIAL ===
+            modelBuilder.Entity<ObraSocial>(e =>
             {
-                entity.HasKey(e => e.Id);
-                entity.HasOne(e => e.ObraSocial)
-                      .WithMany()
-                      .HasForeignKey(e => e.ObraSocialId)
-                      .OnDelete(DeleteBehavior.SetNull);
+                e.HasKey(o => o.IdentificadorOS);
+                e.Property(o => o.NombreOS).IsRequired().HasMaxLength(100);
+                e.Property(o => o.PlanCobertura).HasMaxLength(100);
+                e.Property(o => o.ArancelOS).HasPrecision(18, 2);
+                e.Property(o => o.EstadoOS).HasMaxLength(20).HasDefaultValue("ACTIVA");
             });
 
-            modelBuilder.Entity<Odontologo>(entity =>
+            // === ESPECIALIDAD ===
+            modelBuilder.Entity<Especialidad>(e =>
             {
-                entity.HasKey(e => e.Id);
-                entity.HasOne(e => e.Especialidad)
-                      .WithMany()
-                      .HasForeignKey(e => e.EspecialidadId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                e.HasKey(es => es.CodEspecialidad);
+                e.Property(es => es.Nombre).IsRequired().HasMaxLength(100);
+                e.Property(es => es.ArancelParticular).HasPrecision(18, 2);
             });
 
-            modelBuilder.Entity<TurnoOdontologico>(entity =>
+            // === DISPONIBILIDAD HORARIA ===
+            modelBuilder.Entity<DisponibilidadHoraria>(e =>
             {
-                entity.HasKey(e => e.Id);
-                entity.HasOne(e => e.Paciente)
-                      .WithMany()
-                      .HasForeignKey(e => e.PacienteId)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Odontologo)
-                      .WithMany()
-                      .HasForeignKey(e => e.OdontologoId)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(e => e.Especialidad)
-                      .WithMany()
-                      .HasForeignKey(e => e.EspecialidadId)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                entity.Property(e => e.MontoEstimado).HasPrecision(18, 2);
+                e.HasKey(d => d.CodDisponibilidad);
+                e.Property(d => d.DiaSemana).IsRequired().HasMaxLength(20);
             });
 
-            modelBuilder.Entity<Factura>(entity =>
+            // === PERSONA / PACIENTE / ODONTOLOGO (TPT - Table Per Type) ===
+            // Tabla base Personas con PK compuesta
+            modelBuilder.Entity<Persona>(e =>
             {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Subtotal).HasPrecision(18, 2);
-                entity.Property(e => e.DescuentoObraSocial).HasPrecision(18, 2);
-                entity.Property(e => e.Total).HasPrecision(18, 2);
-                entity.Property(e => e.MontoAPagarPaciente).HasPrecision(18, 2);
-                entity.HasMany(e => e.Items)
-                      .WithOne(e => e.Factura)
-                      .HasForeignKey(e => e.FacturaId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                e.UseTptMappingStrategy();
+                e.HasKey(p => new { p.TipoDocumento, p.NroDocumento });
+                e.Property(p => p.TipoDocumento).HasMaxLength(15);
+                e.Property(p => p.Nombre).IsRequired().HasMaxLength(100);
+                e.Property(p => p.Apellido).IsRequired().HasMaxLength(100);
+                e.Property(p => p.Telefono).HasMaxLength(30);
+                e.Property(p => p.Email).HasMaxLength(150);
+                e.Property(p => p.Domicilio).HasMaxLength(200);
+                e.ToTable("Personas");
             });
 
-            modelBuilder.Entity<ItemFactura>(entity =>
+            // === PACIENTE ===
+            modelBuilder.Entity<Paciente>(e =>
             {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.PrecioUnitario).HasPrecision(18, 2);
-                entity.Property(e => e.Subtotal).HasPrecision(18, 2);
-                entity.HasOne(e => e.Insumo)
-                      .WithMany()
-                      .HasForeignKey(e => e.InsumoId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                e.ToTable("Pacientes");
+                e.Property(p => p.EstadoPaciente).IsRequired().HasMaxLength(20).HasDefaultValue("HABILITADO");
+                e.Property(p => p.MontoAdeudado).HasPrecision(18, 2);
+                e.HasOne(p => p.ObraSocial)
+                    .WithMany()
+                    .HasForeignKey(p => p.IdentificadorOS)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
-            modelBuilder.Entity<Insumo>(entity =>
+            // === ODONTOLOGO ===
+            modelBuilder.Entity<Odontologo>(e =>
             {
-                entity.Property(e => e.Precio).HasPrecision(18, 2);
+                e.ToTable("Odontologos");
+                e.Property(o => o.Matricula).IsRequired().HasMaxLength(20);
+                e.Property(o => o.EstadoOdontologo).IsRequired().HasMaxLength(20).HasDefaultValue("ACTIVO");
+                e.HasOne(o => o.Especialidad)
+                    .WithMany()
+                    .HasForeignKey(o => o.CodEspecialidad)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(o => o.Disponibilidad)
+                    .WithMany()
+                    .HasForeignKey(o => o.CodDisponibilidad)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
-            modelBuilder.Entity<Multa>(entity =>
+            // === HISTORIA CLINICA ===
+            modelBuilder.Entity<HistoriaClinica>(e =>
             {
-                entity.Property(e => e.Monto).HasPrecision(18, 2);
+                e.HasKey(h => h.NroHC);
+                e.Property(h => h.AntecedentesMedicos).HasMaxLength(500);
+                e.Property(h => h.Alergias).HasMaxLength(300);
+                e.Property(h => h.ObservacionesGeneral).HasMaxLength(500);
+                e.HasOne(h => h.Paciente)
+                    .WithOne(p => p.HistoriaClinica)
+                    .HasForeignKey<HistoriaClinica>(h => new { h.PacienteTipoDoc, h.PacienteNroDoc })
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
-            modelBuilder.Entity<ObraSocial>(entity =>
+            // === TURNO ===
+            // Ignoramos TurnoOdontologico (herencia TPH en misma tabla Turnos)
+            modelBuilder.Entity<Turno>(e =>
             {
-                entity.Property(e => e.PorcentajeCobertura).HasPrecision(5, 2);
+                e.HasKey(t => t.CodTurno);
+                e.Property(t => t.ModalidadPagoElegida).IsRequired().HasMaxLength(20);
+                e.Property(t => t.Estado).IsRequired().HasMaxLength(20);
+                e.Property(t => t.MotivoCancelacion).HasMaxLength(300);
+
+                // FK -> Especialidad
+                e.HasOne(t => t.Especialidad)
+                    .WithMany()
+                    .HasForeignKey(t => t.CodEspecialidad)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK -> Odontologo (PK compuesta)
+                e.HasOne(t => t.Odontologo)
+                    .WithMany()
+                    .HasForeignKey(t => new { t.OdontologoTipoDoc, t.OdontologoNroDoc })
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK -> Paciente (PK compuesta)
+                e.HasOne(t => t.Paciente)
+                    .WithMany()
+                    .HasForeignKey(t => new { t.PacienteTipoDoc, t.PacienteNroDoc })
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Autoreferencia turno original (reprogramacion)
+                e.HasOne(t => t.TurnoOriginal)
+                    .WithMany()
+                    .HasForeignKey(t => t.TurnoOriginalCod)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                e.ToTable("Turnos");
             });
 
-            // Seed Data Inicial
+            modelBuilder.Entity<TurnoOdontologico>()
+                .ToTable("Turnos"); // Misma tabla que Turno (TPH)
+
+            // === COMPROBANTE DE TURNO ===
+            modelBuilder.Entity<ComprobanteDeTurno>(e =>
+            {
+                e.HasKey(c => c.NroComprobante);
+                // FK solo por CodTurno, ya que es la PK de Turno
+                e.HasOne(c => c.Turno)
+                    .WithOne(t => t.Comprobante)
+                    .HasForeignKey<ComprobanteDeTurno>(c => c.CodTurno)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // === INSUMO ===
+            modelBuilder.Entity<Insumo>(e =>
+            {
+                e.HasKey(i => i.CodInsumo);
+                e.Property(i => i.Nombre).IsRequired().HasMaxLength(150);
+                e.Property(i => i.CostoUnitario).HasPrecision(18, 2);
+            });
+
+            // === ATENCION ODONTOLOGICA ===
+            modelBuilder.Entity<AtencionOdontologica>(e =>
+            {
+                e.HasKey(a => a.CodAtencion);
+                e.Property(a => a.Observaciones).HasMaxLength(500);
+
+                // FK -> Turno (solo por CodTurno, PK de Turno)
+                e.HasOne(a => a.Turno)
+                    .WithOne(t => t.Atencion)
+                    .HasForeignKey<AtencionOdontologica>(a => a.CodTurno)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK -> Historia Clinica (por NroHC, PK de HistoriaClinica)
+                e.HasOne(a => a.HistoriaClinica)
+                    .WithMany()
+                    .HasForeignKey(a => a.NroHC)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // PacienteTipoDoc y PacienteNroDoc son datos de trazabilidad (no FK)
+                e.Property(a => a.PacienteTipoDoc).HasMaxLength(15);
+
+                // Ignore computed properties
+                e.Ignore(a => a.DuracionReal);
+                e.Ignore(a => a.MontoTotal);
+
+                e.ToTable("AtencionesMedicas");
+            });
+
+            modelBuilder.Entity<Consulta>()
+                .ToTable("AtencionesMedicas"); // TPH misma tabla
+
+            // === DETALLE INSUMO UTILIZADO ===
+            modelBuilder.Entity<DetalleInsumoUtilizado>(e =>
+            {
+                e.HasKey(d => new { d.CodInsumo, d.CodAtencion });
+                e.Property(d => d.CostoUnitarioAlMomento).HasPrecision(18, 2);
+                e.HasOne(d => d.Insumo)
+                    .WithMany()
+                    .HasForeignKey(d => d.CodInsumo)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(d => d.Atencion)
+                    .WithMany(a => a.DetallesInsumos)
+                    .HasForeignKey(d => d.CodAtencion)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // === VALORACION ===
+            modelBuilder.Entity<Valoracion>(e =>
+            {
+                e.HasKey(v => v.CodValoracion);
+                e.Property(v => v.Observaciones).HasMaxLength(300);
+                e.HasOne(v => v.Atencion)
+                    .WithOne(a => a.Valoracion)
+                    .HasForeignKey<Valoracion>(v => v.CodAtencion)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // === PAGO ===
+            modelBuilder.Entity<Pago>(e =>
+            {
+                e.HasKey(p => p.CodPago);
+                e.Property(p => p.Monto).HasPrecision(18, 2);
+                e.Property(p => p.AportePaciente).HasPrecision(18, 2);
+                e.Property(p => p.AporteObraSocial).HasPrecision(18, 2);
+                e.Property(p => p.TipoMetodoPago).IsRequired().HasMaxLength(30);
+                e.Ignore(p => p.ResponsablePago); // derived
+                e.HasOne(p => p.Atencion)
+                    .WithOne(a => a.Pago)
+                    .HasForeignKey<Pago>(p => p.CodAtencion)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.ToTable("Pagos");
+            });
+
+            modelBuilder.Entity<Factura>()
+                .ToTable("Pagos"); // TPH misma tabla
+
+            // === SEED DATA ===
             SeedDatabase(modelBuilder);
         }
 
         private static void SeedDatabase(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Especialidad>().HasData(
-                new Especialidad(1, "Odontología General", "Atención primaria, limpiezas y controles preventivos"),
-                new Especialidad(2, "Endodoncia", "Tratamiento de conducto y pulpa dental"),
-                new Especialidad(3, "Ortodoncia", "Alineación de piezas dentales y brackets"),
-                new Especialidad(4, "Cirugía e Implantes", "Extracciones complejas y colocación de implantes"),
-                new Especialidad(5, "Odontopediatría", "Atención odontológica integral infantil")
-            );
-
+            // Obras Sociales
             modelBuilder.Entity<ObraSocial>().HasData(
-                new ObraSocial(1, "OSDE", "Plan 210 / 310", 0.70m),
-                new ObraSocial(2, "Swiss Medical", "Black / Gold", 0.65m),
-                new ObraSocial(3, "IOMA", "Afiliados Obligatorios", 0.50m),
-                new ObraSocial(4, "Particular", "Sin cobertura (100% particular)", 0.00m)
+                new ObraSocial(1, "OSDE", "Plan 210 / 310", 18000m, "ACTIVA"),
+                new ObraSocial(2, "Swiss Medical", "Black / Gold", 22000m, "ACTIVA"),
+                new ObraSocial(3, "IOMA", "Afiliados Obligatorios", 12000m, "ACTIVA"),
+                new ObraSocial(4, "Particular", "Sin cobertura", 0m, "ACTIVA")
             );
 
+            // Especialidades
+            modelBuilder.Entity<Especialidad>().HasData(
+                new Especialidad(1, "Odontología General", 15000m),
+                new Especialidad(2, "Endodoncia", 35000m),
+                new Especialidad(3, "Ortodoncia", 50000m),
+                new Especialidad(4, "Cirugía e Implantes", 80000m),
+                new Especialidad(5, "Odontopediatría", 12000m)
+            );
+
+            // Disponibilidades Horarias
+            modelBuilder.Entity<DisponibilidadHoraria>().HasData(
+                new DisponibilidadHoraria(1, "Lunes", new TimeOnly(8, 0), new TimeOnly(16, 0)),
+                new DisponibilidadHoraria(2, "Martes", new TimeOnly(9, 0), new TimeOnly(17, 0)),
+                new DisponibilidadHoraria(3, "Miércoles", new TimeOnly(10, 0), new TimeOnly(18, 0)),
+                new DisponibilidadHoraria(4, "Jueves", new TimeOnly(8, 0), new TimeOnly(14, 0)),
+                new DisponibilidadHoraria(5, "Viernes", new TimeOnly(9, 0), new TimeOnly(13, 0))
+            );
+
+            // Insumos
             modelBuilder.Entity<Insumo>().HasData(
-                new Insumo(1, "Kit de Anestesia Local (Mepivacaína)", "Anestesia cartucho dental x 1.8ml", 2500m, 120),
-                new Insumo(2, "Resina Compuesta Fotocurable", "Material de restauración estética", 6800m, 45),
-                new Insumo(3, "Película Radiográfica Periapical", "Radiografía periapical digitalizada", 1500m, 200),
-                new Insumo(4, "Guantes de Látex Descartables (Par)", "Bioseguridad descartable", 400m, 500),
-                new Insumo(5, "Babero y Eyetor Descartable", "Kit de aislamiento para paciente", 300m, 350),
-                new Insumo(6, "Pasta para Profilaxis Dental", "Pasta abrasiva para limpieza profunda", 1200m, 60),
-                new Insumo(7, "Conos de Gutapercha Endodoncia", "Obturación de conductos radiculares", 4500m, 30)
+                new Insumo(1, "Kit de Anestesia Local (Mepivacaína)", 2500m, 120),
+                new Insumo(2, "Resina Compuesta Fotocurable", 6800m, 45),
+                new Insumo(3, "Película Radiográfica Periapical", 1500m, 200),
+                new Insumo(4, "Guantes de Látex Descartables (Par)", 400m, 500),
+                new Insumo(5, "Babero y Eyector Descartable", 300m, 350),
+                new Insumo(6, "Pasta para Profilaxis Dental", 1200m, 60),
+                new Insumo(7, "Conos de Gutapercha Endodoncia", 4500m, 30)
             );
 
+            // Usuarios (para autenticación)
             modelBuilder.Entity<Usuario>().HasData(
                 new Usuario(1, "admin", "admin123", "Admin", "Administrador Principal", "admin@turnomolar.com", true),
                 new Usuario(2, "recepcion", "recepcion123", "Recepcionista", "María López", "recepcion@turnomolar.com", true),
-                new Usuario(3, "doctor1", "doc123", "Odontologo", "Dr. Martín Gómez", "mgomez@turnomolar.com", true, 1),
-                new Usuario(4, "doctor2", "doc123", "Odontologo", "Dra. Laura Rossi", "lrossi@turnomolar.com", true, 2),
-                new Usuario(5, "paciente1", "paciente123", "Paciente", "Juan Pérez", "juan.perez@gmail.com", true, 1)
-            );
-
-            modelBuilder.Entity<Odontologo>().HasData(
-                new Odontologo(1, 10234, "Martín", "Gómez", 28345678, "11-4567-8901", "mgomez@turnomolar.com", "Av. Santa Fe 1234, CABA", 1),
-                new Odontologo(2, 10456, "Laura", "Rossi", 31456789, "11-5678-9012", "lrossi@turnomolar.com", "Corrientes 2450, CABA", 2),
-                new Odontologo(3, 10789, "Esteban", "Díaz", 29876543, "11-6789-0123", "ediaz@turnomolar.com", "Callao 890, CABA", 3)
-            );
-
-            modelBuilder.Entity<Paciente>().HasData(
-                new Paciente(1, "Juan", "Pérez", 35123456, "11-2345-6789", "juan.perez@gmail.com", "Belgrano 450, Quilmes", true, 1, "OSDE-987654"),
-                new Paciente(2, "Ana", "Martínez", 38765432, "11-3456-7890", "ana.martinez@hotmail.com", "Mitre 780, Avellaneda", true, 2, "SM-543210"),
-                new Paciente(3, "Carlos", "Sánchez", 27987654, "11-4567-8901", "csanchez@yahoo.com", "Rivadavia 1200, Lanús", true, 4, null),
-                new Paciente(4, "Sofía", "Rodríguez", 40123987, "11-5678-1234", "sofia.rodriguez@gmail.com", "San Martín 320, Bernal", false, 3, "IOMA-334455") // Inhabilitada por deuda/multa
-            );
-
-            modelBuilder.Entity<Multa>().HasData(
-                new Multa(1, 4, 3500m, false, null, "Ausencia no justificada a turno programado el 10/08/2026")
-            );
-
-            modelBuilder.Entity<HistoriaClinica>().HasData(
-                new HistoriaClinica(1, 1001, 1, new DateTime(2025, 1, 15), "Hipertensión leve controlada", "Penicilina", "Paciente con buena salud bucal previa"),
-                new HistoriaClinica(2, 1002, 2, new DateTime(2025, 3, 20), "Ninguno", "Ninguna", "Tratamiento de ortodoncia en curso"),
-                new HistoriaClinica(3, 1003, 3, new DateTime(2025, 5, 10), "Diabetes Tipo 2", "Aspirina", "Higiene regular"),
-                new HistoriaClinica(4, 1004, 4, new DateTime(2025, 6, 01), "Ninguno", "Ninguna", "Inhabilitado por inasistencia sin aviso")
-            );
-
-            modelBuilder.Entity<TurnoOdontologico>().HasData(
-                new TurnoOdontologico(1, DateTime.Today.AddHours(9), new TimeOnly(9, 0), TurnoOdontologico.EstadoTurnoEnum.Pendiente, null, 1, 1, 1, 12000m),
-                new TurnoOdontologico(2, DateTime.Today.AddHours(10), new TimeOnly(10, 0), TurnoOdontologico.EstadoTurnoEnum.Presente, null, 2, 2, 2, 25000m),
-                new TurnoOdontologico(3, DateTime.Today.AddHours(11), new TimeOnly(11, 0), TurnoOdontologico.EstadoTurnoEnum.Atendido, null, 3, 1, 1, 15000m),
-                new TurnoOdontologico(4, DateTime.Today.AddDays(1).AddHours(14), new TimeOnly(14, 0), TurnoOdontologico.EstadoTurnoEnum.Pendiente, null, 1, 3, 3, 18000m)
+                new Usuario(3, "doctor1", "doc123", "Odontologo", "Dr. Martín Gómez", "mgomez@turnomolar.com", true),
+                new Usuario(4, "doctor2", "doc123", "Odontologo", "Dra. Laura Rossi", "lrossi@turnomolar.com", true),
+                new Usuario(5, "paciente1", "paciente123", "Paciente", "Juan Pérez", "juan.perez@gmail.com", true)
             );
         }
     }

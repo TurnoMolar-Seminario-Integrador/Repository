@@ -9,7 +9,7 @@ namespace Application.Services
         Task<ReporteTurnosDiaDTO> GetReporteTurnosDiaAsync(DateTime fecha);
         Task<ReporteAusentismoDTO> GetReporteAusentismoAsync(DateTime fechaDesde, DateTime fechaHasta);
         Task<ReporteFacturacionDTO> GetReporteFacturacionAsync(DateTime fechaDesde, DateTime fechaHasta);
-        Task<HistoriaClinicaDTO?> GetHistoriaClinicaPacienteAsync(int pacienteId);
+        Task<HistoriaClinicaDTO?> GetHistoriaClinicaPacienteAsync(string tipoDoc, int nroDoc);
     }
 
     public class ReportesService : IReportesService
@@ -45,40 +45,40 @@ namespace Application.Services
             {
                 Fecha = fecha.Date,
                 TotalTurnos = turnos.Count,
-                TurnosPendientes = turnos.Count(t => t.EstadoTurno == TurnoOdontologico.EstadoTurnoEnum.Pendiente),
-                TurnosPresentes = turnos.Count(t => t.EstadoTurno == TurnoOdontologico.EstadoTurnoEnum.Presente),
-                TurnosAtendidos = turnos.Count(t => t.EstadoTurno == TurnoOdontologico.EstadoTurnoEnum.Atendido),
-                TurnosCancelados = turnos.Count(t => t.EstadoTurno == TurnoOdontologico.EstadoTurnoEnum.Cancelado),
-                TurnosAusentes = turnos.Count(t => t.EstadoTurno == TurnoOdontologico.EstadoTurnoEnum.NoAsistido),
+                TurnosPendientes = turnos.Count(t => t.Estado == "RESERVADO"),
+                TurnosPresentes = turnos.Count(t => t.Estado == "CONFIRMADO"),
+                TurnosAtendidos = turnos.Count(t => t.Estado == "ATENDIDO"),
+                TurnosCancelados = turnos.Count(t => t.Estado == "CANCELADO"),
+                TurnosAusentes = turnos.Count(t => t.Estado == "AUSENTE"),
                 DetalleTurnos = turnos.Select(t => new TurnoOdontologicoDTO
                 {
-                    Id = t.Id,
-                    Fecha = t.Fecha,
-                    HorarioTurno = t.HorarioTurno,
-                    EstadoTurno = t.EstadoTurno.ToString(),
+                    Id = t.CodTurno,
+                    Fecha = t.FechaYHoraReserva.Date,
+                    HorarioTurno = TimeOnly.FromDateTime(t.FechaYHoraReserva),
+                    EstadoTurno = t.Estado,
                     MotivoCancelacion = t.MotivoCancelacion,
-                    PacienteId = t.PacienteId,
-                    PacienteNombre = t.Paciente != null ? $"{t.Paciente.Apellido}, {t.Paciente.Nombre}" : $"Paciente #{t.PacienteId}",
-                    OdontologoId = t.OdontologoId,
-                    OdontologoNombre = t.Odontologo != null ? $"Dr/a. {t.Odontologo.Apellido}, {t.Odontologo.Nombre}" : $"Odontólogo #{t.OdontologoId}",
-                    EspecialidadId = t.EspecialidadId,
-                    EspecialidadNombre = t.Especialidad?.Nombre ?? "Odontología",
-                    MontoEstimado = t.MontoEstimado
+                    PacienteNroDoc = t.PacienteNroDoc,
+                    NombrePaciente = t.Paciente != null ? $"{t.Paciente.Apellido}, {t.Paciente.Nombre}" : $"Paciente #{t.PacienteNroDoc}",
+                    OdontologoNroDoc = t.OdontologoNroDoc,
+                    NombreOdontologo = t.Odontologo != null ? $"Dr/a. {t.Odontologo.Apellido}, {t.Odontologo.Nombre}" : $"Odontólogo #{t.OdontologoNroDoc}",
+                    CodEspecialidad = t.CodEspecialidad,
+                    NombreEspecialidad = t.Especialidad?.Nombre ?? "Odontología"
                 }).ToList()
             };
         }
 
         public async Task<ReporteAusentismoDTO> GetReporteAusentismoAsync(DateTime fechaDesde, DateTime fechaHasta)
         {
-            var criteria = new TurnoCriteria { FechaDesde = fechaDesde, FechaHasta = fechaHasta };
-            var turnos = (await _turnoRepository.GetByCriteriaAsync(criteria)).ToList();
+            var turnos = (await _turnoRepository.GetAllAsync())
+                .Where(t => t.FechaYHoraReserva.Date >= fechaDesde.Date && t.FechaYHoraReserva.Date <= fechaHasta.Date)
+                .ToList();
 
             var multas = (await _multaRepository.GetAllAsync())
-                .Where(m => m.FechaEmision.Date >= fechaDesde.Date && m.FechaEmision.Date <= fechaHasta.Date)
+                .Where(m => m.FechaPago.Date >= fechaDesde.Date && m.FechaPago.Date <= fechaHasta.Date)
                 .ToList();
 
             int totalProgramados = turnos.Count;
-            int totalAusencias = turnos.Count(t => t.EstadoTurno == TurnoOdontologico.EstadoTurnoEnum.NoAsistido);
+            int totalAusencias = turnos.Count(t => t.Estado == "AUSENTE");
             double porcentaje = totalProgramados > 0 ? ((double)totalAusencias / totalProgramados) * 100 : 0;
 
             return new ReporteAusentismoDTO
@@ -88,75 +88,63 @@ namespace Application.Services
                 TotalTurnosProgramados = totalProgramados,
                 TotalAusencias = totalAusencias,
                 PorcentajeAusentismo = Math.Round(porcentaje, 2),
-                TotalMultasGeneradas = multas.Sum(m => m.Monto),
-                TotalMultasCobradas = multas.Where(m => m.EstadoPago).Sum(m => m.Monto)
+                TotalMultasGeneradas = (decimal)multas.Sum(m => m.Monto),
+                TotalMultasCobradas = (decimal)multas.Where(m => m.EstadoPago).Sum(m => m.Monto)
             };
         }
 
         public async Task<ReporteFacturacionDTO> GetReporteFacturacionAsync(DateTime fechaDesde, DateTime fechaHasta)
         {
-            var facturas = (await _facturaRepository.GetByRangoFechasAsync(fechaDesde, fechaHasta)).ToList();
+            var pagos = (await _facturaRepository.GetByRangoFechasAsync(fechaDesde, fechaHasta)).ToList();
 
             return new ReporteFacturacionDTO
             {
                 FechaDesde = fechaDesde,
                 FechaHasta = fechaHasta,
-                TotalFacturado = facturas.Sum(f => f.Total),
-                TotalCobradoPacientes = facturas.Where(f => f.EstadoPago).Sum(f => f.MontoAPagarPaciente),
-                TotalLiquidadoObrasSociales = facturas.Sum(f => f.DescuentoObraSocial),
-                CantidadConsultasAtendidas = facturas.Count,
-                Facturas = facturas.Select(f => new FacturaDTO
+                TotalFacturado = pagos.Sum(p => p.Monto),
+                TotalCobradoPacientes = pagos.Sum(p => p.Monto),
+                TotalLiquidadoObrasSociales = 0m,
+                CantidadConsultasAtendidas = pagos.Count,
+                Facturas = pagos.Select(p => new FacturaDTO
                 {
-                    Id = f.Id,
-                    TurnoId = f.TurnoId,
-                    PacienteId = f.PacienteId,
-                    PacienteNombre = f.Paciente != null ? $"{f.Paciente.Apellido}, {f.Paciente.Nombre}" : $"Paciente #{f.PacienteId}",
-                    ObraSocialNombre = f.Paciente?.ObraSocial != null ? $"{f.Paciente.ObraSocial.Nombre} ({f.Paciente.ObraSocial.Plan})" : "Particular",
-                    Descripcion = f.Descripcion,
-                    Subtotal = f.Subtotal,
-                    DescuentoObraSocial = f.DescuentoObraSocial,
-                    Total = f.Total,
-                    MontoAPagarPaciente = f.MontoAPagarPaciente,
-                    EstadoPago = f.EstadoPago,
-                    MetodoPago = f.MetodoPago,
-                    FechaEmision = f.FechaEmision
+                    CodPago = p.CodPago,
+                    CodAtencion = p.CodAtencion,
+                    Monto = p.Monto,
+                    TipoMetodoPago = p.TipoMetodoPago,
+                    FechaYHoraPago = p.FechaYHoraPago
                 }).ToList()
             };
         }
 
-        public async Task<HistoriaClinicaDTO?> GetHistoriaClinicaPacienteAsync(int pacienteId)
+        public async Task<HistoriaClinicaDTO?> GetHistoriaClinicaPacienteAsync(string tipoDoc, int nroDoc)
         {
-            var paciente = await _pacienteRepository.GetAsync(pacienteId);
+            var paciente = await _pacienteRepository.GetAsync(nroDoc);
             if (paciente == null) return null;
 
-            var hc = await _historiaClinicaRepository.GetByPacienteIdAsync(pacienteId);
-            var consultas = await _consultaRepository.GetByPacienteIdAsync(pacienteId);
+            var hc = await _historiaClinicaRepository.GetByPacienteDocAsync(tipoDoc, nroDoc);
+            var atenciones = await _consultaRepository.GetByPacienteDocAsync(tipoDoc, nroDoc);
 
             return new HistoriaClinicaDTO
             {
-                Id = hc?.Id ?? 0,
-                NumeroHistoriaClinica = hc?.NumeroHistoriaClinica ?? (1000 + pacienteId),
-                PacienteId = pacienteId,
+                Id = hc?.NroHC ?? 0,
+                NumeroHistoriaClinica = hc?.NroHC ?? (1000 + nroDoc),
+                PacienteId = nroDoc,
                 PacienteNombre = $"{paciente.Apellido}, {paciente.Nombre}",
-                FechaAlta = hc?.FechaAlta ?? DateTime.Today,
+                FechaAlta = hc?.FechaCreacion ?? DateTime.Today,
                 AntecedentesMedicos = hc?.AntecedentesMedicos ?? "Sin antecedentes relevantes registrados",
                 Alergias = hc?.Alergias ?? "Ninguna reportada",
-                ObservacionesGenerales = hc?.ObservacionesGenerales ?? "Sin observaciones",
-                ConsultasPrevias = consultas.Select(c => new ConsultaDTO
+                ObservacionesGenerales = hc?.ObservacionesGeneral ?? "Sin observaciones",
+                ConsultasPrevias = atenciones.Select(a => new ConsultaDTO
                 {
-                    Id = c.Id,
-                    TurnoId = c.TurnoId,
-                    PacienteId = pacienteId,
+                    CodAtencion = a.CodAtencion,
+                    CodTurno = a.CodTurno,
+                    PacienteTipoDoc = a.PacienteTipoDoc,
+                    PacienteNroDoc = a.PacienteNroDoc,
                     PacienteNombre = $"{paciente.Apellido}, {paciente.Nombre}",
-                    OdontologoNombre = c.Turno?.Odontologo != null ? $"Dr/a. {c.Turno.Odontologo.Apellido}, {c.Turno.Odontologo.Nombre}" : "Profesional",
-                    Diagnostico = c.Diagnostico,
-                    Tratamiento = c.Tratamiento,
-                    Observaciones = c.Observaciones,
-                    AnestesiaLocal = c.AnestesiaLocal,
-                    Radiografias = c.Radiografias,
-                    Valoracion = c.Valoracion,
-                    CalificacionEstrellas = c.CalificacionEstrellas,
-                    Fecha = c.Fecha
+                    OdontologoNombre = a.Turno?.Odontologo != null ? $"Dr/a. {a.Turno.Odontologo.Apellido}, {a.Turno.Odontologo.Nombre}" : "Profesional",
+                    Observaciones = a.Observaciones,
+                    FechaYHoraAtencionInicio = a.FechaYHoraAtencionInicio,
+                    FechaYHoraAtencionFin = a.FechaYHoraAtencionFin
                 }).ToList()
             };
         }

@@ -5,12 +5,12 @@ namespace Data
 {
     public interface IConsultaRepository
     {
-        Task<Consulta?> GetAsync(int id);
-        Task<Consulta?> GetByTurnoIdAsync(int turnoId);
-        Task<IEnumerable<Consulta>> GetAllAsync();
-        Task<IEnumerable<Consulta>> GetByPacienteIdAsync(int pacienteId);
-        Task<Consulta> AddAsync(Consulta consulta);
-        Task<bool> UpdateAsync(Consulta consulta);
+        Task<AtencionOdontologica?> GetAsync(int codAtencion);
+        Task<AtencionOdontologica?> GetByCodTurnoAsync(int codTurno);
+        Task<IEnumerable<AtencionOdontologica>> GetAllAsync();
+        Task<IEnumerable<AtencionOdontologica>> GetByPacienteDocAsync(string tipoDoc, int nroDoc);
+        Task<AtencionOdontologica> AddAsync(AtencionOdontologica atencion);
+        Task<bool> UpdateAsync(AtencionOdontologica atencion);
     }
 
     public class ConsultaRepository : IConsultaRepository
@@ -22,69 +22,63 @@ namespace Data
             _context = context;
         }
 
-        public async Task<Consulta?> GetAsync(int id)
+        private IQueryable<AtencionOdontologica> IncludeAll()
         {
-            return await _context.Consultas
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Paciente)
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Odontologo)
-                .FirstOrDefaultAsync(c => c.Id == id);
+            return _context.Atenciones
+                .Include(a => a.Turno)
+                    .ThenInclude(t => t.Paciente)
+                .Include(a => a.Turno)
+                    .ThenInclude(t => t.Odontologo)
+                .Include(a => a.Turno)
+                    .ThenInclude(t => t.Especialidad)
+                .Include(a => a.Valoracion)
+                .Include(a => a.Pago)
+                .Include(a => a.DetallesInsumos)
+                    .ThenInclude(d => d.Insumo);
         }
 
-        public async Task<Consulta?> GetByTurnoIdAsync(int turnoId)
+        public async Task<AtencionOdontologica?> GetAsync(int codAtencion)
         {
-            return await _context.Consultas
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Paciente)
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Odontologo)
-                .FirstOrDefaultAsync(c => c.TurnoId == turnoId);
+            return await IncludeAll()
+                .FirstOrDefaultAsync(a => a.CodAtencion == codAtencion);
         }
 
-        public async Task<IEnumerable<Consulta>> GetAllAsync()
+        public async Task<AtencionOdontologica?> GetByCodTurnoAsync(int codTurno)
         {
-            return await _context.Consultas
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Paciente)
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Odontologo)
-                .OrderByDescending(c => c.Fecha)
+            return await IncludeAll()
+                .FirstOrDefaultAsync(a => a.CodTurno == codTurno);
+        }
+
+        public async Task<IEnumerable<AtencionOdontologica>> GetAllAsync()
+        {
+            return await IncludeAll()
+                .OrderByDescending(a => a.FechaYHoraAtencionInicio)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Consulta>> GetByPacienteIdAsync(int pacienteId)
+        public async Task<IEnumerable<AtencionOdontologica>> GetByPacienteDocAsync(string tipoDoc, int nroDoc)
         {
-            return await _context.Consultas
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Paciente)
-                .Include(c => c.Turno)
-                    .ThenInclude(t => t!.Odontologo)
-                .Where(c => c.Turno != null && c.Turno.PacienteId == pacienteId)
-                .OrderByDescending(c => c.Fecha)
+            return await IncludeAll()
+                .Where(a => a.PacienteTipoDoc == tipoDoc && a.PacienteNroDoc == nroDoc)
+                .OrderByDescending(a => a.FechaYHoraAtencionInicio)
                 .ToListAsync();
         }
 
-        public async Task<Consulta> AddAsync(Consulta consulta)
+        public async Task<AtencionOdontologica> AddAsync(AtencionOdontologica atencion)
         {
-            _context.Consultas.Add(consulta);
+            _context.Atenciones.Add(atencion);
             await _context.SaveChangesAsync();
-            return consulta;
+            return atencion;
         }
 
-        public async Task<bool> UpdateAsync(Consulta consulta)
+        public async Task<bool> UpdateAsync(AtencionOdontologica atencion)
         {
-            var existing = await _context.Consultas.FindAsync(consulta.Id);
+            var existing = await _context.Atenciones.FindAsync(atencion.CodAtencion);
             if (existing == null)
                 return false;
 
-            existing.Diagnostico = consulta.Diagnostico;
-            existing.Tratamiento = consulta.Tratamiento;
-            existing.Observaciones = consulta.Observaciones;
-            existing.AnestesiaLocal = consulta.AnestesiaLocal;
-            existing.Radiografias = consulta.Radiografias;
-            existing.Valoracion = consulta.Valoracion;
-            existing.CalificacionEstrellas = consulta.CalificacionEstrellas;
+            existing.SetHorarioAtencion(atencion.FechaYHoraAtencionInicio, atencion.FechaYHoraAtencionFin);
+            existing.Observaciones = atencion.Observaciones;
 
             await _context.SaveChangesAsync();
             return true;

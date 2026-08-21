@@ -13,7 +13,7 @@ namespace WebAPI
             {
                 if (pacienteId.HasValue && pacienteId.Value > 0)
                 {
-                    var list = await service.GetByPacienteIdAsync(pacienteId.Value);
+                    var list = await service.GetByPacienteDocAsync("DNI", pacienteId.Value);
                     return Results.Ok(list);
                 }
                 var all = await service.GetAllAsync();
@@ -28,14 +28,14 @@ namespace WebAPI
 
             group.MapGet("/turno/{turnoId:int}", async (int turnoId, IFacturaService service) =>
             {
-                var f = await service.GetByTurnoIdAsync(turnoId);
+                var f = await service.GetByCodAtencionAsync(turnoId);
                 return f == null ? Results.NotFound() : Results.Ok(f);
             });
 
             group.MapPost("/crear", async (FacturaDTO dto, IFacturaService service) =>
             {
                 var created = await service.CrearFacturaAsync(dto);
-                return Results.Created($"/api/facturas/{created.Id}", created);
+                return Results.Created($"/api/facturas/{created.CodPago}", created);
             });
 
             group.MapPost("/{id:int}/pagar", async (int id, RegistrarPagoRequest request, IFacturaService service) =>

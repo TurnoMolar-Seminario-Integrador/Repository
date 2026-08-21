@@ -1,36 +1,43 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Domain.Model
 {
     public class HistoriaClinica
     {
-        public int NumeroHistoriaClinica { get; private set; }
-        public DateTime FechaAlta { get; private set; }
+        public int NroHC { get; private set; }
+        public DateTime FechaCreacion { get; private set; }
 
-        public HistoriaClinica(int numeroHistoriaClinica, DateTime fechaAlta)
+        public string PacienteTipoDoc { get; private set; } = "DNI";
+        public int PacienteNroDoc { get; private set; }
+        public virtual Paciente Paciente { get; private set; }
+
+        public string? AntecedentesMedicos { get; set; }
+        public string? Alergias { get; set; }
+        public string? ObservacionesGeneral { get; set; }
+
+        protected HistoriaClinica() { }
+
+        public HistoriaClinica(int nroHC, string pacienteTipoDoc, int pacienteNroDoc, DateTime fechaCreacion, string? antecedentes = null, string? alergias = null, string? observaciones = null)
         {
-            SetNumeroHistoriaClinica(numeroHistoriaClinica);
-            SetFechaAlta(fechaAlta);
+            SetNroHC(nroHC);
+            PacienteTipoDoc = pacienteTipoDoc?.ToUpper().Trim() ?? "DNI";
+            PacienteNroDoc = pacienteNroDoc;
+            SetFechaCreacion(fechaCreacion);
+            AntecedentesMedicos = antecedentes;
+            Alergias = alergias;
+            ObservacionesGeneral = observaciones;
         }
 
-        public void SetNumeroHistoriaClinica(int numeroHistoriaClinica)
+        public void SetNroHC(int nroHC)
         {
-            if (numeroHistoriaClinica <= 0)
-                throw new ArgumentException("El número de historia clínica debe ser mayor que 0.", nameof(numeroHistoriaClinica));
-            NumeroHistoriaClinica = numeroHistoriaClinica;
+            if (nroHC <= 0)
+                throw new ArgumentException("El número de Historia Clínica debe ser mayor que 0.", nameof(nroHC));
+            NroHC = nroHC;
         }
 
-        public void SetFechaAlta(DateTime fechaAlta)
+        public void SetFechaCreacion(DateTime fecha)
         {
-            if (fechaAlta == DateTime.MinValue)
-                throw new ArgumentException("La fecha de alta es requerida.", nameof(fechaAlta));
-            if (fechaAlta > DateTime.Now)
-                throw new ArgumentException("La fecha de alta no puede ser en el futuro.", nameof(fechaAlta));
-            FechaAlta = fechaAlta;
+            if (fecha > DateTime.Now)
+                throw new ArgumentException("La fecha de creación no puede ser futura.", nameof(fecha));
+            FechaCreacion = fecha;
         }
     }
 }

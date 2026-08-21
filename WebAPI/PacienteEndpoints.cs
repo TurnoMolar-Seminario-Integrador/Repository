@@ -1,4 +1,4 @@
-using DentalClinic.Application.Services;
+using Application.Services;
 using DTOs;
 using Microsoft.AspNetCore.OpenApi;
 

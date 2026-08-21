@@ -5,13 +5,13 @@ namespace Data
 {
     public interface IOdontologoRepository
     {
-        Task<Odontologo?> GetAsync(int id);
+        Task<Odontologo?> GetAsync(string tipoDocumento, int nroDocumento);
         Task<IEnumerable<Odontologo>> GetAllAsync();
-        Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int especialidadId);
+        Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int codEspecialidad);
         Task<Odontologo> AddAsync(Odontologo odontologo);
         Task<bool> UpdateAsync(Odontologo odontologo);
-        Task<bool> DeleteAsync(int id);
-        Task<bool> MatriculaExistsAsync(int matricula, int? excludeId = null);
+        Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento);
+        Task<bool> MatriculaExistsAsync(string matricula);
     }
 
     public class OdontologoRepository : IOdontologoRepository
@@ -23,27 +23,29 @@ namespace Data
             _context = context;
         }
 
-        public async Task<Odontologo?> GetAsync(int id)
+        public async Task<Odontologo?> GetAsync(string tipoDocumento, int nroDocumento)
         {
             return await _context.Odontologos
                 .Include(o => o.Especialidad)
-                .FirstOrDefaultAsync(o => o.Id == id);
+                .Include(o => o.Disponibilidad)
+                .FirstOrDefaultAsync(o => o.TipoDocumento == tipoDocumento && o.NroDocumento == nroDocumento);
         }
 
         public async Task<IEnumerable<Odontologo>> GetAllAsync()
         {
             return await _context.Odontologos
                 .Include(o => o.Especialidad)
+                .Include(o => o.Disponibilidad)
                 .OrderBy(o => o.Apellido)
                 .ThenBy(o => o.Nombre)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int especialidadId)
+        public async Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int codEspecialidad)
         {
             return await _context.Odontologos
                 .Include(o => o.Especialidad)
-                .Where(o => o.EspecialidadId == especialidadId)
+                .Where(o => o.CodEspecialidad == codEspecialidad)
                 .OrderBy(o => o.Apellido)
                 .ToListAsync();
         }
@@ -57,26 +59,28 @@ namespace Data
 
         public async Task<bool> UpdateAsync(Odontologo odontologo)
         {
-            var existing = await _context.Odontologos.FindAsync(odontologo.Id);
+            var existing = await _context.Odontologos
+                .FirstOrDefaultAsync(o => o.TipoDocumento == odontologo.TipoDocumento && o.NroDocumento == odontologo.NroDocumento);
             if (existing == null)
                 return false;
 
-            existing.Nombre = odontologo.Nombre;
-            existing.Apellido = odontologo.Apellido;
-            existing.Dni = odontologo.Dni;
-            existing.Telefono = odontologo.Telefono;
-            existing.Mail = odontologo.Mail;
-            existing.Domicilio = odontologo.Domicilio;
-            existing.NumMatricula = odontologo.NumMatricula;
-            existing.EspecialidadId = odontologo.EspecialidadId;
+            existing.SetNombre(odontologo.Nombre);
+            existing.SetApellido(odontologo.Apellido);
+            existing.SetTelefono(odontologo.Telefono);
+            existing.SetEmail(odontologo.Email);
+            existing.SetDomicilio(odontologo.Domicilio);
+            existing.SetMatricula(odontologo.Matricula);
+            existing.SetEstadoOdontologo(odontologo.EstadoOdontologo);
+            existing.AsignarEspecialidad(odontologo.Especialidad!);
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento)
         {
-            var odontologo = await _context.Odontologos.FindAsync(id);
+            var odontologo = await _context.Odontologos
+                .FirstOrDefaultAsync(o => o.TipoDocumento == tipoDocumento && o.NroDocumento == nroDocumento);
             if (odontologo == null)
                 return false;
 
@@ -85,11 +89,9 @@ namespace Data
             return true;
         }
 
-        public async Task<bool> MatriculaExistsAsync(int matricula, int? excludeId = null)
+        public async Task<bool> MatriculaExistsAsync(string matricula)
         {
-            return await _context.Odontologos.AnyAsync(o =>
-                o.NumMatricula == matricula &&
-                (!excludeId.HasValue || o.Id != excludeId.Value));
+            return await _context.Odontologos.AnyAsync(o => o.Matricula == matricula);
         }
     }
 }

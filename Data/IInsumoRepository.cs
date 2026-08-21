@@ -5,12 +5,12 @@ namespace Data
 {
     public interface IInsumoRepository
     {
-        Task<Insumo?> GetAsync(int id);
+        Task<Insumo?> GetAsync(int codInsumo);
         Task<IEnumerable<Insumo>> GetAllAsync();
         Task<Insumo> AddAsync(Insumo insumo);
         Task<bool> UpdateAsync(Insumo insumo);
-        Task<bool> DeleteAsync(int id);
-        Task<bool> DescontarStockAsync(int insumoId, int cantidad);
+        Task<bool> DeleteAsync(int codInsumo);
+        Task<bool> DescontarStockAsync(int codInsumo, int cantidad);
     }
 
     public class InsumoRepository : IInsumoRepository
@@ -22,9 +22,9 @@ namespace Data
             _context = context;
         }
 
-        public async Task<Insumo?> GetAsync(int id)
+        public async Task<Insumo?> GetAsync(int codInsumo)
         {
-            return await _context.Insumos.FindAsync(id);
+            return await _context.Insumos.FindAsync(codInsumo);
         }
 
         public async Task<IEnumerable<Insumo>> GetAllAsync()
@@ -41,22 +41,21 @@ namespace Data
 
         public async Task<bool> UpdateAsync(Insumo insumo)
         {
-            var existing = await _context.Insumos.FindAsync(insumo.Id);
+            var existing = await _context.Insumos.FindAsync(insumo.CodInsumo);
             if (existing == null)
                 return false;
 
-            existing.Nombre = insumo.Nombre;
-            existing.Descripcion = insumo.Descripcion;
-            existing.Precio = insumo.Precio;
-            existing.Stock = insumo.Stock;
+            existing.SetNombre(insumo.Nombre);
+            existing.SetCostoUnitario(insumo.CostoUnitario);
+            existing.SetStockDisponible(insumo.StockDisponible);
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int codInsumo)
         {
-            var insumo = await _context.Insumos.FindAsync(id);
+            var insumo = await _context.Insumos.FindAsync(codInsumo);
             if (insumo == null)
                 return false;
 
@@ -65,13 +64,13 @@ namespace Data
             return true;
         }
 
-        public async Task<bool> DescontarStockAsync(int insumoId, int cantidad)
+        public async Task<bool> DescontarStockAsync(int codInsumo, int cantidad)
         {
-            var insumo = await _context.Insumos.FindAsync(insumoId);
-            if (insumo == null || insumo.Stock < cantidad)
+            var insumo = await _context.Insumos.FindAsync(codInsumo);
+            if (insumo == null || insumo.StockDisponible < cantidad)
                 return false;
 
-            insumo.Stock -= cantidad;
+            insumo.DescontarStock(cantidad);
             await _context.SaveChangesAsync();
             return true;
         }

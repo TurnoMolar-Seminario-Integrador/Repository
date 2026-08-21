@@ -1,11 +1,6 @@
 using Data;
-using DentalClinic.Application.Services;
 using Domain.Model;
 using DTOs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Application.Services
 {
@@ -20,43 +15,36 @@ namespace Application.Services
 
         public async Task<PacienteDTO> AddAsync(PacienteDTO dto)
         {
-            // Validar que el email no esté duplicado
             if (await pacienteRepository.EmailExistsAsync(dto.Email))
-            {
                 throw new ArgumentException($"Ya existe un paciente con el Email '{dto.Email}'.");
-            }
 
             var paciente = new Paciente(
-                0,
-                dto.Nombre,
-                dto.Apellido,
-                dto.Dni,
-                dto.Telefono,
-                dto.Email,
-                dto.Domicilio,
-                true
+                tipoDocumento: dto.TipoDocumento ?? "DNI",
+                nroDocumento: dto.NroDocumento,
+                nombre: dto.Nombre,
+                apellido: dto.Apellido,
+                telefono: dto.Telefono,
+                email: dto.Email,
+                domicilio: dto.Domicilio,
+                fechaNacimiento: dto.FechaNacimiento,
+                estadoPaciente: "ACTIVO",
+                montoAdeudado: 0,
+                identificadorOS: dto.IdentificadorOS
             );
 
             await pacienteRepository.AddAsync(paciente);
-
-            dto.Id = paciente.Id;
-            dto.EstadoHabilitado = paciente.EstadoHabilitado;
-
-            return dto;
-        }
-
-        public async Task<bool> DeleteAsync(int id)
-        {
-            return await pacienteRepository.DeleteAsync(id);
-        }
-
-        public async Task<PacienteDTO?> GetAsync(int id)
-        {
-            Paciente? paciente = await pacienteRepository.GetAsync(id);
-            if (paciente == null)
-                return null;
-
             return MapToDTO(paciente);
+        }
+
+        public async Task<bool> DeleteAsync(int nroDocumento)
+        {
+            return await pacienteRepository.DeleteAsync(nroDocumento);
+        }
+
+        public async Task<PacienteDTO?> GetAsync(int nroDocumento)
+        {
+            var paciente = await pacienteRepository.GetAsync(nroDocumento);
+            return paciente == null ? null : MapToDTO(paciente);
         }
 
         public async Task<IEnumerable<PacienteDTO>> GetAllAsync()
@@ -67,21 +55,21 @@ namespace Application.Services
 
         public async Task<bool> UpdateAsync(PacienteDTO dto)
         {
-            // Validar que el email no esté duplicado (excluyendo el paciente actual)
-            if (await pacienteRepository.EmailExistsAsync(dto.Email, dto.Id))
-            {
+            if (await pacienteRepository.EmailExistsAsync(dto.Email, dto.NroDocumento))
                 throw new ArgumentException($"Ya existe otro paciente con el Email '{dto.Email}'.");
-            }
 
-            Paciente paciente = new Paciente(
-                dto.Id,
-                dto.Nombre,
-                dto.Apellido,
-                dto.Dni,
-                dto.Telefono,
-                dto.Email,
-                dto.Domicilio,
-                dto.EstadoHabilitado
+            var paciente = new Paciente(
+                tipoDocumento: dto.TipoDocumento ?? "DNI",
+                nroDocumento: dto.NroDocumento,
+                nombre: dto.Nombre,
+                apellido: dto.Apellido,
+                telefono: dto.Telefono,
+                email: dto.Email,
+                domicilio: dto.Domicilio,
+                fechaNacimiento: dto.FechaNacimiento,
+                estadoPaciente: dto.EstadoPaciente ?? "ACTIVO",
+                montoAdeudado: dto.MontoAdeudado,
+                identificadorOS: dto.IdentificadorOS
             );
 
             return await pacienteRepository.UpdateAsync(paciente);
@@ -94,18 +82,21 @@ namespace Application.Services
             return pacientes.Select(MapToDTO).ToList();
         }
 
-        private static PacienteDTO MapToDTO(Paciente paciente)
+        private static PacienteDTO MapToDTO(Paciente p)
         {
             return new PacienteDTO
             {
-                Id = paciente.Id,
-                Nombre = paciente.Nombre,
-                Apellido = paciente.Apellido,
-                Dni = paciente.Dni,
-                Telefono = paciente.Telefono,
-                Email = paciente.Mail, 
-                Domicilio = paciente.Domicilio,
-                EstadoHabilitado = paciente.EstadoHabilitado
+                TipoDocumento = p.TipoDocumento,
+                NroDocumento = p.NroDocumento,
+                Nombre = p.Nombre,
+                Apellido = p.Apellido,
+                Telefono = p.Telefono,
+                Email = p.Email,
+                Domicilio = p.Domicilio,
+                FechaNacimiento = p.FechaNacimiento,
+                EstadoPaciente = p.EstadoPaciente,
+                MontoAdeudado = p.MontoAdeudado,
+                IdentificadorOS = p.IdentificadorOS
             };
         }
     }

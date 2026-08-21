@@ -15,10 +15,10 @@ namespace WebAPI
                 {
                     if (soloImpagas.HasValue && soloImpagas.Value)
                     {
-                        var impagas = await service.GetImpagasByPacienteIdAsync(pacienteId.Value);
+                        var impagas = await service.GetImpagasByPacienteDocAsync("DNI", pacienteId.Value);
                         return Results.Ok(impagas);
                     }
-                    var list = await service.GetByPacienteIdAsync(pacienteId.Value);
+                    var list = await service.GetByPacienteDocAsync("DNI", pacienteId.Value);
                     return Results.Ok(list);
                 }
 

@@ -5,11 +5,11 @@ namespace Data
 {
     public interface IEspecialidadRepository
     {
-        Task<Especialidad?> GetAsync(int id);
+        Task<Especialidad?> GetAsync(int codEspecialidad);
         Task<IEnumerable<Especialidad>> GetAllAsync();
         Task<Especialidad> AddAsync(Especialidad especialidad);
         Task<bool> UpdateAsync(Especialidad especialidad);
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(int codEspecialidad);
     }
 
     public class EspecialidadRepository : IEspecialidadRepository
@@ -21,9 +21,9 @@ namespace Data
             _context = context;
         }
 
-        public async Task<Especialidad?> GetAsync(int id)
+        public async Task<Especialidad?> GetAsync(int codEspecialidad)
         {
-            return await _context.Especialidades.FindAsync(id);
+            return await _context.Especialidades.FindAsync(codEspecialidad);
         }
 
         public async Task<IEnumerable<Especialidad>> GetAllAsync()
@@ -40,20 +40,20 @@ namespace Data
 
         public async Task<bool> UpdateAsync(Especialidad especialidad)
         {
-            var existing = await _context.Especialidades.FindAsync(especialidad.Id);
+            var existing = await _context.Especialidades.FindAsync(especialidad.CodEspecialidad);
             if (existing == null)
                 return false;
 
-            existing.Nombre = especialidad.Nombre;
-            existing.Descripcion = especialidad.Descripcion;
+            existing.SetNombre(especialidad.Nombre);
+            existing.SetArancelParticular(especialidad.ArancelParticular);
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int codEspecialidad)
         {
-            var especialidad = await _context.Especialidades.FindAsync(id);
+            var especialidad = await _context.Especialidades.FindAsync(codEspecialidad);
             if (especialidad == null)
                 return false;
 

@@ -1,6 +1,6 @@
 using DTOs;
 
-namespace DentalClinic.Application.Services
+namespace Application.Services
 {
     public interface IPacienteService
     {

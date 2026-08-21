@@ -2,68 +2,77 @@ namespace Domain.Model
 {
     public abstract class Persona
     {
-        public string Nombre { get; private set; }
-        public string Apellido { get; private set; }
-        public int Dni { get; private set; }
-        public string Telefono { get; private set; }
-        public string Mail { get; private set; }
-        public string Domicilio { get; private set; }
+        public string TipoDocumento { get; protected set; } = "DNI";
+        public int NroDocumento { get; protected set; }
+        public string Nombre { get; protected set; } = string.Empty;
+        public string Apellido { get; protected set; } = string.Empty;
+        public DateTime FechaNacimiento { get; protected set; }
+        public string Telefono { get; protected set; } = string.Empty;
+        public string Email { get; protected set; } = string.Empty;
+        public string Domicilio { get; protected set; } = string.Empty;
 
+        protected Persona() { }
 
-        public Persona(string nombre, string apellido, int dni, string telefono, string mail, string domicilio)
+        protected Persona(string tipoDocumento, int nroDocumento, string nombre, string apellido, DateTime fechaNacimiento, string telefono, string email, string domicilio)
         {
-            SetNom(nombre);
-            SetApe(apellido);
-            SetDni(dni);
-            SetTel(telefono);
-            SetMail(mail);
-            SetDom(domicilio);
+            SetTipoDocumento(tipoDocumento);
+            SetNroDocumento(nroDocumento);
+            SetNombre(nombre);
+            SetApellido(apellido);
+            SetFechaNacimiento(fechaNacimiento);
+            SetTelefono(telefono);
+            SetEmail(email);
+            SetDomicilio(domicilio);
         }
 
+        public void SetTipoDocumento(string tipoDocumento)
+        {
+            if (string.IsNullOrWhiteSpace(tipoDocumento))
+                throw new ArgumentException("El tipo de documento es requerido.", nameof(tipoDocumento));
+            TipoDocumento = tipoDocumento.ToUpper().Trim();
+        }
 
-        public void SetNom(string nombre)
+        public void SetNroDocumento(int nroDocumento)
+        {
+            if (nroDocumento <= 0)
+                throw new ArgumentException("El número de documento debe ser mayor a 0.", nameof(nroDocumento));
+            NroDocumento = nroDocumento;
+        }
+
+        public void SetNombre(string nombre)
         {
             if (string.IsNullOrWhiteSpace(nombre))
                 throw new ArgumentException("El nombre no puede ser nulo o vacío.", nameof(nombre));
-            Nombre = nombre;
+            Nombre = nombre.Trim();
         }
 
-        public void SetApe(string apellido)
+        public void SetApellido(string apellido)
         {
             if (string.IsNullOrWhiteSpace(apellido))
                 throw new ArgumentException("El apellido no puede ser nulo o vacío.", nameof(apellido));
-            Apellido = apellido;
+            Apellido = apellido.Trim();
         }
 
-        public void SetDni(int dni)
+        public void SetFechaNacimiento(DateTime fechaNacimiento)
         {
-            if (dni < 0)
-                throw new ArgumentException("El Dni debe ser mayor que 0.", nameof(dni));
-            Dni = dni;
+            if (fechaNacimiento > DateTime.Now)
+                throw new ArgumentException("La fecha de nacimiento no puede ser futura.", nameof(fechaNacimiento));
+            FechaNacimiento = fechaNacimiento;
         }
 
-        public void SetTel(string telefono)
+        public void SetTelefono(string telefono)
         {
-            if (string.IsNullOrWhiteSpace(telefono))
-                throw new ArgumentException("El telefono debe ser mayor que 0.", nameof(telefono));
-            Telefono = telefono;
+            Telefono = telefono?.Trim() ?? string.Empty;
         }
 
-
-        public void SetMail(string mail)
+        public void SetEmail(string email)
         {
-            if (string.IsNullOrWhiteSpace(mail))
-                throw new ArgumentException("El mail no puede ser nulo o vacío.", nameof(mail));
-            Mail = mail;
+            Email = email?.Trim() ?? string.Empty;
         }
 
-        public void SetDom(string domicilio)
+        public void SetDomicilio(string domicilio)
         {
-            if (string.IsNullOrWhiteSpace(domicilio))
-                throw new ArgumentException("El domicilio no puede ser nulo o vacío.", nameof(domicilio));
-            Domicilio = domicilio;
+            Domicilio = domicilio?.Trim() ?? string.Empty;
         }
-
-
     }
 }

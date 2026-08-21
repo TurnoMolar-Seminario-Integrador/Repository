@@ -22,7 +22,7 @@ namespace WebAPI
 
             group.MapGet("/{id:int}", async (int id, IOdontologoService service) =>
             {
-                var o = await service.GetAsync(id);
+                var o = await service.GetAsync("DNI", id);
                 return o == null ? Results.NotFound() : Results.Ok(o);
             });
 
@@ -31,7 +31,7 @@ namespace WebAPI
                 try
                 {
                     var created = await service.AddAsync(dto);
-                    return Results.Created($"/api/odontologos/{created.Id}", created);
+                    return Results.Created($"/api/odontologos/{created.NroDocumento}", created);
                 }
                 catch (Exception ex)
                 {
@@ -41,7 +41,7 @@ namespace WebAPI
 
             group.MapPut("/{id:int}", async (int id, OdontologoDTO dto, IOdontologoService service) =>
             {
-                dto.Id = id;
+                dto.NroDocumento = id;
                 try
                 {
                     var updated = await service.UpdateAsync(dto);
@@ -55,7 +55,7 @@ namespace WebAPI
 
             group.MapDelete("/{id:int}", async (int id, IOdontologoService service) =>
             {
-                var deleted = await service.DeleteAsync(id);
+                var deleted = await service.DeleteAsync("DNI", id);
                 return deleted ? Results.NoContent() : Results.NotFound();
             });
         }

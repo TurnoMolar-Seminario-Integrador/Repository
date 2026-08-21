@@ -13,7 +13,7 @@ namespace WebAPI
             {
                 if (pacienteId.HasValue && pacienteId.Value > 0)
                 {
-                    var list = await service.GetByPacienteIdAsync(pacienteId.Value);
+                    var list = await service.GetByPacienteDocAsync("DNI", pacienteId.Value);
                     return Results.Ok(list);
                 }
                 var all = await service.GetAllAsync();
@@ -28,7 +28,7 @@ namespace WebAPI
 
             group.MapGet("/turno/{turnoId:int}", async (int turnoId, IConsultaService service) =>
             {
-                var item = await service.GetByTurnoIdAsync(turnoId);
+                var item = await service.GetByCodTurnoAsync(turnoId);
                 return item == null ? Results.NotFound() : Results.Ok(item);
             });
 
@@ -37,7 +37,7 @@ namespace WebAPI
                 try
                 {
                     var created = await service.RegistrarConsultaAsync(dto);
-                    return Results.Created($"/api/consultas/{created.Id}", created);
+                    return Results.Created($"/api/consultas/{created.CodAtencion}", created);
                 }
                 catch (Exception ex)
                 {

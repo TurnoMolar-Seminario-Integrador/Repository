@@ -1,36 +1,46 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Domain.Model
 {
     public class ObraSocial
     {
-        public int Id { get; private set; }
-        public string Nombre { get; private set; }
-        public string Plan { get; private set; }
+        public int IdentificadorOS { get; private set; }
+        public string NombreOS { get; private set; } = string.Empty;
+        public string PlanCobertura { get; private set; } = string.Empty;
+        public decimal ArancelOS { get; private set; }
+        public string EstadoOS { get; private set; } = "ACTIVA";
 
-        public ObraSocial(int id, string nombre, string plan)
+        protected ObraSocial() { }
+
+        public ObraSocial(int identificadorOS, string nombreOS, string planCobertura, decimal arancelOS, string estadoOS = "ACTIVA")
         {
-            Id = id;
-            SetNombre(nombre);
-            SetPlan(plan);
+            IdentificadorOS = identificadorOS;
+            SetNombreOS(nombreOS);
+            SetPlanCobertura(planCobertura);
+            SetArancelOS(arancelOS);
+            SetEstadoOS(estadoOS);
         }
 
-        public void SetNombre(string nombre)
+        public void SetNombreOS(string nombreOS)
         {
-            if (string.IsNullOrWhiteSpace(nombre))
-                throw new ArgumentException("El nombre no puede ser nulo o vacío.", nameof(nombre));
-            Nombre = nombre;
+            if (string.IsNullOrWhiteSpace(nombreOS))
+                throw new ArgumentException("El nombre de la Obra Social es requerido.", nameof(nombreOS));
+            NombreOS = nombreOS.Trim();
         }
 
-        public void SetPlan(string plan)
+        public void SetPlanCobertura(string planCobertura)
         {
-            if (string.IsNullOrWhiteSpace(plan))
-                throw new ArgumentException("El plan no puede ser nulo o vacío.", nameof(plan));
-            Plan = plan;
+            PlanCobertura = planCobertura?.Trim() ?? string.Empty;
+        }
+
+        public void SetArancelOS(decimal arancel)
+        {
+            if (arancel < 0)
+                throw new ArgumentException("El arancel de Obra Social no puede ser negativo.", nameof(arancel));
+            ArancelOS = arancel;
+        }
+
+        public void SetEstadoOS(string estado)
+        {
+            EstadoOS = estado?.ToUpper().Trim() ?? "ACTIVA";
         }
     }
 }

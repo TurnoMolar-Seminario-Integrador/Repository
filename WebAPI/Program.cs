@@ -1,6 +1,5 @@
 using Application.Services;
 using Data;
-using DentalClinic.Application.Services;
 using WebAPI;
 
 var builder = WebApplication.CreateBuilder(args);

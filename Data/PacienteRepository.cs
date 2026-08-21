@@ -1,25 +1,20 @@
-﻿using Domain.Model;
+using Domain.Model;
 
 namespace Data
 {
     public class PacienteRepository : IPacienteRepository
     {
-
         private static readonly List<Paciente> pacientes = new();
-
-        private static int nextId = 1;
 
         public Task<Paciente> AddAsync(Paciente paciente)
         {
-            paciente.SetId(nextId);
-            nextId++;
             pacientes.Add(paciente);
             return Task.FromResult(paciente);
         }
 
-        public Task<bool> DeleteAsync(int id)
+        public Task<bool> DeleteAsync(int nroDocumento)
         {
-            var paciente = pacientes.FirstOrDefault(p => p.Id == id);
+            var paciente = pacientes.FirstOrDefault(p => p.NroDocumento == nroDocumento);
             if (paciente != null)
             {
                 pacientes.Remove(paciente);
@@ -28,9 +23,9 @@ namespace Data
             return Task.FromResult(false);
         }
 
-        public Task<Paciente?> GetAsync(int id)
+        public Task<Paciente?> GetAsync(int nroDocumento)
         {
-            var paciente = pacientes.FirstOrDefault(p => p.Id == id);
+            var paciente = pacientes.FirstOrDefault(p => p.NroDocumento == nroDocumento);
             return Task.FromResult(paciente);
         }
 
@@ -41,26 +36,29 @@ namespace Data
 
         public Task<bool> UpdateAsync(Paciente paciente)
         {
-            var existingPaciente = pacientes.FirstOrDefault(p => p.Id == paciente.Id);
-            if (existingPaciente == null)
+            var existing = pacientes.FirstOrDefault(p =>
+                p.TipoDocumento == paciente.TipoDocumento && p.NroDocumento == paciente.NroDocumento);
+            if (existing == null)
                 return Task.FromResult(false);
 
-            existingPaciente.SetNom(paciente.Nombre);
-            existingPaciente.SetApe(paciente.Apellido);
-            existingPaciente.SetDni(paciente.Dni);
-            existingPaciente.SetTel(paciente.Telefono);
-            existingPaciente.SetMail(paciente.Mail);
-            existingPaciente.SetDom(paciente.Domicilio);
-            existingPaciente.SetEstadoHabilitado(paciente.EstadoHabilitado);
+            existing.SetNombre(paciente.Nombre);
+            existing.SetApellido(paciente.Apellido);
+            existing.SetNroDocumento(paciente.NroDocumento);
+            existing.SetTelefono(paciente.Telefono);
+            existing.SetEmail(paciente.Email);
+            existing.SetDomicilio(paciente.Domicilio);
+            existing.SetEstadoPaciente(paciente.EstadoPaciente);
+            existing.SetMontoAdeudado(paciente.MontoAdeudado);
+            existing.SetIdentificadorOS(paciente.IdentificadorOS);
 
             return Task.FromResult(true);
         }
 
-        public Task<bool> EmailExistsAsync(string email, int? excludeId = null)
+        public Task<bool> EmailExistsAsync(string email, int? excludeNroDoc = null)
         {
             var exists = pacientes.Any(p =>
-                p.Mail.ToLower() == email.ToLower() &&
-                (!excludeId.HasValue || p.Id != excludeId.Value));
+                p.Email.ToLower() == email.ToLower() &&
+                (!excludeNroDoc.HasValue || p.NroDocumento != excludeNroDoc.Value));
             return Task.FromResult(exists);
         }
 
@@ -70,9 +68,8 @@ namespace Data
             var result = pacientes.Where(p =>
                 p.Nombre.ToLower().Contains(texto) ||
                 p.Apellido.ToLower().Contains(texto) ||
-                p.Mail.ToLower().Contains(texto));
+                p.Email.ToLower().Contains(texto));
             return Task.FromResult<IEnumerable<Paciente>>(result);
         }
     }
-
 }

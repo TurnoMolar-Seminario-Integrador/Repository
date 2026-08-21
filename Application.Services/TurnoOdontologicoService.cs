@@ -1,8 +1,6 @@
-﻿using Data;
-using DentalClinic.Application.Services;
+using Data;
 using Domain.Model;
 using DTOs;
-using static Domain.Model.TurnoOdontologico;
 
 namespace Application.Services
 {
@@ -15,42 +13,39 @@ namespace Application.Services
             this.turnoRepository = turnoRepository;
         }
 
-        private static Estadoturno ParseEstado(string estado)
-        {
-            if (!Enum.TryParse<Estadoturno>(estado, ignoreCase: true, out var resultado))
-            {
-                throw new ArgumentException($"El estado '{estado}' no es válido. Valores permitidos: {string.Join(", ", Enum.GetNames<Estadoturno>())}.");
-            }
-            return resultado;
-        }
-
         public async Task<TurnoOdontologicoDTO> AddAsync(TurnoOdontologicoDTO dto)
         {
-            if (await turnoRepository.TurnoExistsAsync(dto.Fecha, dto.HorarioTurno))
+            var fechaReserva = dto.Fecha.Add(dto.HorarioTurno.ToTimeSpan());
+
+            if (await turnoRepository.TurnoExistsAsync(fechaReserva, "DNI", dto.OdontologoNroDoc ?? 0))
             {
-                throw new ArgumentException($"Ya existe un turno para el {dto.Fecha} en el horario '{dto.HorarioTurno}'.");
+                throw new ArgumentException($"Ya existe un turno para ese odontólogo en la fecha/hora indicada.");
             }
 
-            var turno = new TurnoOdontologico(
+            var turno = new Turno(
                 0,
-                dto.Fecha,
-                dto.HorarioTurno,
-                ParseEstado(dto.EstadoTurno),
-                dto.MotivoCancelacion
+                fechaReserva,
+                dto.ModalidadPago ?? "PARTICULAR",
+                dto.CodEspecialidad ?? 1,
+                "DNI",
+                dto.OdontologoNroDoc ?? 0,
+                "DNI",
+                dto.PacienteNroDoc ?? 0,
+                dto.EstadoTurno ?? "RESERVADO"
             );
 
             await turnoRepository.AddAsync(turno);
             return MapToDTO(turno);
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int codTurno)
         {
-            return await turnoRepository.DeleteAsync(id);
+            return await turnoRepository.DeleteAsync(codTurno);
         }
 
-        public async Task<TurnoOdontologicoDTO?> GetAsync(int id)
+        public async Task<TurnoOdontologicoDTO?> GetAsync(int codTurno)
         {
-            var turno = await turnoRepository.GetAsync(id);
+            var turno = await turnoRepository.GetAsync(codTurno);
             return turno == null ? null : MapToDTO(turno);
         }
 
@@ -62,17 +57,16 @@ namespace Application.Services
 
         public async Task<bool> UpdateAsync(TurnoOdontologicoDTO dto)
         {
-            if (await turnoRepository.TurnoExistsAsync(dto.Fecha, dto.HorarioTurno, dto.Id))
-            {
-                throw new ArgumentException($"Ya existe otro turno para el {dto.Fecha} en el horario '{dto.HorarioTurno}'.");
-            }
-
-            var turno = new TurnoOdontologico(
+            var turno = new Turno(
                 dto.Id,
-                dto.Fecha,
-                dto.HorarioTurno,
-                ParseEstado(dto.EstadoTurno),
-                dto.MotivoCancelacion
+                dto.Fecha.Add(dto.HorarioTurno.ToTimeSpan()),
+                dto.ModalidadPago ?? "PARTICULAR",
+                dto.CodEspecialidad ?? 1,
+                "DNI",
+                dto.OdontologoNroDoc ?? 0,
+                "DNI",
+                dto.PacienteNroDoc ?? 0,
+                dto.EstadoTurno ?? "RESERVADO"
             );
 
             return await turnoRepository.UpdateAsync(turno);
@@ -80,28 +74,32 @@ namespace Application.Services
 
         public async Task<IEnumerable<TurnoOdontologicoDTO>> GetByCriteriaAsync(TurnoCriteriaDTO criteriaDTO)
         {
-            IEnumerable<TurnoOdontologico> turnos = criteriaDTO.Fecha.HasValue
+            IEnumerable<Turno> turnos = criteriaDTO.Fecha.HasValue
                 ? await turnoRepository.GetByFechaAsync(criteriaDTO.Fecha.Value)
                 : await turnoRepository.GetAllAsync();
 
             if (!string.IsNullOrWhiteSpace(criteriaDTO.EstadoTurno))
             {
-                var estadoBuscado = ParseEstado(criteriaDTO.EstadoTurno);
-                turnos = turnos.Where(t => t.EstadoTurno == estadoBuscado);
+                var estadoBuscado = criteriaDTO.EstadoTurno.ToUpper().Trim();
+                turnos = turnos.Where(t => t.Estado == estadoBuscado);
             }
 
             return turnos.Select(MapToDTO).ToList();
         }
 
-        private static TurnoOdontologicoDTO MapToDTO(TurnoOdontologico turno)
+        private static TurnoOdontologicoDTO MapToDTO(Turno turno)
         {
             return new TurnoOdontologicoDTO
             {
-                Id = turno.Id,
-                Fecha = turno.Fecha,
-                HorarioTurno = turno.HorarioTurno,
-                EstadoTurno = turno.EstadoTurno.ToString(),
-                MotivoCancelacion = turno.MotivoCancelacion
+                Id = turno.CodTurno,
+                Fecha = turno.FechaYHoraReserva.Date,
+                HorarioTurno = TimeOnly.FromDateTime(turno.FechaYHoraReserva),
+                EstadoTurno = turno.Estado,
+                MotivoCancelacion = turno.MotivoCancelacion,
+                ModalidadPago = turno.ModalidadPagoElegida,
+                CodEspecialidad = turno.CodEspecialidad,
+                OdontologoNroDoc = turno.OdontologoNroDoc,
+                PacienteNroDoc = turno.PacienteNroDoc
             };
         }
     }

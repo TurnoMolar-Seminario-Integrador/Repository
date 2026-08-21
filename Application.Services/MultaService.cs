@@ -8,8 +8,8 @@ namespace Application.Services
     {
         Task<MultaDTO?> GetAsync(int id);
         Task<IEnumerable<MultaDTO>> GetAllAsync();
-        Task<IEnumerable<MultaDTO>> GetByPacienteIdAsync(int pacienteId);
-        Task<IEnumerable<MultaDTO>> GetImpagasByPacienteIdAsync(int pacienteId);
+        Task<IEnumerable<MultaDTO>> GetByPacienteDocAsync(string tipoDoc, int nroDoc);
+        Task<IEnumerable<MultaDTO>> GetImpagasByPacienteDocAsync(string tipoDoc, int nroDoc);
         Task<MultaDTO> CrearMultaAsync(MultaDTO dto);
         Task<bool> PagarMultaAsync(int id);
     }
@@ -35,21 +35,21 @@ namespace Application.Services
             return list.Select(MapToDTO).ToList();
         }
 
-        public async Task<IEnumerable<MultaDTO>> GetByPacienteIdAsync(int pacienteId)
+        public async Task<IEnumerable<MultaDTO>> GetByPacienteDocAsync(string tipoDoc, int nroDoc)
         {
-            var list = await _multaRepository.GetByPacienteIdAsync(pacienteId);
+            var list = await _multaRepository.GetByPacienteDocAsync(tipoDoc, nroDoc);
             return list.Select(MapToDTO).ToList();
         }
 
-        public async Task<IEnumerable<MultaDTO>> GetImpagasByPacienteIdAsync(int pacienteId)
+        public async Task<IEnumerable<MultaDTO>> GetImpagasByPacienteDocAsync(string tipoDoc, int nroDoc)
         {
-            var list = await _multaRepository.GetImpagasByPacienteIdAsync(pacienteId);
+            var list = await _multaRepository.GetImpagasByPacienteDocAsync(tipoDoc, nroDoc);
             return list.Select(MapToDTO).ToList();
         }
 
         public async Task<MultaDTO> CrearMultaAsync(MultaDTO dto)
         {
-            var multa = new Multa(0, dto.PacienteId, dto.Monto, dto.EstadoPago, dto.FechaPago, dto.Motivo);
+            var multa = new Multa(0, dto.Monto, dto.EstadoPago, dto.FechaPago);
             await _multaRepository.AddAsync(multa);
             return MapToDTO(multa);
         }
@@ -64,13 +64,9 @@ namespace Application.Services
             return new MultaDTO
             {
                 Id = m.Id,
-                PacienteId = m.PacienteId,
-                PacienteNombre = m.Paciente != null ? $"{m.Paciente.Apellido}, {m.Paciente.Nombre}" : $"Paciente #{m.PacienteId}",
                 Monto = m.Monto,
                 EstadoPago = m.EstadoPago,
-                FechaEmision = m.FechaEmision,
-                FechaPago = m.FechaPago,
-                Motivo = m.Motivo
+                FechaPago = m.FechaPago
             };
         }
     }

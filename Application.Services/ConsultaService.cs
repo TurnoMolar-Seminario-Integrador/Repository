@@ -6,12 +6,12 @@ namespace Application.Services
 {
     public interface IConsultaService
     {
-        Task<ConsultaDTO?> GetAsync(int id);
-        Task<ConsultaDTO?> GetByTurnoIdAsync(int turnoId);
+        Task<ConsultaDTO?> GetAsync(int codAtencion);
+        Task<ConsultaDTO?> GetByCodTurnoAsync(int codTurno);
         Task<IEnumerable<ConsultaDTO>> GetAllAsync();
-        Task<IEnumerable<ConsultaDTO>> GetByPacienteIdAsync(int pacienteId);
+        Task<IEnumerable<ConsultaDTO>> GetByPacienteDocAsync(string tipoDoc, int nroDoc);
         Task<ConsultaDTO> RegistrarConsultaAsync(ConsultaDTO dto);
-        Task<bool> ValorarAtencionAsync(int id, int estrellas, string comentario);
+        Task<bool> ValorarAtencionAsync(int codAtencion, int estrellas, string comentario);
     }
 
     public class ConsultaService : IConsultaService
@@ -36,16 +36,16 @@ namespace Application.Services
             _pacienteRepository = pacienteRepository;
         }
 
-        public async Task<ConsultaDTO?> GetAsync(int id)
+        public async Task<ConsultaDTO?> GetAsync(int codAtencion)
         {
-            var c = await _consultaRepository.GetAsync(id);
-            return c == null ? null : MapToDTO(c);
+            var a = await _consultaRepository.GetAsync(codAtencion);
+            return a == null ? null : MapToDTO(a);
         }
 
-        public async Task<ConsultaDTO?> GetByTurnoIdAsync(int turnoId)
+        public async Task<ConsultaDTO?> GetByCodTurnoAsync(int codTurno)
         {
-            var c = await _consultaRepository.GetByTurnoIdAsync(turnoId);
-            return c == null ? null : MapToDTO(c);
+            var a = await _consultaRepository.GetByCodTurnoAsync(codTurno);
+            return a == null ? null : MapToDTO(a);
         }
 
         public async Task<IEnumerable<ConsultaDTO>> GetAllAsync()
@@ -54,115 +54,77 @@ namespace Application.Services
             return list.Select(MapToDTO).ToList();
         }
 
-        public async Task<IEnumerable<ConsultaDTO>> GetByPacienteIdAsync(int pacienteId)
+        public async Task<IEnumerable<ConsultaDTO>> GetByPacienteDocAsync(string tipoDoc, int nroDoc)
         {
-            var list = await _consultaRepository.GetByPacienteIdAsync(pacienteId);
+            var list = await _consultaRepository.GetByPacienteDocAsync(tipoDoc, nroDoc);
             return list.Select(MapToDTO).ToList();
         }
 
         public async Task<ConsultaDTO> RegistrarConsultaAsync(ConsultaDTO dto)
         {
-            var turno = await _turnoRepository.GetAsync(dto.TurnoId);
+            var turno = await _turnoRepository.GetAsync(dto.CodTurno);
             if (turno == null)
             {
                 throw new InvalidOperationException("El turno asociado no existe.");
             }
 
-            // Marcar el turno como Atendido
-            turno.EstadoTurno = TurnoOdontologico.EstadoTurnoEnum.Atendido;
+            turno.SetEstado("ATENDIDO");
             await _turnoRepository.UpdateAsync(turno);
 
-            var consulta = new Consulta(
-                0,
-                dto.TurnoId,
-                dto.Diagnostico,
-                dto.Tratamiento,
-                dto.Observaciones,
-                dto.AnestesiaLocal,
-                dto.Radiografias,
-                dto.Valoracion,
-                dto.CalificacionEstrellas
+            DateTime fechaInicio = dto.FechaYHoraAtencionInicio;
+            DateTime fechaFin = dto.FechaYHoraAtencionFin > fechaInicio ? dto.FechaYHoraAtencionFin : fechaInicio.AddMinutes(30);
+
+            var atencion = new AtencionOdontologica(
+                codAtencion: 0,
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin,
+                observaciones: dto.Observaciones,
+                codTurno: dto.CodTurno,
+                fechaYHoraReserva: turno.FechaYHoraReserva,
+                nroHC: dto.PacienteNroDoc,
+                pacienteTipoDoc: dto.PacienteTipoDoc ?? "DNI",
+                pacienteNroDoc: dto.PacienteNroDoc
             );
 
-            await _consultaRepository.AddAsync(consulta);
-
-            // Descontar stock de insumos utilizados y crear factura proforma
-            decimal totalInsumos = 0m;
-            var facturaItems = new List<ItemFactura>();
+            await _consultaRepository.AddAsync(atencion);
 
             if (dto.InsumosUtilizados != null && dto.InsumosUtilizados.Any())
             {
                 foreach (var itemDto in dto.InsumosUtilizados)
                 {
-                    if (itemDto.InsumoId > 0 && itemDto.CantidadInsumo > 0)
+                    if (itemDto.InsumoId > 0 && itemDto.Cantidad > 0)
                     {
-                        var insumo = await _insumoRepository.GetAsync(itemDto.InsumoId);
-                        if (insumo != null)
-                        {
-                            await _insumoRepository.DescontarStockAsync(itemDto.InsumoId, itemDto.CantidadInsumo);
-                            var sub = insumo.Precio * itemDto.CantidadInsumo;
-                            totalInsumos += sub;
-                            facturaItems.Add(new ItemFactura(0, 0, itemDto.InsumoId, itemDto.CantidadInsumo, insumo.Precio));
-                        }
+                        await _insumoRepository.DescontarStockAsync(itemDto.InsumoId, itemDto.Cantidad);
                     }
                 }
             }
 
-            // Generar factura inicial / proforma para cobro
-            var paciente = await _pacienteRepository.GetAsync(turno.PacienteId);
-            decimal honorarios = turno.MontoEstimado > 0 ? turno.MontoEstimado : 12000m;
-            decimal subtotal = honorarios + totalInsumos;
-            decimal coberturaOS = paciente?.ObraSocial?.PorcentajeCobertura ?? 0m;
-            decimal descuento = subtotal * coberturaOS;
-            decimal montoPaciente = subtotal - descuento;
-
-            var factura = new Factura(
-                0,
-                turno.Id,
-                turno.PacienteId,
-                $"Atención Odontológica - {dto.Tratamiento} (Diag: {dto.Diagnostico})",
-                subtotal,
-                descuento,
-                subtotal,
-                montoPaciente,
-                false,
-                "Pendiente de Pago"
-            );
-            factura.Items = facturaItems;
-
-            await _facturaRepository.AddAsync(factura);
-
-            dto.Id = consulta.Id;
+            dto.CodAtencion = atencion.CodAtencion;
             return dto;
         }
 
-        public async Task<bool> ValorarAtencionAsync(int id, int estrellas, string comentario)
+        public async Task<bool> ValorarAtencionAsync(int codAtencion, int estrellas, string comentario)
         {
-            var consulta = await _consultaRepository.GetAsync(id);
-            if (consulta == null) return false;
+            var atencion = await _consultaRepository.GetAsync(codAtencion);
+            if (atencion == null) return false;
 
-            consulta.CalificacionEstrellas = Math.Clamp(estrellas, 1, 5);
-            consulta.Valoracion = comentario;
-            return await _consultaRepository.UpdateAsync(consulta);
+            atencion.Observaciones = $"{atencion.Observaciones} | Valoración ({estrellas}★): {comentario}";
+            return await _consultaRepository.UpdateAsync(atencion);
         }
 
-        private static ConsultaDTO MapToDTO(Consulta c)
+        private static ConsultaDTO MapToDTO(AtencionOdontologica a)
         {
             return new ConsultaDTO
             {
-                Id = c.Id,
-                TurnoId = c.TurnoId,
-                PacienteId = c.Turno?.PacienteId ?? 0,
-                PacienteNombre = c.Turno?.Paciente != null ? $"{c.Turno.Paciente.Apellido}, {c.Turno.Paciente.Nombre}" : "Paciente",
-                OdontologoNombre = c.Turno?.Odontologo != null ? $"Dr/a. {c.Turno.Odontologo.Apellido}, {c.Turno.Odontologo.Nombre}" : "Odontólogo",
-                Diagnostico = c.Diagnostico,
-                Tratamiento = c.Tratamiento,
-                Observaciones = c.Observaciones,
-                AnestesiaLocal = c.AnestesiaLocal,
-                Radiografias = c.Radiografias,
-                Valoracion = c.Valoracion,
-                CalificacionEstrellas = c.CalificacionEstrellas,
-                Fecha = c.Fecha
+                CodAtencion = a.CodAtencion,
+                CodTurno = a.CodTurno,
+                PacienteTipoDoc = a.PacienteTipoDoc,
+                PacienteNroDoc = a.PacienteNroDoc,
+                PacienteNombre = a.Turno?.Paciente != null ? $"{a.Turno.Paciente.Apellido}, {a.Turno.Paciente.Nombre}" : "Paciente",
+                OdontologoNombre = a.Turno?.Odontologo != null ? $"Dr/a. {a.Turno.Odontologo.Apellido}, {a.Turno.Odontologo.Nombre}" : "Odontólogo",
+                Observaciones = a.Observaciones,
+                FechaYHoraAtencionInicio = a.FechaYHoraAtencionInicio,
+                FechaYHoraAtencionFin = a.FechaYHoraAtencionFin
             };
         }
     }

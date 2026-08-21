@@ -33,7 +33,7 @@ namespace WebAPI
 
             group.MapGet("/historia-clinica/{pacienteId:int}", async (int pacienteId, IReportesService service) =>
             {
-                var rep = await service.GetHistoriaClinicaPacienteAsync(pacienteId);
+                var rep = await service.GetHistoriaClinicaPacienteAsync("DNI", pacienteId);
                 return rep == null ? Results.NotFound() : Results.Ok(rep);
             });
         }

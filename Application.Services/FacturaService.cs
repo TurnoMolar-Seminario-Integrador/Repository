@@ -6,35 +6,33 @@ namespace Application.Services
 {
     public interface IFacturaService
     {
-        Task<FacturaDTO?> GetAsync(int id);
-        Task<FacturaDTO?> GetByTurnoIdAsync(int turnoId);
+        Task<FacturaDTO?> GetAsync(int codPago);
+        Task<FacturaDTO?> GetByCodAtencionAsync(int codAtencion);
         Task<IEnumerable<FacturaDTO>> GetAllAsync();
-        Task<IEnumerable<FacturaDTO>> GetByPacienteIdAsync(int pacienteId);
+        Task<IEnumerable<FacturaDTO>> GetByPacienteDocAsync(string tipoDoc, int nroDoc);
         Task<FacturaDTO> CrearFacturaAsync(FacturaDTO dto);
-        Task<bool> RegistrarPagoAsync(int id, string metodoPago);
+        Task<bool> RegistrarPagoAsync(int codPago, string tipoMetodoPago);
     }
 
     public class FacturaService : IFacturaService
     {
         private readonly IFacturaRepository _facturaRepository;
-        private readonly IPacienteRepository _pacienteRepository;
 
-        public FacturaService(IFacturaRepository facturaRepository, IPacienteRepository pacienteRepository)
+        public FacturaService(IFacturaRepository facturaRepository)
         {
             _facturaRepository = facturaRepository;
-            _pacienteRepository = pacienteRepository;
         }
 
-        public async Task<FacturaDTO?> GetAsync(int id)
+        public async Task<FacturaDTO?> GetAsync(int codPago)
         {
-            var f = await _facturaRepository.GetAsync(id);
-            return f == null ? null : MapToDTO(f);
+            var p = await _facturaRepository.GetAsync(codPago);
+            return p == null ? null : MapToDTO(p);
         }
 
-        public async Task<FacturaDTO?> GetByTurnoIdAsync(int turnoId)
+        public async Task<FacturaDTO?> GetByCodAtencionAsync(int codAtencion)
         {
-            var f = await _facturaRepository.GetByTurnoIdAsync(turnoId);
-            return f == null ? null : MapToDTO(f);
+            var p = await _facturaRepository.GetByCodAtencionAsync(codAtencion);
+            return p == null ? null : MapToDTO(p);
         }
 
         public async Task<IEnumerable<FacturaDTO>> GetAllAsync()
@@ -43,78 +41,44 @@ namespace Application.Services
             return list.Select(MapToDTO).ToList();
         }
 
-        public async Task<IEnumerable<FacturaDTO>> GetByPacienteIdAsync(int pacienteId)
+        public async Task<IEnumerable<FacturaDTO>> GetByPacienteDocAsync(string tipoDoc, int nroDoc)
         {
-            var list = await _facturaRepository.GetByPacienteIdAsync(pacienteId);
+            var list = await _facturaRepository.GetByPacienteDocAsync(tipoDoc, nroDoc);
             return list.Select(MapToDTO).ToList();
         }
 
         public async Task<FacturaDTO> CrearFacturaAsync(FacturaDTO dto)
         {
-            var paciente = await _pacienteRepository.GetAsync(dto.PacienteId);
-            decimal cobertura = paciente?.ObraSocial?.PorcentajeCobertura ?? 0m;
-            decimal descuento = dto.Subtotal * cobertura;
-            decimal montoPaciente = dto.Subtotal - descuento;
-
-            var factura = new Factura(
-                0,
-                dto.TurnoId,
-                dto.PacienteId,
-                dto.Descripcion,
-                dto.Subtotal,
-                descuento,
-                dto.Subtotal,
-                montoPaciente,
-                dto.EstadoPago,
-                dto.MetodoPago
+            var pago = new Pago(
+                codPago: 0,
+                monto: dto.Monto,
+                fechaYHoraPago: dto.FechaYHoraPago,
+                tipoMetodoPago: dto.TipoMetodoPago,
+                codAtencion: dto.CodAtencion ?? 1
             );
 
-            if (dto.Items != null && dto.Items.Any())
-            {
-                factura.Items = dto.Items.Select(i => new ItemFactura(0, 0, i.InsumoId, i.CantidadInsumo, i.PrecioUnitario)).ToList();
-            }
-
-            await _facturaRepository.AddAsync(factura);
-            return MapToDTO(factura);
+            await _facturaRepository.AddAsync(pago);
+            return MapToDTO(pago);
         }
 
-        public async Task<bool> RegistrarPagoAsync(int id, string metodoPago)
+        public async Task<bool> RegistrarPagoAsync(int codPago, string tipoMetodoPago)
         {
-            var factura = await _facturaRepository.GetAsync(id);
-            if (factura == null) return false;
+            var pago = await _facturaRepository.GetAsync(codPago);
+            if (pago == null) return false;
 
-            factura.EstadoPago = true;
-            factura.MetodoPago = string.IsNullOrWhiteSpace(metodoPago) ? "Efectivo" : metodoPago;
-
-            return await _facturaRepository.UpdateAsync(factura);
+            pago.SetTipoMetodoPago(string.IsNullOrWhiteSpace(tipoMetodoPago) ? "EFECTIVO" : tipoMetodoPago);
+            return await _facturaRepository.UpdateAsync(pago);
         }
 
-        private static FacturaDTO MapToDTO(Factura f)
+        private static FacturaDTO MapToDTO(Pago p)
         {
             return new FacturaDTO
             {
-                Id = f.Id,
-                TurnoId = f.TurnoId,
-                PacienteId = f.PacienteId,
-                PacienteNombre = f.Paciente != null ? $"{f.Paciente.Apellido}, {f.Paciente.Nombre}" : $"Paciente #{f.PacienteId}",
-                ObraSocialNombre = f.Paciente?.ObraSocial != null ? $"{f.Paciente.ObraSocial.Nombre} ({f.Paciente.ObraSocial.Plan})" : "Particular",
-                Descripcion = f.Descripcion,
-                Subtotal = f.Subtotal,
-                DescuentoObraSocial = f.DescuentoObraSocial,
-                Total = f.Total,
-                MontoAPagarPaciente = f.MontoAPagarPaciente,
-                EstadoPago = f.EstadoPago,
-                MetodoPago = f.MetodoPago,
-                FechaEmision = f.FechaEmision,
-                Items = f.Items?.Select(i => new ItemFacturaDTO
-                {
-                    Id = i.Id,
-                    FacturaId = i.FacturaId,
-                    InsumoId = i.InsumoId,
-                    InsumoNombre = i.Insumo?.Nombre ?? $"Insumo #{i.InsumoId}",
-                    CantidadInsumo = i.CantidadInsumo,
-                    PrecioUnitario = i.PrecioUnitario
-                }).ToList() ?? new List<ItemFacturaDTO>()
+                CodPago = p.CodPago,
+                CodAtencion = p.CodAtencion,
+                Monto = p.Monto,
+                TipoMetodoPago = p.TipoMetodoPago,
+                FechaYHoraPago = p.FechaYHoraPago
             };
         }
     }

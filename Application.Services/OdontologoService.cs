@@ -6,12 +6,12 @@ namespace Application.Services
 {
     public interface IOdontologoService
     {
-        Task<OdontologoDTO?> GetAsync(int id);
+        Task<OdontologoDTO?> GetAsync(string tipoDocumento, int nroDocumento);
         Task<IEnumerable<OdontologoDTO>> GetAllAsync();
-        Task<IEnumerable<OdontologoDTO>> GetByEspecialidadAsync(int especialidadId);
+        Task<IEnumerable<OdontologoDTO>> GetByEspecialidadAsync(int codEspecialidad);
         Task<OdontologoDTO> AddAsync(OdontologoDTO dto);
         Task<bool> UpdateAsync(OdontologoDTO dto);
-        Task<bool> DeleteAsync(int id);
+        Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento);
     }
 
     public class OdontologoService : IOdontologoService
@@ -23,10 +23,10 @@ namespace Application.Services
             _odontologoRepository = odontologoRepository;
         }
 
-        public async Task<OdontologoDTO?> GetAsync(int id)
+        public async Task<OdontologoDTO?> GetAsync(string tipoDocumento, int nroDocumento)
         {
-            var odontologo = await _odontologoRepository.GetAsync(id);
-            return odontologo == null ? null : MapToDTO(odontologo);
+            var o = await _odontologoRepository.GetAsync(tipoDocumento, nroDocumento);
+            return o == null ? null : MapToDTO(o);
         }
 
         public async Task<IEnumerable<OdontologoDTO>> GetAllAsync()
@@ -35,29 +35,28 @@ namespace Application.Services
             return list.Select(MapToDTO).ToList();
         }
 
-        public async Task<IEnumerable<OdontologoDTO>> GetByEspecialidadAsync(int especialidadId)
+        public async Task<IEnumerable<OdontologoDTO>> GetByEspecialidadAsync(int codEspecialidad)
         {
-            var list = await _odontologoRepository.GetByEspecialidadAsync(especialidadId);
+            var list = await _odontologoRepository.GetByEspecialidadAsync(codEspecialidad);
             return list.Select(MapToDTO).ToList();
         }
 
         public async Task<OdontologoDTO> AddAsync(OdontologoDTO dto)
         {
-            if (await _odontologoRepository.MatriculaExistsAsync(dto.NumMatricula))
-            {
-                throw new InvalidOperationException($"Ya existe un profesional con la matrícula {dto.NumMatricula}.");
-            }
+            if (await _odontologoRepository.MatriculaExistsAsync(dto.Matricula))
+                throw new InvalidOperationException($"Ya existe un profesional con la matrícula {dto.Matricula}.");
 
             var odontologo = new Odontologo(
-                0,
-                dto.NumMatricula,
-                dto.Nombre,
-                dto.Apellido,
-                dto.Dni,
-                dto.Telefono,
-                dto.Mail,
-                dto.Domicilio,
-                dto.EspecialidadId > 0 ? dto.EspecialidadId : 1
+                tipoDocumento: dto.TipoDocumento ?? "DNI",
+                nroDocumento: dto.NroDocumento,
+                nombre: dto.Nombre,
+                apellido: dto.Apellido,
+                telefono: dto.Telefono,
+                email: dto.Email,
+                domicilio: dto.Domicilio,
+                fechaNacimiento: dto.FechaNacimiento,
+                matricula: dto.Matricula,
+                codEspecialidad: dto.CodEspecialidad
             );
 
             await _odontologoRepository.AddAsync(odontologo);
@@ -66,45 +65,43 @@ namespace Application.Services
 
         public async Task<bool> UpdateAsync(OdontologoDTO dto)
         {
-            if (await _odontologoRepository.MatriculaExistsAsync(dto.NumMatricula, dto.Id))
-            {
-                throw new InvalidOperationException($"Ya existe otro profesional con la matrícula {dto.NumMatricula}.");
-            }
-
             var odontologo = new Odontologo(
-                dto.Id,
-                dto.NumMatricula,
-                dto.Nombre,
-                dto.Apellido,
-                dto.Dni,
-                dto.Telefono,
-                dto.Mail,
-                dto.Domicilio,
-                dto.EspecialidadId
+                tipoDocumento: dto.TipoDocumento ?? "DNI",
+                nroDocumento: dto.NroDocumento,
+                nombre: dto.Nombre,
+                apellido: dto.Apellido,
+                telefono: dto.Telefono,
+                email: dto.Email,
+                domicilio: dto.Domicilio,
+                fechaNacimiento: dto.FechaNacimiento,
+                matricula: dto.Matricula,
+                codEspecialidad: dto.CodEspecialidad
             );
 
             return await _odontologoRepository.UpdateAsync(odontologo);
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento)
         {
-            return await _odontologoRepository.DeleteAsync(id);
+            return await _odontologoRepository.DeleteAsync(tipoDocumento, nroDocumento);
         }
 
         private static OdontologoDTO MapToDTO(Odontologo o)
         {
             return new OdontologoDTO
             {
-                Id = o.Id,
-                NumMatricula = o.NumMatricula,
+                TipoDocumento = o.TipoDocumento,
+                NroDocumento = o.NroDocumento,
                 Nombre = o.Nombre,
                 Apellido = o.Apellido,
-                Dni = o.Dni,
                 Telefono = o.Telefono,
-                Mail = o.Mail,
+                Email = o.Email,
                 Domicilio = o.Domicilio,
-                EspecialidadId = o.EspecialidadId,
-                EspecialidadNombre = o.Especialidad?.Nombre ?? "Odontología General"
+                FechaNacimiento = o.FechaNacimiento,
+                Matricula = o.Matricula,
+                EstadoOdontologo = o.EstadoOdontologo,
+                CodEspecialidad = o.CodEspecialidad,
+                NombreEspecialidad = o.Especialidad?.Nombre ?? "Odontología General"
             };
         }
     }

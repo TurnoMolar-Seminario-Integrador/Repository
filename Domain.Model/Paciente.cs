@@ -1,27 +1,47 @@
-using System;
-using System.Net;
-
 namespace Domain.Model
 {
     public class Paciente : Persona
     {
-        public int Id { get; private set; }
-        public bool EstadoHabilitado { get; private set; }
+        public string EstadoPaciente { get; private set; } = "HABILITADO";
+        public decimal? MontoAdeudado { get; private set; }
+        public int? IdentificadorOS { get; private set; }
 
-        public Paciente(int id, string nombre, string apellido, int dni, string telefono, string mail, string domicilio, bool estadoHabilitado = true)
-            : base(nombre, apellido, dni, telefono, mail, domicilio)
+        public virtual ObraSocial? ObraSocial { get; private set; }
+        public virtual HistoriaClinica? HistoriaClinica { get; private set; }
+
+        protected Paciente() : base() { }
+
+        public Paciente(string tipoDocumento, int nroDocumento, string nombre, string apellido, DateTime fechaNacimiento, string telefono, string email, string domicilio, string estadoPaciente = "HABILITADO", decimal? montoAdeudado = null, int? identificadorOS = null)
+            : base(tipoDocumento, nroDocumento, nombre, apellido, fechaNacimiento, telefono, email, domicilio)
         {
-            Id = id;
-            SetEstadoHabilitado(estadoHabilitado);
-        }
-        public void SetId(int id)
-        {
-            Id = id;
+            SetEstadoPaciente(estadoPaciente);
+            SetMontoAdeudado(montoAdeudado);
+            SetIdentificadorOS(identificadorOS);
         }
 
-        public void SetEstadoHabilitado(bool habilitado)
+        public void SetEstadoPaciente(string estado)
         {
-            EstadoHabilitado = habilitado;
+            if (string.IsNullOrWhiteSpace(estado))
+                throw new ArgumentException("El estado del paciente es requerido.", nameof(estado));
+            EstadoPaciente = estado.ToUpper().Trim();
+        }
+
+        public void SetMontoAdeudado(decimal? monto)
+        {
+            if (monto.HasValue && monto.Value < 0)
+                throw new ArgumentException("El monto adeudado no puede ser negativo.", nameof(monto));
+            MontoAdeudado = monto;
+        }
+
+        public void SetIdentificadorOS(int? identificadorOS)
+        {
+            IdentificadorOS = identificadorOS;
+        }
+
+        public void AsignarObraSocial(ObraSocial? obraSocial)
+        {
+            ObraSocial = obraSocial;
+            IdentificadorOS = obraSocial?.IdentificadorOS;
         }
     }
 }

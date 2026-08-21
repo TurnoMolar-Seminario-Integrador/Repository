@@ -1,4 +1,4 @@
-﻿@model TurnoMolar.Models.PacienteViewModel
+@model TurnoMolar.Models.PacienteViewModel
 
 @{
     ViewData["Title"] = "Alta de Paciente - Clínica Odontológica Rosario";
@@ -22,16 +22,13 @@
 
         /* Adaptación automática para pantallas/sistemas en modo oscuro */
         @@media (prefers-color-scheme: dark) {
-            : root
-
-        {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --border-color: #444444;
-            --input-bg: #2d2d2d;
-        }
-
+            :root {
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-color: #e0e0e0;
+                --border-color: #444444;
+                --input-bg: #2d2d2d;
+            }
         }
 
         body {
@@ -262,12 +259,12 @@
 
             // Función que chequea el valor y muestra/oculta
             function toggleOtraObraSocial() {
-                if (selectOS.value === "Otra") {
-                    divOtraOS.style.display = "block";
+                if (selectOS && selectOS.value === "Otra") {
+                    if (divOtraOS) divOtraOS.style.display = "block";
                 } else {
-                    divOtraOS.style.display = "none";
-                    // Limpiamos el campo por si había escrito algo y luego se arrepintió
-                    document.getElementById("OtraObraSocial").value = "";
+                    if (divOtraOS) divOtraOS.style.display = "none";
+                    var otraInput = document.getElementById("OtraObraSocial");
+                    if (otraInput) otraInput.value = "";
                 }
             }
 

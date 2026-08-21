@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using DTOs;
 using TurnoMolar.Models;
 
 namespace TurnoMolar.Controllers
@@ -10,13 +12,16 @@ namespace TurnoMolar.Controllers
         private readonly HttpClient _httpClient;
 
         // Inyectamos el HttpClient que configuramos en Program.cs
-        public PacienteController(HttpClient httpClient)
+        public PacienteController(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
 
-            // ¡ATENCIÓN ACÁ! Tenés que cambiar este puerto por el que usa tu WebAPI.
-            // Lo podés sacar del archivo launchSettings.json del proyecto WebAPI.
-            _httpClient.BaseAddress = new Uri("https://localhost:7198/");
+            // Se obtiene la URL base de la WebAPI desde la configuración o usa la por defecto (puerto 7266/5263 de la WebAPI)
+            if (_httpClient.BaseAddress == null)
+            {
+                var apiBaseUrl = configuration["ApiBaseUrl"] ?? "https://localhost:7266/";
+                _httpClient.BaseAddress = new Uri(apiBaseUrl);
+            }
         }
 
         [HttpGet]
@@ -36,48 +41,36 @@ namespace TurnoMolar.Controllers
 
             if (ModelState.IsValid)
             {
-                // Determinamos qué valor de obra social enviar al backend
-                string obraSocialFinal = modelo.IdObraSocial == "Otra" ? modelo.OtraObraSocial : modelo.IdObraSocial;
+                // Mapeo correcto al DTO esperado por la WebAPI y Application.Services
+                int.TryParse(modelo.DniPers, out int dniParsed);
 
-                // 1. Armamos el objeto anónimo (DTO) agregando los campos nuevos
-                var pacienteDto = new
+                var pacienteDto = new PacienteDTO
                 {
-                    NombrePers = modelo.NombrePers,
+                    Nombre = modelo.NombrePers,
                     Apellido = modelo.Apellido,
-                    TipoDocumento = modelo.TipoDocumento, // Nuevo campo
-                    DniPers = modelo.DniPers,
-                    FechaNacimiento = modelo.FechaNacimiento, // Nuevo campo
-                    TelefonoPers = modelo.TelefonoPers,
-                    MailPer = modelo.MailPer,
+                    Dni = dniParsed,
+                    Telefono = modelo.TelefonoPers,
+                    Email = modelo.MailPer,
                     Domicilio = modelo.Domicilio,
-                    EstadoHabilitacion = modelo.EstadoHabilitacion,
-                    ObraSocial = obraSocialFinal // Mandamos el nombre final de la obra social
+                    EstadoHabilitado = modelo.EstadoHabilitacion
                 };
-
-                // 2. Convertimos los datos a formato JSON
-                var json = JsonSerializer.Serialize(pacienteDto);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 try
                 {
-                    // 3. Disparamos la petición POST al endpoint de Pacientes
-                    // (Asegurate de que la ruta coincida con la que definiste en PacienteEndpoints.cs)
-                    var response = await _httpClient.PostAsync("api/paciente", content);
+                    // Disparamos la petición POST al endpoint /pacientes definido en WebAPI
+                    var response = await _httpClient.PostAsJsonAsync("pacientes", pacienteDto);
 
                     if (response.IsSuccessStatusCode)
                     {
-                        // ¡Golazo! Se guardó bien. 
-                        // En vez de redirigir, mostramos el cartel de éxito que agregamos en la vista.
+                        // Se guardó bien: mostramos mensaje de éxito y limpiamos formulario
                         TempData["MensajeExito"] = "¡Paciente registrado correctamente!";
-
-                        // Limpiamos el formulario para que quede en blanco para cargar un próximo paciente
                         ModelState.Clear();
                         return View(new PacienteViewModel());
                     }
                     else
                     {
-                        // Si la API tira un código de error (ej. 400 Bad Request o 500 Internal Error)
-                        TempData["MensajeError"] = $"Error de la API: {response.StatusCode}. Revisá los datos.";
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        TempData["MensajeError"] = $"Error de la API ({response.StatusCode}): {responseBody}";
                     }
                 }
                 catch (Exception ex)

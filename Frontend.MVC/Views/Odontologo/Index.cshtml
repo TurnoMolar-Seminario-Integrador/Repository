@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Portal Profesional - Clínica Dental Rosario";
+    ViewData["Title"] = "Panel Principal - Clínica Dental Rosario";
     Layout = null;
 
     var nombreDoctor = "Dra. Karina González";
@@ -15,137 +15,14 @@
     <title>@ViewData["Title"]</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
+
+    <link rel="stylesheet" href="~/css/odontologo-layout.css" />
 
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
-            overflow-x: hidden;
-        }
+        /* Estilos específicos del Panel Principal (dashboard) */
 
-        /* SIDEBAR PROFESIONAL: Misma estética limpia y luminosa de la clínica */
-        .sidebar {
-            width: 260px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: #ffffff;
-            border-right: 1px solid #e5e5e5;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            z-index: 100;
-        }
-
-        .profile-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 20px;
-        }
-
-        .profile-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #0d6efd;
-        }
-
-        .profile-info h6 {
-            font-size: 0.92rem;
-            font-weight: bold;
-            margin: 0;
-            color: #212529;
-        }
-
-        .profile-info small {
-            font-size: 0.76rem;
-            color: #6c757d;
-        }
-
-        .badge-rol {
-            background-color: #e6f0fa;
-            color: #004694;
-            font-size: 0.65rem;
-            padding: 2px 7px;
-            border-radius: 4px;
-            font-weight: 700;
-            display: inline-block;
-            margin-top: 4px;
-            letter-spacing: 0.4px;
-        }
-
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            flex-grow: 1;
-        }
-
-        .nav-item {
-            margin-bottom: 5px;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            color: #495057;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .nav-link:hover {
-            background-color: #f1f3f5;
-            color: #0d6efd;
-        }
-
-        .nav-link.active {
-            background-color: #0d6efd;
-            color: #ffffff;
-            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
-        }
-
-        .nav-link.active i {
-            color: #ffffff;
-        }
-
-        /* CONTENIDO PRINCIPAL */
-        .main-content {
-            margin-left: 260px;
-            padding: 30px;
-        }
-
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .brand-title {
-            color: #0d3b66;
-            font-weight: bold;
-            font-size: 1.3rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand-logo {
-            width: 32px;
-            height: auto;
-        }
+        .brand-logo { width: 32px; height: auto; }
 
         /* TARJETAS DEL DASHBOARD PROFESIONAL */
         .dashboard-card {
@@ -186,9 +63,7 @@
         .card-3 .card-icon { background: #fffbeb; color: #d97706; }
         .card-4 .card-icon { background: #ecfdf5; color: #059669; }
 
-        .dashboard-card:hover .card-icon {
-            transform: scale(1.08);
-        }
+        .dashboard-card:hover .card-icon { transform: scale(1.08); }
 
         .widget-box {
             background: #ffffff;
@@ -235,22 +110,22 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="@Url.Action("GestionTurnos", "Odontologo")" class="nav-link">
                     <i class="bi bi-calendar3"></i> Gestión de Turnos
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="nav-link">
                     <i class="bi bi-clipboard2-check"></i> Control de Asistencias
                 </a>
             </li>
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="@Url.Action("GestionAtenciones", "Odontologo")" class="nav-link">
                     <i class="bi bi-file-earmark-medical"></i> Gestión Atenciones
                 </a>
             </li>
             <li class="nav-item" style="margin-top: auto;">
-                <a href="@Url.Action("Login", "Home")" class="nav-link text-danger fw-semibold">
+                <a href="#" class="nav-link text-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#modalCerrarSesion">
                     <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
                 </a>
             </li>
@@ -300,7 +175,7 @@
 
             <!-- Módulo 2: Gestión de Turnos -->
             <div class="col-md-6 col-lg-3">
-                <a href="#" class="dashboard-card card-2">
+                <a href="@Url.Action("GestionTurnos", "Odontologo")" class="dashboard-card card-2">
                     <div class="card-icon"><i class="bi bi-calendar3"></i></div>
                     <h6 class="fw-bold mb-1 text-dark">Gestión de Turnos</h6>
                     <p class="text-muted small mb-0 flex-grow-1">Administrá el calendario completo, cancelaciones y reprogramaciones.</p>
@@ -310,7 +185,7 @@
 
             <!-- Módulo 3: Control Asistencias -->
             <div class="col-md-6 col-lg-3">
-                <a href="#" class="dashboard-card card-3">
+                <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="dashboard-card card-3">
                     <div class="card-icon"><i class="bi bi-clipboard2-check"></i></div>
                     <h6 class="fw-bold mb-1 text-dark">Control Asistencias</h6>
                     <p class="text-muted small mb-0 flex-grow-1">Registrá las llegadas y ausencias de los turnos programados.</p>
@@ -320,7 +195,7 @@
 
             <!-- Módulo 4: Gestión Atenciones -->
             <div class="col-md-6 col-lg-3">
-                <a href="#" class="dashboard-card card-4">
+                <a href="@Url.Action("GestionAtenciones", "Odontologo")" class="dashboard-card card-4">
                     <div class="card-icon"><i class="bi bi-file-earmark-medical"></i></div>
                     <h6 class="fw-bold mb-1 text-dark">Gestión Atenciones</h6>
                     <p class="text-muted small mb-0 flex-grow-1">Cargá diagnósticos, historias clínicas y emití comprobantes.</p>
@@ -403,6 +278,37 @@
             </div>
         </div>
 
+    <!-- MODAL CONFIRMACIÓN DE CERRAR SESIÓN -->
+    <div class="modal fade" id="modalCerrarSesion" tabindex="-1" aria-labelledby="modalCerrarSesionLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(135deg, #0d3b66 0%, #1d6fa5 100%);">
+                    <h5 class="modal-title fw-bold fs-6 d-flex align-items-center gap-2" id="modalCerrarSesionLabel">
+                        <i class="bi bi-door-open-fill opacity-75"></i> Confirmación de Salida
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 72px; height: 72px; background-color: #eef6ff; color: #0d3b66;">
+                            <i class="bi bi-box-arrow-right fs-1" style="margin-left: 3px;"></i>
+                        </div>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-2">¿Querés cerrar sesión?</h5>
+                    <p class="text-muted small mb-0 px-2">
+                        Al salir, finalizará tu sesión como <strong>Dra. Karina González</strong> y serás redirigido a la pantalla de ingreso.
+                    </p>
+                </div>
+                <div class="modal-footer bg-light border-0 justify-content-center gap-2 py-3">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border shadow-sm" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i> Cancelar
+                    </button>
+                    <a href="@Url.Action("Login", "Home")" class="btn rounded-pill px-4 fw-bold shadow-sm text-white" style="background: linear-gradient(135deg, #0d3b66, #0d6efd); border: none;">
+                        <i class="bi bi-box-arrow-right me-1"></i> Sí, Cerrar Sesión
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -6,6 +6,7 @@ namespace Domain.Model
         public DateTime FechaYHoraAtencionInicio { get; private set; }
         public DateTime FechaYHoraAtencionFin { get; private set; }
         public string Observaciones { get; set; } = string.Empty;
+        public decimal ArancelAplicado { get; private set; }
 
         // Foreign keys según DER
         public int CodTurno { get; private set; }
@@ -37,7 +38,7 @@ namespace Domain.Model
 
         protected AtencionOdontologica() { }
 
-        public AtencionOdontologica(int codAtencion, DateTime fechaInicio, DateTime fechaFin, string observaciones, int codTurno, DateTime fechaYHoraReserva, int nroHC, string pacienteTipoDoc, int pacienteNroDoc)
+        public AtencionOdontologica(int codAtencion, DateTime fechaInicio, DateTime fechaFin, string observaciones, int codTurno, DateTime fechaYHoraReserva, int nroHC, string pacienteTipoDoc, int pacienteNroDoc, decimal arancelAplicado = 0m)
         {
             CodAtencion = codAtencion;
             SetHorarioAtencion(fechaInicio, fechaFin);
@@ -47,6 +48,7 @@ namespace Domain.Model
             NroHC = nroHC;
             PacienteTipoDoc = pacienteTipoDoc;
             PacienteNroDoc = pacienteNroDoc;
+            ArancelAplicado = arancelAplicado;
         }
 
         public void SetHorarioAtencion(DateTime inicio, DateTime fin)

@@ -60,6 +60,14 @@ namespace Data
             {
                 e.HasKey(d => d.CodDisponibilidad);
                 e.Property(d => d.DiaSemana).IsRequired().HasMaxLength(20);
+                e.HasOne(d => d.Odontologo)
+                    .WithMany()
+                    .HasForeignKey(d => new { d.OdontologoTipoDoc, d.OdontologoNroDoc })
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(d => d.Especialidad)
+                    .WithMany()
+                    .HasForeignKey(d => d.CodEspecialidad)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // === PERSONA / PACIENTE / ODONTOLOGO (TPT - Table Per Type) ===
@@ -181,6 +189,7 @@ namespace Data
             {
                 e.HasKey(a => a.CodAtencion);
                 e.Property(a => a.Observaciones).HasMaxLength(500);
+                e.Property(a => a.ArancelAplicado).HasPrecision(18, 2);
 
                 // FK -> Turno (solo por CodTurno, PK de Turno)
                 e.HasOne(a => a.Turno)
@@ -242,10 +251,25 @@ namespace Data
                 e.Property(p => p.AporteObraSocial).HasPrecision(18, 2);
                 e.Property(p => p.TipoMetodoPago).IsRequired().HasMaxLength(30);
                 e.Ignore(p => p.ResponsablePago); // derived
+
+                // FK -> Turno
+                e.HasOne(p => p.Turno)
+                    .WithMany()
+                    .HasForeignKey(p => p.NroTurno)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // FK -> ObraSocial
+                e.HasOne(p => p.ObraSocial)
+                    .WithMany()
+                    .HasForeignKey(p => p.IdentificadorOS)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // FK opcional -> Atencion
                 e.HasOne(p => p.Atencion)
                     .WithOne(a => a.Pago)
                     .HasForeignKey<Pago>(p => p.CodAtencion)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 e.ToTable("Pagos");
             });
 

@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Frontend.MVC.Models; // Asegurate de que este namespace coincida con el tuyo
+using Microsoft.AspNetCore.Mvc;
+using Frontend.MVC.Models;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -9,7 +9,6 @@ namespace Frontend.MVC.Controllers
     {
         private readonly HttpClient _httpClient;
 
-        // Inyectamos el HttpClient tal como lo configuraste en Program.cs
         public TurnoController(HttpClient httpClient)
         {
             _httpClient = httpClient;
@@ -17,60 +16,61 @@ namespace Frontend.MVC.Controllers
 
         // GET: Turno/Reservar
         [HttpGet]
-        public async Task<IActionResult> Reservar(int pacienteId)
+        public IActionResult Reservar(int? odontologoId, string? especialidad, bool inhabilitado = false)
         {
-            // 1. ACÁ IRÍA LA LÓGICA DE VALIDACIÓN DE DEUDA
-            // var respuesta = await _httpClient.GetAsync($"/api/pacientes/{pacienteId}/deuda");
-            // si tiene deuda -> TempData["Error"] = "Posee deudas..." y redirigir.
+            var modelo = new ReservaTurnoViewModel
+            {
+                OdontologoId = odontologoId ?? 1,
+                NombreOdontologo = odontologoId == 2 ? "Dr. Martín López" : (odontologoId == 3 ? "Dr. Alejandro Pérez" : "Dra. Elena Silva"),
+                Especialidad = especialidad ?? (odontologoId == 2 ? "Cirugía Maxilofacial e Implantes" : (odontologoId == 3 ? "Odontopediatría" : "Ortodoncia y Endodoncia")),
+                FechaSeleccionada = "12 Noviembre, 2026",
+                HorarioSeleccionado = "09:30 AM",
+                EstaInhabilitado = inhabilitado
+            };
 
-            // Si está todo OK, devolvemos la vista para empezar el Paso 1
-            return View(new ReservaTurnoViewModel());
+            return View(modelo);
         }
 
         // POST: Turno/Reservar
         [HttpPost]
-        public async Task<IActionResult> Reservar(ReservaTurnoViewModel modelo)
+        public IActionResult Reservar(ReservaTurnoViewModel modelo)
         {
             if (!ModelState.IsValid)
             {
-                // Si faltan datos (ej: no tildó aceptar políticas), devolvemos el form con los errores
                 return View(modelo);
             }
 
-            // 2. ACÁ LLAMAMOS A LA WEBAPI PARA GUARDAR EL TURNO
-            // var response = await _httpClient.PostAsJsonAsync("/api/turnos", modelo);
-            // if (response.IsSuccessStatusCode) ...
-
-            // 3. PASO 5: Emisión de comprobante (Transición)
-            return RedirectToAction("Comprobante", new { fecha = modelo.FechaSeleccionada });
+            TempData["MensajeExito"] = "¡Turno agendado exitosamente!";
+            
+            return RedirectToAction("Comprobante", new { 
+                fecha = modelo.FechaSeleccionada ?? "12 Nov, 2026",
+                hora = modelo.HorarioSeleccionado ?? "09:30 AM",
+                doctor = modelo.NombreOdontologo ?? "Dra. Elena Silva",
+                especialidad = modelo.Especialidad ?? "Ortodoncia y Endodoncia",
+                metodoPago = modelo.MetodoPago == "Particular" ? "Particular (Pago en Clínica)" : "Obra Social (OSDE - Plan 210)"
+            });
         }
 
         // POST: Turno/Cancelar
-        // Este es el nuevo método que recibe el clic del botón rojo
         [HttpPost]
         public IActionResult Cancelar(int idTurno)
         {
-            // ACÁ IRÍA LA LÓGICA DE LA WEBAPI PARA ELIMINAR EL TURNO
-            // Ej: await _httpClient.DeleteAsync($"/api/turnos/{idTurno}");
-
-            // Guardamos el mensaje de éxito para que la vista Index lo muestre arriba de todo
             TempData["MensajeExito"] = "El turno fue cancelado correctamente.";
-
-            // AGREGAR ESTA LÍNEA: Avisamos a la vista que debe ocultar la tarjeta
             TempData["OcultarTurno"] = true;
-
-            // Redirigimos al paciente de vuelta al dashboard (Pestaña Inicio)
             return RedirectToAction("Index", "Home");
         }
 
+        // GET: Turno/Comprobante
         [HttpGet]
-        public IActionResult Comprobante(string fecha)
+        public IActionResult Comprobante(string? fecha, string? hora, string? doctor, string? especialidad, string? metodoPago)
         {
-            // Simulamos la recepción de los datos del turno recién creado
-            ViewData["FechaTurno"] = fecha ?? "12 Nov, 09:30 AM";
-            ViewData["CodigoReserva"] = "TRN-" + new Random().Next(10000, 99999);
+            ViewData["FechaTurno"] = $"{fecha ?? "12 Nov, 2026"} • {hora ?? "09:30 AM"}";
+            ViewData["Doctor"] = doctor ?? "Dra. Elena Silva";
+            ViewData["Especialidad"] = especialidad ?? "Control General";
+            ViewData["MetodoPago"] = metodoPago ?? "Obra Social (OSDE)";
+            ViewData["CodigoReserva"] = "TM-2026-" + new Random().Next(1000, 9999) + "A";
 
             return View();
         }
     }
-}
+}

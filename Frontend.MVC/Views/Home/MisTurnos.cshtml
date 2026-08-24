@@ -1,285 +1,210 @@
 @{
     ViewData["Title"] = "Mis Turnos - Clínica Dental Rosario";
-    Layout = null;
+    ViewData["ActiveTab"] = "MisTurnos";
+    Layout = "_LayoutPaciente";
+
     var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
     var idPaciente = ViewData["IdPaciente"] ?? "10042";
     var estadoPaciente = "HABILITADO";
 }
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"]</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
+
+@section Styles {
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', sans-serif;
-            color: #333;
-            overflow-x: hidden;
-        }
-
-        .sidebar {
-            width: 260px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: #ffffff;
-            border-right: 1px solid #e5e5e5;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            z-index: 100;
-        }
-
-        .profile-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 20px;
-        }
-
-        .profile-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .profile-info h6 {
-            font-size: 0.95rem;
-            font-weight: bold;
-            margin: 0;
-        }
-
-        .profile-info small {
-            font-size: 0.78rem;
-            color: #6c757d;
-        }
-
-        .badge-habilitado {
-            background-color: #d1e7dd;
-            color: #0f5132;
-            font-size: 0.65rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 3px;
-        }
-
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            color: #495057;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            margin-bottom: 5px;
-        }
-
-            .nav-link:hover {
-                background-color: #f1f3f5;
-                color: #0d6efd;
-            }
-
-            .nav-link.active {
-                background-color: #0d6efd;
-                color: #ffffff;
-            }
-
-        .main-content {
-            margin-left: 260px;
-            padding: 30px;
-        }
-
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .brand-title {
-            color: #0d3b66;
-            font-weight: bold;
-            font-size: 1.3rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand-logo {
-            width: 32px;
-            height: auto;
-        }
-
         .turno-card {
-            background: #fff;
-            border-radius: 12px;
-            border: 1px solid #eaeaea;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            transition: all 0.2s ease;
+        }
+
+        .turno-card:hover {
+            border-color: #bfdbfe;
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.06);
         }
 
         .turno-date {
-            background: #f8fbff;
-            color: #0d6efd;
-            padding: 10px 15px;
-            border-radius: 10px;
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 12px 18px;
+            border-radius: 14px;
             text-align: center;
             min-width: 90px;
+            border: 1px solid #bfdbfe;
         }
 
         .turno-status {
             font-size: 0.75rem;
-            font-weight: bold;
+            font-weight: 700;
             padding: 4px 10px;
             border-radius: 20px;
         }
 
         .status-active {
-            background-color: #cfe2ff;
-            color: #084298;
+            background-color: #dbeafe;
+            color: #1e40af;
         }
 
         .status-completed {
-            background-color: #d1e7dd;
-            color: #0f5132;
+            background-color: #dcfce7;
+            color: #15803d;
         }
 
         .detalle-item {
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #f1f5f9;
             padding: 10px 0;
         }
 
-            .detalle-item:last-child {
-                border-bottom: none;
-            }
+        .detalle-item:last-child {
+            border-bottom: none;
+        }
 
-        /* Estilos para el selector de horarios de la reprogramación */
+        /* Sidebar info cards (BSQ Pág 7) */
+        .info-box-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
         .btn-check:checked + .btn-outline-primary {
-            background-color: #0d6efd;
+            background-color: #2563eb;
             color: white;
             font-weight: bold;
         }
     </style>
-</head>
-<body>
-    <div class="sidebar">
-        <div class="profile-section">
-            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" class="profile-avatar" />
-            <div class="profile-info">
-                <h6>@nombrePaciente</h6>
-                <small>ID: #@idPaciente</small><br>
-                <span class="badge-habilitado">ESTADO: @estadoPaciente</span>
-            </div>
-        </div>
+}
 
-        <ul class="nav-menu">
-            <li><a href="@Url.Action("MisTurnos", "Home")" class="nav-link active"><i class="bi bi-calendar3"></i> Mis Turnos</a></li>
-            <li><a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a></li>
-            <li><a href="@Url.Action("MetodosDePago", "Home")" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a></li>
-            <li><a href="@Url.Action("Seguros", "Home")" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a></li>
-            <li><a href="@Url.Action("Index", "Home")" class="nav-link"><i class="bi bi-house-door"></i> Inicio</a></li>
-            <li><a href="@Url.Action("Configuracion", "Home")" class="nav-link"><i class="bi bi-gear"></i> Configuración</a></li>
-            <li style="margin-top: auto;">
-                <a href="#" class="nav-link text-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#modalCerrarSesionPaciente">
-                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <div class="main-content">
-        <div class="top-header">
-            <h5 class="brand-title"><img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" /> Clínica Dental Rosario</h5>
-            <button class="btn btn-light rounded-circle shadow-sm" style="width: 40px; height: 40px;"><i class="bi bi-bell"></i></button>
-        </div>
-
+        <!-- Encabezado con Botón Nuevo Turno -->
         <div class="mb-4 d-flex justify-content-between align-items-end">
             <div>
-                <h2 class="fw-bold text-dark mb-1">Gestión de Turnos</h2>
-                <p class="text-muted small mb-0">Consultá, reprogramá o cancelá tus citas agendadas.</p>
+                <h3 class="fw-extrabold text-dark mb-1">Gestión de Turnos</h3>
+                <p class="text-muted small mb-0">Consulta, reprograma o cancela tus citas odontológicas agendadas.</p>
             </div>
-            <a href="@Url.Action("Index", "Home")" class="btn btn-primary rounded-pill px-4 shadow-sm"><i class="bi bi-plus-lg me-2"></i>Nuevo Turno</a>
+            <a href="@Url.Action("Reservar", "Turno")" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+                <i class="bi bi-plus-circle-fill me-2"></i>Nuevo Turno
+            </a>
         </div>
 
-        <ul class="nav nav-tabs mb-4" id="turnosTabs" role="tablist">
-            <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#proximos" type="button">Próximos Turnos</button></li>
-            <li class="nav-item"><button class="nav-link fw-bold text-muted" data-bs-toggle="tab" data-bs-target="#historial" type="button">Historial</button></li>
-        </ul>
+        <!-- Layout de 2 Columnas (BSQ Pág 7) -->
+        <div class="row g-4">
+            
+            <!-- Columna Izquierda: Listado de Turnos -->
+            <div class="col-lg-8">
+                <ul class="nav nav-pills mb-4 gap-2" id="turnosTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="tab" data-bs-target="#proximos" type="button">
+                            Próximos Turnos
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link rounded-pill px-4 fw-bold text-muted bg-white border" data-bs-toggle="tab" data-bs-target="#historial" type="button">
+                            Historial
+                        </button>
+                    </li>
+                </ul>
 
-        <div class="tab-content">
-            <!-- PESTAÑA: PRÓXIMOS TURNOS -->
-            <div class="tab-pane fade show active" id="proximos">
-                <div class="turno-card">
-                    <div class="d-flex align-items-center gap-4">
-                        <div class="turno-date"><h4 class="mb-0 fw-bold">12</h4><small class="fw-semibold">NOV</small></div>
-                        <div>
-                            <span class="turno-status status-active mb-1 d-inline-block">Vigente</span>
-                            <h5 class="fw-bold mb-1">Control General</h5>
-                            <p class="text-muted small mb-0"><i class="bi bi-person me-1"></i> Dra. Karina González • 09:30 AM</p>
+                <div class="tab-content">
+                    <!-- PESTAÑA: PRÓXIMOS TURNOS -->
+                    <div class="tab-pane fade show active" id="proximos">
+                        <div class="turno-card">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="turno-date">
+                                        <h3 class="mb-0 fw-extrabold">12</h3>
+                                        <small class="fw-bold text-uppercase">NOV</small>
+                                    </div>
+                                    <div>
+                                        <span class="turno-status status-active mb-1 d-inline-block">Vigente</span>
+                                        <h5 class="fw-bold mb-1 text-dark">Control General</h5>
+                                        <p class="text-muted small mb-0">
+                                            <i class="bi bi-person-fill me-1 text-primary"></i> Dra. Karina González • 09:30 AM • Consultorio 3
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalDetalleTurno">
+                                        <i class="bi bi-info-circle me-1"></i> Ver Detalle
+                                    </button>
+
+                                    <button class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#modalReprogramar">
+                                        Reprogramar
+                                    </button>
+
+                                    <form asp-controller="Turno" asp-action="Cancelar" method="post" onsubmit="return confirm('¿Confirmás la cancelación de este turno?');">
+                                        <input type="hidden" name="idTurno" value="1" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">Cancelar</button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex flex-column gap-2" style="min-width: 150px;">
-                        <button class="btn btn-sm btn-info text-white rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDetalleTurno">
-                            <i class="bi bi-info-circle me-1"></i> Ver Detalle
-                        </button>
+                    <!-- PESTAÑA: HISTORIAL -->
+                    <div class="tab-pane fade" id="historial">
+                        <div class="turno-card">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="turno-date bg-light text-secondary border-0">
+                                        <h3 class="mb-0 fw-extrabold">15</h3>
+                                        <small class="fw-bold text-uppercase">OCT</small>
+                                    </div>
+                                    <div>
+                                        <span class="turno-status status-completed mb-1 d-inline-block">Completado</span>
+                                        <h5 class="fw-bold mb-1 text-dark">Control de Ortodoncia</h5>
+                                        <p class="text-muted small mb-0">
+                                            <i class="bi bi-person-fill me-1 text-secondary"></i> Dra. Elena Silva • Atendido
+                                        </p>
+                                    </div>
+                                </div>
 
-                        <button class="btn btn-sm btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#modalReprogramar">
-                            Reprogramar
-                        </button>
-
-                        <form asp-controller="Turno" asp-action="Cancelar" method="post" onsubmit="return confirm('¿Confirmás la cancelación?');">
-                            <input type="hidden" name="idTurno" value="1" />
-                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-4 w-100">Cancelar</button>
-                        </form>
+                                <button class="btn btn-sm btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalValoracion">
+                                    <i class="bi bi-star-fill me-1"></i> Valorar Atención
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- PESTAÑA: HISTORIAL CON VALORACIÓN -->
-            <div class="tab-pane fade" id="historial">
-                <div class="turno-card">
-                    <div class="d-flex align-items-center gap-4">
-                        <div class="turno-date bg-light text-secondary"><h4 class="mb-0 fw-bold">15</h4><small class="fw-semibold">OCT</small></div>
-                        <div>
-                            <span class="turno-status status-completed mb-1 d-inline-block">Completado</span>
-                            <h5 class="fw-bold mb-1">Control de Ortodoncia</h5>
-                            <p class="text-muted small mb-0"><i class="bi bi-person me-1"></i> Dra. Elena Silva • Atendido</p>
-                        </div>
-                    </div>
-                    <button class="btn btn-sm btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalValoracion">
-                        <i class="bi bi-star-fill me-1"></i> Valorar Atención
-                    </button>
+            <!-- Columna Derecha: Información Importante y Asistencia (BSQ Pág 7) -->
+            <div class="col-lg-4">
+                <div class="info-box-card">
+                    <h6 class="fw-bold text-dark mb-3">
+                        <i class="bi bi-info-circle-fill text-primary me-2"></i>Información Importante
+                    </h6>
+                    <ul class="list-unstyled small text-muted mb-0 d-flex flex-column gap-2">
+                        <li class="d-flex gap-2">
+                            <i class="bi bi-clock-history text-primary mt-1"></i>
+                            <span>Llegar <strong>15 minutos antes</strong> de la cita para el registro en recepción.</span>
+                        </li>
+                        <li class="d-flex gap-2">
+                            <i class="bi bi-card-heading text-primary mt-1"></i>
+                            <span>Traer <strong>DNI y carnet de Obra Social</strong> vigente.</span>
+                        </li>
+                        <li class="d-flex gap-2">
+                            <i class="bi bi-shield-exclamation text-warning mt-1"></i>
+                            <span>Cancelaciones con menos de <strong>24 hs</strong> aplican cargo administrativo.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="info-box-card bg-primary bg-opacity-10 border-primary border-opacity-25">
+                    <h6 class="fw-bold text-primary mb-2">
+                        <i class="bi bi-chat-dots-fill me-2"></i>¿Necesitas ayuda?
+                    </h6>
+                    <p class="small text-muted mb-3">Si tienes dudas sobre tu tratamiento o cobertura, comunícate con nuestro asistente.</p>
+                    <a href="https://wa.me/5493411234567" target="_blank" class="btn btn-primary rounded-pill w-100 fw-bold btn-sm shadow-sm">
+                        <i class="bi bi-whatsapp me-1"></i> Hablar con la Clínica
+                    </a>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -288,9 +213,9 @@
          ========================================== -->
     <div class="modal fade" id="modalReprogramar" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white border-0">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-calendar2-range me-2"></i>Reprogramar Turno</h5>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white border-0 py-3 px-4">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-calendar2-range me-2"></i>Reprogramar Turno</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="#" method="post">
@@ -304,12 +229,12 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold">1. Seleccioná el nuevo día</label>
-                            <input type="date" class="form-control form-control-lg bg-light" name="NuevaFecha" required min="2026-08-08">
+                            <label class="form-label fw-bold small text-uppercase text-muted">1. Selecciona el nuevo día</label>
+                            <input type="date" class="form-control form-control-lg bg-light rounded-3" name="NuevaFecha" required min="2026-08-08">
                         </div>
 
                         <div class="mb-2">
-                            <label class="form-label fw-bold">2. Elegí un horario disponible</label>
+                            <label class="form-label fw-bold small text-uppercase text-muted">2. Elige un horario disponible</label>
                             <div class="d-flex flex-wrap gap-2 mt-2">
                                 <input type="radio" class="btn-check" name="NuevoHorario" id="hora1" autocomplete="off" required>
                                 <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora1">09:00 AM</label>
@@ -322,8 +247,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer bg-light border-0">
-                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Mantener actual</button>
+                    <div class="modal-footer bg-light border-0 py-3">
+                        <button type="button" class="btn btn-light rounded-pill px-4 border" data-bs-dismiss="modal">Mantener actual</button>
                         <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Confirmar Cambio</button>
                     </div>
                 </form>
@@ -332,20 +257,20 @@
     </div>
 
     <!-- ==========================================
-         MODAL: DETALLE DEL TURNO (ACTUALIZADO)
+         MODAL: DETALLE DEL TURNO
          ========================================== -->
     <div class="modal fade" id="modalDetalleTurno" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-info text-white border-0">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-card-list me-2"></i>Detalle del Turno</h5>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white border-0 py-3 px-4">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-card-list me-2"></i>Detalle del Turno</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="text-center mb-4">
                         <span class="badge bg-success mb-2 px-3 py-2 rounded-pill">Turno Confirmado</span>
                         <h4 class="fw-bold text-dark">Control General</h4>
-                        <p class="text-muted">Consulta de rutina y diagnóstico</p>
+                        <p class="text-muted small">Consulta de rutina y diagnóstico</p>
                     </div>
 
                     <div class="detalle-item d-flex justify-content-between">
@@ -358,7 +283,7 @@
                     </div>
                     <div class="detalle-item d-flex justify-content-between">
                         <span class="text-muted fw-semibold">Ubicación</span>
-                        <span class="fw-bold text-dark">Consultorio 3 - Piso 1</span>
+                        <span class="fw-bold text-dark">Consultorio 3 - Sede Centro</span>
                     </div>
                     <div class="detalle-item d-flex justify-content-between">
                         <span class="text-muted fw-semibold">Cobertura</span>
@@ -366,8 +291,7 @@
                     </div>
                 </div>
 
-                <!-- ACA ESTÁ EL PIE DE PÁGINA NUEVO CON EL BOTÓN -->
-                <div class="modal-footer bg-light border-0 d-flex justify-content-between">
+                <div class="modal-footer bg-light border-0 d-flex justify-content-between py-3">
                     <a href="@Url.Action("Comprobante", "Turno", new { fecha = "12 Nov, 09:30 AM" })" class="btn btn-outline-primary rounded-pill px-3 fw-bold">
                         <i class="bi bi-receipt me-1"></i> Ver Comprobante
                     </a>
@@ -378,25 +302,25 @@
     </div>
 
     <!-- ==========================================
-         MODAL: VALORAR ATENCIÓN
+         MODAL: VALORAR ATENCIÓN (CUU04)
          ========================================== -->
     <div class="modal fade" id="modalValoracion" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-light border-0 pb-0">
-                    <h5 class="modal-title fw-bold">Valorar Atención</h5>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-warning text-dark border-0 py-3 px-4">
+                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-star-fill me-2"></i>Valorar Atención</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body text-center pt-4">
-                    <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" class="rounded-circle mb-3" width="70" alt="Doctor">
-                    <h6 class="fw-bold mb-0">Dra. Elena Silva</h6>
-                    <p class="text-muted small mb-4">Control de Ortodoncia • 15 Oct, 2025</p>
+                <div class="modal-body text-center p-4">
+                    <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=2563eb&color=fff&bold=true" class="rounded-circle mb-3" width="70" alt="Doctor">
+                    <h6 class="fw-bold mb-0 text-dark">Dra. Elena Silva</h6>
+                    <p class="text-muted small mb-4">Control de Ortodoncia • 15 Oct, 2026</p>
 
                     <form action="#" method="post">
                         <div class="mb-4">
-                            <label class="form-label fw-semibold">¿Cómo calificarías tu experiencia?</label>
-                            <select class="form-select form-select-lg text-center" name="Puntuacion" required>
-                                <option value="" selected disabled>Seleccioná una calificación...</option>
+                            <label class="form-label fw-bold small text-uppercase text-muted">¿Cómo calificarías tu experiencia?</label>
+                            <select class="form-select form-select-lg text-center rounded-3" name="Puntuacion" required>
+                                <option value="" selected disabled>Selecciona una calificación...</option>
                                 <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
                                 <option value="4">⭐⭐⭐⭐ Muy buena</option>
                                 <option value="3">⭐⭐⭐ Buena</option>
@@ -405,49 +329,14 @@
                             </select>
                         </div>
                         <div class="mb-4 text-start">
-                            <label class="form-label fw-semibold">Dejanos tu opinión (Opcional)</label>
-                            <textarea class="form-control" name="Comentario" rows="3" placeholder="¿Qué fue lo que más te gustó? ¿En qué podemos mejorar?"></textarea>
+                            <label class="form-label fw-bold small text-uppercase text-muted">Comentarios u observaciones</label>
+                            <textarea class="form-control rounded-3" name="Comentario" rows="3" placeholder="¿Cómo fue la puntualidad, instalaciones o trato recibido?"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2">Enviar Valoración</button>
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow-sm">
+                            Enviar Valoración
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- MODAL CONFIRMACIÓN CERRAR SESIÓN PACIENTE -->
-    <div class="modal fade" id="modalCerrarSesionPaciente" tabindex="-1" aria-labelledby="modalCerrarSesionPacLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(135deg, #0d3b66 0%, #1d6fa5 100%);">
-                    <h5 class="modal-title fw-bold fs-6 d-flex align-items-center gap-2" id="modalCerrarSesionPacLabel">
-                        <i class="bi bi-door-open-fill opacity-75"></i> Confirmación de Salida
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body p-4 text-center">
-                    <div class="mb-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 72px; height: 72px; background-color: #eef6ff; color: #0d3b66;">
-                            <i class="bi bi-box-arrow-right fs-1" style="margin-left: 3px;"></i>
-                        </div>
-                    </div>
-                    <h5 class="fw-bold text-dark mb-2">¿Querés cerrar sesión?</h5>
-                    <p class="text-muted small mb-0 px-2">
-                        Serás redirigido a la pantalla de ingreso y tu sesión se cerrará.
-                    </p>
-                </div>
-                <div class="modal-footer bg-light border-0 justify-content-center gap-2 py-3">
-                    <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border shadow-sm" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i> Cancelar
-                    </button>
-                    <a href="@Url.Action("Login", "Home")" class="btn rounded-pill px-4 fw-bold shadow-sm text-white" style="background: linear-gradient(135deg, #0d3b66, #0d6efd); border: none;">
-                        <i class="bi bi-box-arrow-right me-1"></i> Sí, Cerrar Sesión
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    </div>

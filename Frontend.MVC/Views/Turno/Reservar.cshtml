@@ -1,99 +1,797 @@
-﻿@model Frontend.MVC.Models.ReservaTurnoViewModel
+@model Frontend.MVC.Models.ReservaTurnoViewModel
 
 @{
-    ViewData["Title"] = "Reserva de Turno";
+    ViewData["Title"] = "Agendar Turno - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "MisTurnos";
+    Layout = "_LayoutPaciente";
+
+    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
+    var idPaciente = ViewData["IdPaciente"] ?? "10042";
+    var estadoPaciente = "HABILITADO";
 }
 
-<div class="container mt-4">
-    <h2>Agendar un nuevo turno</h2>
-    <hr />
-
-    <form asp-controller="Turno" asp-action="Reservar" method="post">
-
-        <!-- PASO 1: Calendario con Flatpickr -->
-        <div class="mb-4">
-            <label asp-for="FechaSeleccionada" class="form-label fw-bold">1. Seleccione una fecha:</label>
-            <!-- Nota: Usamos type="text" para que la librería Flatpickr tome el control de este input -->
-            <input asp-for="FechaSeleccionada" type="text" id="calendario-turnos" class="form-control bg-white" placeholder="Elija un día en el calendario..." readonly />
-            <span asp-validation-for="FechaSeleccionada" class="text-danger"></span>
-        </div>
-
-        <!-- PASO 2: Horario -->
-        <div class="mb-4">
-            <label asp-for="HorarioSeleccionado" class="form-label fw-bold">2. Horario:</label>
-            <input asp-for="HorarioSeleccionado" type="time" class="form-control" />
-            <span asp-validation-for="HorarioSeleccionado" class="text-danger"></span>
-        </div>
-
-        <!-- PASO 4: Método de pago y Políticas -->
-        <div class="mb-4">
-            <label class="form-label fw-bold">3. Método de Pago</label>
-            <select asp-for="MetodoPago" class="form-select">
-                <option value="">Seleccione una opción...</option>
-                <option value="ObraSocial">Obra Social / Seguro</option>
-                <option value="Particular">Particular</option>
-            </select>
-            <span asp-validation-for="MetodoPago" class="text-danger"></span>
-        </div>
-
-        <div class="form-check mb-4">
-            <input asp-for="AceptaPoliticas" class="form-check-input" type="checkbox" />
-            <label class="form-check-label" asp-for="AceptaPoliticas">
-                Acepto las políticas de cancelación y reprogramación.
-            </label>
-            <span asp-validation-for="AceptaPoliticas" class="text-danger d-block"></span>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-lg w-100">Confirmar Reserva</button>
-    </form>
-</div>
-
-<!-- Scripts y Validaciones -->
-@section Scripts {
-    <!-- CSS y JS de Flatpickr -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
-
+@section Styles {
     <style>
-        /* CSS para los días resaltados en verde según el Bosquejo */
-        .dia-disponible {
-            border: 2px solid #28a745 !important;
-            border-radius: 5px !important;
-            font-weight: bold;
-            color: #28a745 !important;
+        /* Stepper Wizard Indicator */
+        .stepper-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 16px 24px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        .step-item.active {
+            color: #2563eb;
+        }
+
+        .step-item.completed {
+            color: #16a34a;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f1f5f9;
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+
+        .step-item.active .step-number {
+            background-color: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+        }
+
+        .step-item.completed .step-number {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+
+        /* Calendario Interactivo */
+        .calendar-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid !important;
+            grid-template-columns: repeat(7, 1fr) !important;
+            gap: 8px !important;
+            text-align: center;
+            width: 100%;
+        }
+
+        .calendar-day-head {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #64748b;
+            padding-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-day-btn {
+            height: 46px;
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid #f1f5f9;
+            background-color: #ffffff;
+            color: #334155;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+            padding: 0;
+        }
+
+        .calendar-day-btn:hover:not(.disabled) {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+            color: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        /* Días con turnos disponibles (BSQ: resaltados con borde verde) */
+        .calendar-day-btn.dia-disponible {
+            border: 2px solid #22c55e !important;
+            background-color: #f0fdf4 !important;
+            color: #15803d !important;
+            font-weight: 800;
+        }
+
+        .calendar-day-btn.dia-disponible:hover {
+            background-color: #dcfce7 !important;
+            border-color: #16a34a !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
+        }
+
+        .calendar-day-btn.selected {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+            color: #ffffff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+            font-weight: 800;
+        }
+
+        .calendar-day-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background-color: #f8fafc !important;
+            border-color: #f1f5f9 !important;
+            color: #94a3b8 !important;
+        }
+
+        /* Slots de Horarios */
+        .slot-btn {
+            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            color: #1e293b;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .slot-btn:hover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            color: #2563eb;
+        }
+
+        .slot-btn.selected {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+            font-weight: 700;
+        }
+
+        /* Tarjetas de Doctores y Resumen */
+        .summary-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
+        .doctor-select-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 14px 16px;
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #ffffff;
+        }
+
+        .doctor-select-card:hover {
+            border-color: #93c5fd;
+            background-color: #f8fafc;
+        }
+
+        .doctor-select-card.selected {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+        }
+
+        .doc-avatar-sm {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        /* Paso 2: Cobertura */
+        .info-pill-badge {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .payment-box {
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #ffffff;
+            margin-bottom: 14px;
+        }
+
+        .payment-box:hover {
+            border-color: #93c5fd;
+        }
+
+        .payment-box.selected {
+            border-color: #2563eb !important;
+            background-color: #eff6ff !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        }
+
+        .cancel-policy-box {
+            background-color: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-radius: 14px;
+            padding: 16px 20px;
+            color: #92400e;
+            font-size: 0.88rem;
         }
     </style>
+}
 
+<!-- Top Header Actions -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="fw-extrabold text-dark mb-1">Solicitar Nuevo Turno</h3>
+        <p class="text-muted small mb-0">Selecciona especialidad, profesional, día y horario de tu preferencia.</p>
+    </div>
+    <a href="@Url.Action("MisTurnos", "Home")" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Volver a Mis Turnos
+    </a>
+</div>
+
+<!-- BREADCRUMB -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb small text-muted mb-0">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")" class="text-decoration-none text-muted">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("MisTurnos", "Home")" class="text-decoration-none text-muted">Mis Turnos</a></li>
+        <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Nuevo Turno</li>
+    </ol>
+</nav>
+
+        <!-- STEPPER WIZARD -->
+        <div class="stepper-container">
+            <div class="step-item active" id="stepperStep1">
+                <div class="step-number">1</div>
+                <span>Selección de Fecha y Hora</span>
+            </div>
+            <i class="bi bi-chevron-right text-muted opacity-50"></i>
+            <div class="step-item" id="stepperStep2">
+                <div class="step-number">2</div>
+                <span>Confirmación y Cobertura</span>
+            </div>
+            <i class="bi bi-chevron-right text-muted opacity-50"></i>
+            <div class="step-item" id="stepperStep3">
+                <div class="step-number">3</div>
+                <span>Comprobante Emitido</span>
+            </div>
+        </div>
+
+        <!-- FORMULARIO DE RESERVA -->
+        <form asp-controller="Turno" asp-action="Reservar" method="post" id="formReservaTurno">
+            
+            <!-- Hidden inputs para enviar el modelo al controlador -->
+            <input type="hidden" asp-for="OdontologoId" id="inputOdontologoId" value="@(Model.OdontologoId ?? 1)" />
+            <input type="hidden" asp-for="NombreOdontologo" id="inputNombreOdontologo" value="@(Model.NombreOdontologo ?? "Dra. Elena Silva")" />
+            <input type="hidden" asp-for="Especialidad" id="inputEspecialidad" value="@(Model.Especialidad ?? "Ortodoncia y Endodoncia")" />
+            <input type="hidden" asp-for="FechaSeleccionada" id="inputFechaSeleccionada" value="12 Noviembre, 2026" />
+            <input type="hidden" asp-for="HorarioSeleccionado" id="inputHorarioSeleccionado" value="09:30 AM" />
+            <input type="hidden" asp-for="MetodoPago" id="inputMetodoPago" value="ObraSocial" />
+
+            <!-- ==========================================
+                 PASO 1: SELECCIÓN DE FECHA, HORA Y DOCTOR (BSQ Pág 5)
+                 ========================================== -->
+            <div id="seccionPaso1">
+                <div class="mb-4">
+                    <h3 class="fw-extrabold text-dark mb-1">Selección de Fecha y Hora</h3>
+                    <p class="text-muted small">Paso 1 de 3: Elige cuándo quieres tu cita odontológica y con qué profesional.</p>
+                </div>
+
+                <!-- Selector de Especialidad -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Especialidad Requerida</label>
+                    <select class="form-select form-select-lg rounded-4 shadow-sm fw-semibold" id="selectEspecialidad" style="font-size: 0.95rem;">
+                        <option value="Ortodoncia y Endodoncia" selected>Ortodoncia y Endodoncia</option>
+                        <option value="Cirugía Maxilofacial e Implantes">Cirugía Maxilofacial e Implantes</option>
+                        <option value="Odontología General">Odontología General</option>
+                        <option value="Odontopediatría">Odontopediatría</option>
+                        <option value="Periodoncia">Periodoncia</option>
+                    </select>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Columna Izquierda: Calendario + Horarios -->
+                    <div class="col-lg-7">
+                        <div class="calendar-card mb-4">
+                            <div class="calendar-header">
+                                <h5 class="fw-bold text-dark mb-0" id="mesAnioTexto">Noviembre 2026</h5>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm" id="btnPrevMonth"><i class="bi bi-chevron-left"></i></button>
+                                    <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm" id="btnNextMonth"><i class="bi bi-chevron-right"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="calendar-grid mb-2">
+                                <div class="calendar-day-head">Lun</div>
+                                <div class="calendar-day-head">Mar</div>
+                                <div class="calendar-day-head">Mié</div>
+                                <div class="calendar-day-head">Jue</div>
+                                <div class="calendar-day-head">Vie</div>
+                                <div class="calendar-day-head">Sáb</div>
+                                <div class="calendar-day-head">Dom</div>
+
+                                <!-- Días del Calendario (Días disponibles con marco verde según BSQ) -->
+                                <button type="button" class="calendar-day-btn disabled">27</button>
+                                <button type="button" class="calendar-day-btn disabled">28</button>
+                                <button type="button" class="calendar-day-btn disabled">29</button>
+                                <button type="button" class="calendar-day-btn disabled">30</button>
+                                <button type="button" class="calendar-day-btn disabled">31</button>
+                                <button type="button" class="calendar-day-btn disabled">1</button>
+                                <button type="button" class="calendar-day-btn disabled">2</button>
+
+                                <button type="button" class="calendar-day-btn">3</button>
+                                <button type="button" class="calendar-day-btn">4</button>
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="05 Noviembre, 2026">5</button>
+                                <button type="button" class="calendar-day-btn">6</button>
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="07 Noviembre, 2026">7</button>
+                                <button type="button" class="calendar-day-btn disabled">8</button>
+                                <button type="button" class="calendar-day-btn disabled">9</button>
+
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="10 Noviembre, 2026">10</button>
+                                <button type="button" class="calendar-day-btn">11</button>
+                                <button type="button" class="calendar-day-btn dia-disponible selected" data-fecha="12 Noviembre, 2026">12</button>
+                                <button type="button" class="calendar-day-btn">13</button>
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="14 Noviembre, 2026">14</button>
+                                <button type="button" class="calendar-day-btn disabled">15</button>
+                                <button type="button" class="calendar-day-btn disabled">16</button>
+
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="17 Noviembre, 2026">17</button>
+                                <button type="button" class="calendar-day-btn">18</button>
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="19 Noviembre, 2026">19</button>
+                                <button type="button" class="calendar-day-btn">20</button>
+                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="21 Noviembre, 2026">21</button>
+                                <button type="button" class="calendar-day-btn disabled">22</button>
+                                <button type="button" class="calendar-day-btn disabled">23</button>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-3 mt-3 pt-3 border-top small text-muted">
+                                <span class="d-flex align-items-center gap-1">
+                                    <span class="d-inline-block rounded-1 border border-2 border-success bg-success bg-opacity-10" style="width: 14px; height: 14px;"></span> Turnos libres
+                                </span>
+                                <span class="d-flex align-items-center gap-1">
+                                    <span class="d-inline-block rounded-1 bg-primary" style="width: 14px; height: 14px;"></span> Seleccionado
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Grilla de Horarios Disponibles -->
+                        <div class="calendar-card">
+                            <h6 class="fw-bold text-dark mb-3">Horarios Disponibles para el <span class="text-primary" id="fechaDisplaySlot">12 Noviembre, 2026</span></h6>
+
+                            <div class="mb-3">
+                                <small class="text-uppercase fw-bold text-muted d-block mb-2"><i class="bi bi-sun-fill text-warning me-1"></i> Turno Mañana</small>
+                                <div class="d-flex flex-wrap gap-2" id="slotsManana">
+                                    <button type="button" class="slot-btn" data-slot="09:00 AM">09:00</button>
+                                    <button type="button" class="slot-btn selected" data-slot="09:30 AM">09:30</button>
+                                    <button type="button" class="slot-btn" data-slot="10:00 AM">10:00</button>
+                                    <button type="button" class="slot-btn" data-slot="10:30 AM">10:30</button>
+                                    <button type="button" class="slot-btn" data-slot="11:00 AM">11:00</button>
+                                    <button type="button" class="slot-btn" data-slot="11:30 AM">11:30</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <small class="text-uppercase fw-bold text-muted d-block mb-2"><i class="bi bi-cloud-sun-fill text-info me-1"></i> Turno Tarde</small>
+                                <div class="d-flex flex-wrap gap-2" id="slotsTarde">
+                                    <button type="button" class="slot-btn" data-slot="14:00 PM">14:00</button>
+                                    <button type="button" class="slot-btn" data-slot="14:30 PM">14:30</button>
+                                    <button type="button" class="slot-btn" data-slot="15:00 PM">15:00</button>
+                                    <button type="button" class="slot-btn" data-slot="15:30 PM">15:30</button>
+                                    <button type="button" class="slot-btn" data-slot="16:00 PM">16:00</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna Derecha: Odontólogos Disponibles (BSQ Pág 5) -->
+                    <div class="col-lg-5">
+                        <div class="summary-card">
+                            <h5 class="fw-bold text-dark mb-1">Odontólogos Disponibles</h5>
+                            <p class="text-muted small mb-3">Selecciona el profesional para tu atención.</p>
+
+                            <!-- Doctor 1 -->
+                            <div class="doctor-select-card selected" data-id="1" data-name="Dra. Elena Silva" data-esp="Ortodoncia y Endodoncia">
+                                <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=2563eb&color=fff&bold=true" class="doc-avatar-sm" alt="Elena Silva">
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-bold mb-0 text-dark">Dra. Elena Silva</h6>
+                                    <small class="text-primary fw-semibold d-block">Ortodoncia y Endodoncia</small>
+                                    <small class="text-muted">⭐ 4.9 • Consultorio 2</small>
+                                </div>
+                                <i class="bi bi-check-circle-fill text-primary fs-5 check-icon"></i>
+                            </div>
+
+                            <!-- Doctor 2 -->
+                            <div class="doctor-select-card" data-id="2" data-name="Dr. Martín López" data-esp="Cirugía Maxilofacial e Implantes">
+                                <img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=0d9488&color=fff&bold=true" class="doc-avatar-sm" alt="Martín López">
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-bold mb-0 text-dark">Dr. Martín López</h6>
+                                    <small class="text-teal fw-semibold d-block" style="color: #0d9488;">Cirugía e Implantes</small>
+                                    <small class="text-muted">⭐ 4.8 • Consultorio 4</small>
+                                </div>
+                                <i class="bi bi-circle text-muted fs-5 check-icon"></i>
+                            </div>
+
+                            <!-- Doctor 3 -->
+                            <div class="doctor-select-card" data-id="3" data-name="Dra. Karina González" data-esp="Odontología General">
+                                <img src="https://ui-avatars.com/api/?name=Karina+Gonzalez&background=7c3aed&color=fff&bold=true" class="doc-avatar-sm" alt="Karina González">
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-bold mb-0 text-dark">Dra. Karina González</h6>
+                                    <small class="text-purple fw-semibold d-block" style="color: #7c3aed;">Odontología General</small>
+                                    <small class="text-muted">⭐ 5.0 • Consultorio 3</small>
+                                </div>
+                                <i class="bi bi-circle text-muted fs-5 check-icon"></i>
+                            </div>
+
+                            <!-- Resumen Selección Rápida -->
+                            <div class="bg-light rounded-4 p-3 mt-4 border">
+                                <small class="text-uppercase fw-bold text-muted d-block mb-1">Cita Seleccionada</small>
+                                <strong class="text-dark d-block fs-6" id="summaryCitaTexto">12 Noviembre, 2026 - 09:30 AM</strong>
+                                <small class="text-primary fw-semibold" id="summaryDoctorTexto">Dra. Elena Silva (Ortodoncia)</small>
+                            </div>
+
+                            <button type="button" class="btn btn-primary w-100 rounded-pill py-3 fw-bold mt-4 shadow-sm" id="btnIrAPaso2">
+                                Continuar a Confirmación <i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==========================================
+                 PASO 2: CONFIRMAR TURNO Y COBERTURA (BSQ Pág 6)
+                 ========================================== -->
+            <div id="seccionPaso2" style="display: none;">
+                <div class="mb-4">
+                    <button type="button" class="btn btn-link text-decoration-none p-0 text-muted fw-semibold mb-2" id="btnVolverAPaso1">
+                        <i class="bi bi-arrow-left me-1"></i> Volver al calendario
+                    </button>
+                    <h3 class="fw-extrabold text-dark mb-1">Confirmar Turno</h3>
+                    <p class="text-muted small">Paso 2 de 3: Revisa los datos de la cita y selecciona el medio de cobertura.</p>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Columna Izquierda: Datos del Turno y Paciente -->
+                    <div class="col-lg-7">
+                        <!-- Card Resumen Turno -->
+                        <div class="summary-card mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="info-pill-badge text-uppercase">Especialidad</span>
+                                <span class="badge bg-primary px-3 py-1 rounded-pill">Sede Centro</span>
+                            </div>
+
+                            <h4 class="fw-bold text-dark mb-3" id="confirmEspecialidad">Ortodoncia y Endodoncia</h4>
+
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Profesional Asignado</small>
+                                    <strong class="text-dark d-flex align-items-center gap-2 mt-1">
+                                        <i class="bi bi-person-badge text-primary"></i> <span id="confirmDoctor">Dra. Elena Silva</span>
+                                    </strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Fecha y Hora</small>
+                                    <strong class="text-dark d-flex align-items-center gap-2 mt-1">
+                                        <i class="bi bi-calendar-event text-primary"></i> <span id="confirmFechaHora">12 Nov, 2026 • 09:30 AM</span>
+                                    </strong>
+                                </div>
+                                <div class="col-12 mt-3 pt-3 border-top">
+                                    <small class="text-muted d-block">Ubicación</small>
+                                    <span class="text-dark fw-semibold"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Av. Corrientes 1234, Piso 1, Consultorio 2 - Rosario</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Datos del Paciente -->
+                        <div class="summary-card">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-person-fill text-primary me-2"></i>Datos del Paciente</h5>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Nombre Completo</small>
+                                    <strong class="text-dark">@nombrePaciente</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Documento (DNI)</small>
+                                    <strong class="text-dark">34.567.890</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Teléfono</small>
+                                    <strong class="text-dark">+54 341 555-1234</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">Email de Confirmación</small>
+                                    <strong class="text-dark">manuel.fernandez@email.com</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna Derecha: Cobertura Médica y Políticas -->
+                    <div class="col-lg-5">
+                        <div class="summary-card">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-shield-check text-primary me-2"></i>Cobertura Médica</h5>
+                            <p class="text-muted small mb-3">Selecciona cómo deseas gestionar el pago de esta consulta.</p>
+
+                            <!-- Opción 1: Obra Social -->
+                            <div class="payment-box selected" id="optObraSocial">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input class="form-check-input mt-0" type="radio" name="radioPago" id="radioOS" checked>
+                                        <strong class="text-dark">Obra Social / Prepaga</strong>
+                                    </div>
+                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold">OSDE - Plan 210</span>
+                                </div>
+                                <div class="d-flex justify-content-between text-muted small ps-4 mt-2">
+                                    <span>Costo Consulta: $18.000</span>
+                                    <strong class="text-success">Copago a abonar: $0.00</strong>
+                                </div>
+                            </div>
+
+                            <!-- Opción 2: Particular -->
+                            <div class="payment-box" id="optParticular">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input class="form-check-input mt-0" type="radio" name="radioPago" id="radioPart">
+                                        <strong class="text-dark">Particular</strong>
+                                    </div>
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold">Pago Privado</span>
+                                </div>
+                                <div class="d-flex justify-content-between text-muted small ps-4 mt-2">
+                                    <span>Abonar en clínica:</span>
+                                    <strong class="text-dark">$15.000 ARS</strong>
+                                </div>
+                            </div>
+
+                            <!-- Política de Cancelación (CUU01) -->
+                            <div class="cancel-policy-box my-3">
+                                <div class="d-flex gap-2">
+                                    <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+                                    <div>
+                                        <strong class="d-block mb-1">Política de Cancelación (24 hs)</strong>
+                                        <span>En caso de no poder asistir, recuerda cancelar o reprogramar tu cita con al menos 24 hs de anticipación para evitar inhabilitaciones o cargos administrativos.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="checkPoliticas" checked required>
+                                <label class="form-check-label small fw-semibold text-dark" for="checkPoliticas">
+                                    Acepto las políticas de cancelación y asistencia de la clínica.
+                                </label>
+                            </div>
+
+                            <div class="d-flex flex-column gap-2">
+                                <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm" id="btnConfirmarTurnoFinal">
+                                    <i class="bi bi-check-circle-fill me-2"></i> Confirmar Turno
+                                </button>
+                                <a href="@Url.Action("Index", "Home")" class="btn btn-light w-100 rounded-pill py-2 text-muted fw-semibold">
+                                    Cancelar Operación
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+
+    </div>
+
+    <!-- ==========================================
+         MODAL: PACIENTE INHABILITADO POR DEUDA (BSQ Pág 4)
+         ========================================== -->
+    <div class="modal fade" id="modalInhabilitado" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background-color: #fef2f2; color: #dc2626;">
+                            <i class="bi bi-exclamation-octagon-fill fs-1"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-2">Estado: Inhabilitado</h4>
+                    <p class="text-muted small mb-4 px-3">
+                        Se ha detectado una deuda pendiente en su cuenta por <strong>$3.500 ARS</strong> (cargo por inasistencia previa sin aviso).
+                        Para continuar con la reserva de turnos, por favor regularice su situación.
+                    </p>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="@Url.Action("MetodosDePago", "Home")" class="btn btn-primary rounded-pill py-2 fw-bold shadow-sm">
+                            <i class="bi bi-credit-card me-2"></i> Pagar Deuda Ahora
+                        </a>
+                        <a href="https://wa.me/5493411234567" target="_blank" class="btn btn-light rounded-pill py-2 text-muted fw-semibold border">
+                            <i class="bi bi-whatsapp text-success me-2"></i> Contactar con la Clínica
+                        </a>
+                        <a href="@Url.Action("Index", "Home")" class="btn btn-link text-muted small text-decoration-none mt-2">
+                            Volver al Inicio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+@section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener("DOMContentLoaded", function () {
+            // Verificar si el usuario está inhabilitado (BSQ Pág 4)
+            var estaInhabilitado = @(Model.EstaInhabilitado ? "true" : "false");
+            if (estaInhabilitado) {
+                var modal = new bootstrap.Modal(document.getElementById('modalInhabilitado'));
+                modal.show();
+            }
 
-            // Estas son fechas de prueba. Luego vendrán desde tu WebAPI.
-            // Fijate de poner fechas cercanas al día de hoy para ver el efecto.
-            const fechasDisponibles = ["2026-08-05", "2026-08-07", "2026-08-10", "2026-08-12"];
+            // Variables de Estado del Wizard
+            var fechaSeleccionada = "@(Model.FechaSeleccionada ?? "12 Noviembre, 2026")";
+            var horarioSeleccionado = "@(Model.HorarioSeleccionado ?? "09:30 AM")";
+            var doctorId = @(Model.OdontologoId ?? 1);
+            var doctorNombre = "@(Model.NombreOdontologo ?? "Dra. Elena Silva")";
+            var especialidad = "@(Model.Especialidad ?? "Ortodoncia y Endodoncia")";
+            var metodoPago = "ObraSocial";
 
-            // Inicializamos el calendario
-            flatpickr("#calendario-turnos", {
-                locale: "es", // Idioma español
-                minDate: "today", // Deshabilita días anteriores a hoy
-                inline: true, // Deja el calendario expandido siempre (ideal para la vista de reserva)
+            // 1. Selector de Días del Calendario
+            var dayButtons = document.querySelectorAll(".calendar-day-btn.dia-disponible");
+            dayButtons.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    dayButtons.forEach(b => b.classList.remove("selected"));
+                    this.classList.add("selected");
+                    fechaSeleccionada = this.getAttribute("data-fecha");
+                    document.getElementById("inputFechaSeleccionada").value = fechaSeleccionada;
+                    document.getElementById("fechaDisplaySlot").innerText = fechaSeleccionada;
+                    actualizarResumen();
+                });
+            });
 
-                // Función que evalúa cada día mientras se dibuja el calendario
-                onDayCreate: function(dObj, dStr, fp, dayElem) {
-                    let formattedDate = dayElem.dateObj.getFullYear() + "-" +
-                                        String(dayElem.dateObj.getMonth() + 1).padStart(2, '0') + "-" +
-                                        String(dayElem.dateObj.getDate()).padStart(2, '0');
+            // 2. Selector de Horarios (Slots)
+            var slotButtons = document.querySelectorAll(".slot-btn");
+            slotButtons.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    slotButtons.forEach(b => b.classList.remove("selected"));
+                    this.classList.add("selected");
+                    horarioSeleccionado = this.getAttribute("data-slot");
+                    document.getElementById("inputHorarioSeleccionado").value = horarioSeleccionado;
+                    actualizarResumen();
+                });
+            });
 
-                    // Si la fecha coincide con nuestro array, le aplica el estilo verde
-                    if (fechasDisponibles.includes(formattedDate)) {
-                        dayElem.classList.add('dia-disponible');
-                    }
-                }
+            // 3. Selector de Odontólogos
+            var docCards = document.querySelectorAll(".doctor-select-card");
+            docCards.forEach(function (card) {
+                card.addEventListener("click", function () {
+                    docCards.forEach(c => {
+                        c.classList.remove("selected");
+                        c.querySelector(".check-icon").className = "bi bi-circle text-muted fs-5 check-icon";
+                    });
+                    this.classList.add("selected");
+                    this.querySelector(".check-icon").className = "bi bi-check-circle-fill text-primary fs-5 check-icon";
+
+                    doctorId = this.getAttribute("data-id");
+                    doctorNombre = this.getAttribute("data-name");
+                    especialidad = this.getAttribute("data-esp");
+
+                    document.getElementById("inputOdontologoId").value = doctorId;
+                    document.getElementById("inputNombreOdontologo").value = doctorNombre;
+                    document.getElementById("inputEspecialidad").value = especialidad;
+                    document.getElementById("selectEspecialidad").value = especialidad;
+
+                    actualizarResumen();
+                });
+            });
+
+            // 4. Selector de Especialidad dropdown
+            var selectEsp = document.getElementById("selectEspecialidad");
+            if (selectEsp) {
+                selectEsp.addEventListener("change", function () {
+                    especialidad = this.value;
+                    document.getElementById("inputEspecialidad").value = especialidad;
+                    actualizarResumen();
+                });
+            }
+
+            function actualizarResumen() {
+                document.getElementById("summaryCitaTexto").innerText = fechaSeleccionada + " - " + horarioSeleccionado;
+                document.getElementById("summaryDoctorTexto").innerText = doctorNombre + " (" + especialidad + ")";
+                
+                // Actualizar Paso 2
+                document.getElementById("confirmEspecialidad").innerText = especialidad;
+                document.getElementById("confirmDoctor").innerText = doctorNombre;
+                document.getElementById("confirmFechaHora").innerText = fechaSeleccionada + " • " + horarioSeleccionado;
+            }
+
+            // 5. Navegación entre Paso 1 y Paso 2
+            var btnIrAPaso2 = document.getElementById("btnIrAPaso2");
+            var btnVolverAPaso1 = document.getElementById("btnVolverAPaso1");
+
+            btnIrAPaso2.addEventListener("click", function () {
+                document.getElementById("seccionPaso1").style.display = "none";
+                document.getElementById("seccionPaso2").style.display = "block";
+
+                document.getElementById("stepperStep1").classList.remove("active");
+                document.getElementById("stepperStep1").classList.add("completed");
+                document.getElementById("stepperStep2").classList.add("active");
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            btnVolverAPaso1.addEventListener("click", function () {
+                document.getElementById("seccionPaso2").style.display = "none";
+                document.getElementById("seccionPaso1").style.display = "block";
+
+                document.getElementById("stepperStep2").classList.remove("active");
+                document.getElementById("stepperStep1").classList.remove("completed");
+                document.getElementById("stepperStep1").classList.add("active");
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // 6. Selector de Cobertura Médica
+            var optOS = document.getElementById("optObraSocial");
+            var optPart = document.getElementById("optParticular");
+            var radioOS = document.getElementById("radioOS");
+            var radioPart = document.getElementById("radioPart");
+
+            optOS.addEventListener("click", function () {
+                optOS.classList.add("selected");
+                optPart.classList.remove("selected");
+                radioOS.checked = true;
+                metodoPago = "ObraSocial";
+                document.getElementById("inputMetodoPago").value = "ObraSocial";
+            });
+
+            optPart.addEventListener("click", function () {
+                optPart.classList.add("selected");
+                optOS.classList.remove("selected");
+                radioPart.checked = true;
+                metodoPago = "Particular";
+                document.getElementById("inputMetodoPago").value = "Particular";
             });
         });
     </script>
-
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
-}
+}

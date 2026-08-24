@@ -5,7 +5,8 @@ namespace DTOs
         public int CodPago { get; set; }
         public int Id { get => CodPago; set => CodPago = value; }
         public int? CodAtencion { get; set; }
-        public int? TurnoId { get => CodAtencion; set => CodAtencion = value; }
+        public int? CodTurno { get; set; }
+        public int? TurnoId { get => CodTurno ?? CodAtencion; set => CodTurno = value; }
         public string PacienteTipoDoc { get; set; } = "DNI";
         public int PacienteNroDoc { get; set; }
         public int PacienteId { get => PacienteNroDoc; set => PacienteNroDoc = value; }

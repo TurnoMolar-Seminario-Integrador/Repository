@@ -1,223 +1,173 @@
 @{
     ViewData["Title"] = "Portal del Paciente - Clínica Dental Rosario";
-    Layout = null; // No usamos un Layout global aún, cada vista es autocontenida
+    ViewData["ActiveTab"] = "Inicio";
+    Layout = "_LayoutPaciente";
 
-    // SIMULACIÓN DE DATOS DE SESIÓN:
-    // Estos datos simulan la información que vendría de la Base de Datos al hacer Login.
     var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042"; // ID autoincremental de la BD
-    var estadoPaciente = "HABILITADO"; // Puede cambiar a "INHABILITADO" si posee deudas
+    var idPaciente = ViewData["IdPaciente"] ?? "10042";
+    var estadoPaciente = "HABILITADO";
 }
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"]</title>
-
-    <!-- LIBRERÍAS EXTERNAS: Usamos Bootstrap 5 para el diseño responsive y Bootstrap Icons para la iconografía -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
-
+@section Styles {
     <style>
-        /* ESTILOS GLOBALES DEL BODY */
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
-            overflow-x: hidden;
+        /* Hero Banner de Bienvenida */
+        .welcome-hero {
+            background: linear-gradient(135deg, #0d3b66 0%, #1e40af 60%, #3b82f6 100%);
+            border-radius: 20px;
+            padding: 28px 32px;
+            color: #ffffff;
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(13, 59, 102, 0.15);
         }
 
-        /* ==========================================
-                   ESTILOS DEL MENÚ LATERAL (SIDEBAR)
-                   ========================================== */
-        .sidebar {
-            width: 260px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
+        .welcome-hero::after {
+            content: "🦷";
+            position: absolute;
+            right: 25px;
+            bottom: -15px;
+            font-size: 8rem;
+            opacity: 0.12;
+            transform: rotate(-15deg);
+            pointer-events: none;
+        }
+
+        .hero-btn {
             background-color: #ffffff;
-            border-right: 1px solid #e5e5e5;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            z-index: 100;
+            color: #0d3b66;
+            font-weight: 700;
+            padding: 10px 22px;
+            border-radius: 30px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
         }
 
-        /* Sección de la foto de perfil y datos básicos del paciente */
-        .profile-section {
+        .hero-btn:hover {
+            background-color: #f8fafc;
+            color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Quick Stat Cards */
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 18px 20px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 20px;
+            gap: 16px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: inherit;
         }
 
-        .profile-avatar {
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+            border-color: #cbd5e1;
+            color: inherit;
+        }
+
+        .stat-icon {
             width: 48px;
             height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .profile-info h6 {
-            font-size: 0.95rem;
-            font-weight: bold;
-            margin: 0;
-            color: #212529;
-        }
-
-        .profile-info small {
-            font-size: 0.78rem;
-            color: #6c757d;
-        }
-
-        .badge-habilitado {
-            background-color: #d1e7dd;
-            color: #0f5132;
-            font-size: 0.65rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 3px;
-        }
-
-        /* Enlaces de navegación */
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-        }
-
-        .nav-item {
-            margin-bottom: 5px;
-        }
-
-        .nav-link {
+            border-radius: 12px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            color: #495057;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            justify-content: center;
+            font-size: 1.4rem;
         }
 
-            .nav-link:hover {
-                background-color: #f1f3f5;
-                color: #0d6efd;
-            }
-
-            .nav-link.active {
-                background-color: #0d6efd;
-                color: #ffffff;
-            }
-
-        /* ==========================================
-                   ESTILOS DEL CONTENIDO PRINCIPAL
-                   ========================================== */
-        .main-content {
-            margin-left: 260px; /* Deja espacio para el sidebar fijo */
-            padding: 30px;
-        }
-
-        /* Encabezado superior con el logo y la campana de notificaciones */
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .brand-title {
-            color: #0d3b66;
-            font-weight: bold;
-            font-size: 1.3rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand-logo {
-            width: 32px;
-            height: auto;
-        }
-
-        /* Barra de búsqueda de especialistas */
+        /* Buscador */
         .search-container {
             position: relative;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
         }
 
         .search-input {
-            padding: 12px 20px 12px 45px;
-            border-radius: 10px;
-            border: 1px solid #ced4da;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            padding: 14px 20px 14px 48px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
         .search-icon {
             position: absolute;
-            left: 15px;
+            left: 18px;
             top: 50%;
             transform: translateY(-50%);
-            color: #6c757d;
+            color: #94a3b8;
+            font-size: 1.1rem;
         }
 
-        /* Tarjetas blancas de los odontólogos */
+        /* Tarjetas de Odontólogos */
         .doc-card {
             background: #ffffff;
-            border: 1px solid #eaeaea;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        .doc-card:hover {
+            border-color: #bfdbfe;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.06);
         }
 
         .doc-avatar {
-            width: 60px;
-            height: 60px;
+            width: 58px;
+            height: 58px;
             border-radius: 50%;
             object-fit: cover;
+            border: 2px solid #e2e8f0;
         }
 
-        /* Botones de horarios (Píldoras) */
         .slot-pill {
-            border: 1px solid #cfe2ff;
-            background-color: #f8fbff;
-            color: #0d6efd;
-            font-size: 0.8rem;
-            padding: 5px 12px;
+            border: 1px solid #bfdbfe;
+            background-color: #eff6ff;
+            color: #2563eb;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 6px 14px;
             border-radius: 20px;
             text-decoration: none;
             transition: all 0.2s;
+            display: inline-block;
         }
 
-            .slot-pill:hover {
-                background-color: #0d6efd;
-                color: #fff;
-            }
-
-        /* Tarjeta azul del Próximo Turno */
-        .next-turno-card {
-            background: linear-gradient(135deg, #0d3b66, #1d6fa5);
+        .slot-pill:hover {
+            background-color: #2563eb;
             color: #ffffff;
-            border-radius: 16px;
+            border-color: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        /* Tarjeta Azul del Próximo Turno */
+        .next-turno-card {
+            background: linear-gradient(135deg, #0d3b66 0%, #1e40af 100%);
+            color: #ffffff;
+            border-radius: 18px;
             padding: 24px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(13, 59, 102, 0.2);
+            margin-bottom: 24px;
+            box-shadow: 0 8px 20px rgba(13, 59, 102, 0.2);
+            position: relative;
         }
 
         .calendar-btn {
@@ -227,300 +177,354 @@
             cursor: pointer;
         }
 
-            .calendar-btn:hover {
-                transform: scale(1.15);
-                color: #70b8ff;
-            }
+        .calendar-btn:hover {
+            transform: scale(1.15);
+            color: #93c5fd;
+        }
 
-        /* Cuadros interactivos de Especialidades Odontológicas */
+        /* Especialidades Box */
         .specialty-box {
             background: #ffffff;
-            border: 1px solid #eaeaea;
-            border-radius: 12px;
-            padding: 18px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px 10px;
             text-align: center;
             transition: all 0.2s;
             cursor: pointer;
+            text-decoration: none;
+            display: block;
             height: 100%;
         }
 
-            .specialty-box:hover {
-                transform: translateY(-3px);
-                border-color: #0d6efd;
-                box-shadow: 0 4px 10px rgba(13, 110, 253, 0.1);
-            }
+        .specialty-box:hover {
+            transform: translateY(-3px);
+            border-color: #3b82f6;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.1);
+        }
 
         .specialty-icon {
             font-size: 1.6rem;
-            color: #0d6efd;
+            color: #2563eb;
             margin-bottom: 6px;
         }
-    </style>
-</head>
-<body>
 
-    <!-- ==========================================
-         SIDEBAR DE NAVEGACIÓN
-         ========================================== -->
-    <div class="sidebar">
-        <!-- Perfil del Paciente con datos dinámicos -->
-        <div class="profile-section">
-            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" alt="Perfil" class="profile-avatar" />
-            <div class="profile-info">
-                <h6>@nombrePaciente</h6>
-                <small>ID: #@idPaciente</small><br>
-                <span class="badge-habilitado">ESTADO: @estadoPaciente</span>
-            </div>
-        </div>
-
-        <!-- Menú de Subpestañas. IMPORTANTE: Los enlaces (href) usan Razor para apuntar al controlador -->
-        <!-- MENÚ GLOBAL 100% FUNCIONAL -->
-        <ul class="nav-menu">
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Consultá y gestioná tus turnos reservados">
-                <a href="@Url.Action("MisTurnos", "Home")" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a>
-            </li>
-
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Accedé a tus odontogramas y fichas médicas">
-                <a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a>
-            </li>
-
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Administrá tus tarjetas y medios de pago">
-                <a href="@Url.Action("MetodosDePago", "Home")" class="nav-link"><i class="bi bi-wallet2"></i> Métodos de Pago</a>
-            </li>
-
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Verificá la cobertura de tu obra social">
-                <a href="@Url.Action("Seguros", "Home")" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a>
-            </li>
-
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Pantalla principal de búsquedas">
-                <!-- Como este es el Index, este link mantiene la clase 'active' -->
-                <a href="@Url.Action("Index", "Home")" class="nav-link active"><i class="bi bi-house-door"></i> Inicio</a>
-            </li>
-
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Ajustes de cuenta y preferencias">
-                <a href="@Url.Action("Configuracion", "Home")" class="nav-link"><i class="bi bi-gear"></i> Configuración</a>
-            </li>
-            <li class="nav-item" style="margin-top: auto;" data-bs-toggle="tooltip" data-bs-placement="right" title="Cerrar sesión de forma segura">
-                <a href="#" class="nav-link text-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#modalCerrarSesionPaciente">
-                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <!-- ==========================================
-         CONTENIDO PRINCIPAL
-         ========================================== -->
-    <div class="main-content">
-
-        <!-- Header superior con Logo e Imagen -->
-        <div class="top-header">
-            <h5 class="brand-title">
-                <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" />
-                Clínica Dental Rosario
-            </h5>
-
-            <!-- Botón Campanita -->
-            <button class="btn btn-light rounded-circle shadow-sm position-relative" style="width: 40px; height: 40px;"
-                    data-bs-toggle="tooltip" data-bs-placement="left" title="Notificaciones: No tenés avisos pendientes">
-                <i class="bi bi-bell"></i>
-            </button>
-        </div>
-
-        <!-- ALERTA DE ÉXITO: Se muestra temporalmente cuando el TempData recibe un mensaje del Controlador (ej: al cancelar un turno) -->
-        @if (TempData["MensajeExito"] != null)
-        {
-            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-                <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+        .specialty-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #475569;
+            display: block;
         }
 
-        <!-- Sección de Búsqueda -->
-        <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">Encuentra tu Especialista</h2>
-            <p class="text-muted small">Busca por nombre, especialidad o tratamiento.</p>
+        /* Health Tip Banner */
+        .tip-banner {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 16px;
+            padding: 18px 22px;
+            color: #166534;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+    </style>
+}
 
-            <div class="search-container mt-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Escribí el nombre del odontólogo o la especialidad requerida">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" class="form-control search-input" placeholder="Ej. Endodoncia, Dr. Silva...">
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+        <!-- 1. HERO BANNER DE BIENVENIDA -->
+        <div class="welcome-hero">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <span class="badge bg-white bg-opacity-25 text-white px-3 py-1 rounded-pill small fw-bold mb-2">
+                        PORTAL DEL PACIENTE
+                    </span>
+                    <h2 class="fw-extrabold mb-1">¡Hola, @nombrePaciente!</h2>
+                    <p class="text-white-50 mb-3" style="max-width: 540px;">
+                        Bienvenido a tu centro de salud odontológica. Gestioná tus citas, consultá tu historial clínico y cuidá tu sonrisa con los mejores profesionales.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <a href="@Url.Action("Reservar", "Turno")" class="hero-btn">
+                            <i class="bi bi-calendar-plus-fill text-primary"></i> Solicitar Nuevo Turno
+                        </a>
+                        <span class="text-white-50 small">
+                            <i class="bi bi-shield-check text-success me-1"></i> Cobertura: <strong>OSDE (Plan 210)</strong>
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Grilla de Contenido Central (Dividida en 8 columnas para médicos y 4 para próximos turnos) -->
+        <!-- 2. FILA DE ACCESOS DIRECTOS -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3 col-6">
+                <a href="@Url.Action("MisTurnos", "Home")" class="stat-card">
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-calendar-check-fill"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block fw-semibold">Mis Citas</small>
+                        <strong class="text-dark">1 Vigente</strong>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6">
+                <a href="@Url.Action("HistorialClinico", "Home")" class="stat-card">
+                    <div class="stat-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-file-earmark-medical-fill"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block fw-semibold">Historial Clínico</small>
+                        <strong class="text-dark">Ficha #48291</strong>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6">
+                <a href="@Url.Action("MetodosDePago", "Home")" class="stat-card">
+                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-credit-card-2-front-fill"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block fw-semibold">Estado de Cuenta</small>
+                        <strong class="text-success">$0.00 (Al día)</strong>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6">
+                <a href="@Url.Action("Seguros", "Home")" class="stat-card">
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-shield-fill-check"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block fw-semibold">Obra Social</small>
+                        <strong class="text-dark">OSDE Activa</strong>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. CONTENIDO PRINCIPAL: PROFESIONALES + PRÓXIMO TURNO -->
         <div class="row">
 
-            <!-- COLUMNA IZQUIERDA: Listado de Profesionales -->
+            <!-- COLUMNA IZQUIERDA: Buscador y Profesionales Disponibles -->
             <div class="col-lg-8">
-                <h5 class="fw-bold mb-3">Profesionales Disponibles</h5>
-
-                <!-- Profesional 1 -->
-                <div class="doc-card">
-                    <div class="d-flex align-items-center mb-3">
-                        <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" alt="Dra. Elena Silva" class="doc-avatar me-3">
-                        <div>
-                            <h6 class="fw-bold mb-0">Dra. Elena Silva</h6>
-                            <span class="text-primary small fw-semibold">Ortodoncia y Endodoncia</span><br>
-                            <small class="text-muted">⭐ 4.9 (124 reseñas)</small>
-                        </div>
-                    </div>
-                    <p class="text-muted small mb-2">Próximos turnos disponibles:</p>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar hoy a las 14:30">Hoy, 14:30</a>
-                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar mañana a las 09:00">Mañana, 09:00</a>
-                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar el jueves a las 11:15">Jueves, 11:15</a>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-0">Encuentra tu Especialista</h4>
+                        <p class="text-muted small mb-0">Consulta la disponibilidad de nuestro staff médico odontológico.</p>
                     </div>
                 </div>
 
-                <!-- Profesional 2 -->
+                <div class="search-container">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" class="form-control search-input" id="buscadorEspecialistas" placeholder="Buscar por nombre (Ej. Dra. Elena Silva) o especialidad (Ortodoncia, Cirugía)...">
+                </div>
+
+                <h6 class="fw-bold text-muted text-uppercase mb-3 small" style="letter-spacing: 0.5px;">Profesionales Disponibles</h6>
+
+                <!-- Profesional 1: Dra. Elena Silva -->
                 <div class="doc-card">
-                    <div class="d-flex align-items-center mb-3">
-                        <img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=random" alt="Dr. Martín López" class="doc-avatar me-3">
-                        <div>
-                            <h6 class="fw-bold mb-0">Dr. Martín López</h6>
-                            <span class="text-primary small fw-semibold">Cirugía Maxilofacial e Implantes</span><br>
-                            <small class="text-muted">⭐ 4.8 (89 reseñas)</small>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=2563eb&color=fff&bold=true" alt="Dra. Elena Silva" class="doc-avatar me-3">
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">Dra. Elena Silva</h5>
+                                <span class="text-primary small fw-semibold">Ortodoncia y Endodoncia • MP 4128</span><br>
+                                <small class="text-muted"><i class="bi bi-star-fill text-warning me-1"></i>4.9 (124 pacientes atendidos)</small>
+                            </div>
                         </div>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                            Ver Agenda
+                        </a>
                     </div>
-                    <p class="text-muted small mb-2">Próximos turnos disponibles:</p>
+                    <p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i>Próximos turnos libres:</p>
                     <div class="d-flex gap-2 flex-wrap">
-                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar el viernes a las 10:00">Viernes, 10:00</a>
-                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="slot-pill" data-bs-toggle="tooltip" title="Hacé clic para agendar el lunes a las 15:30">Lunes, 15:30</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Hoy">Hoy, 14:30</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Mañana">Mañana, 09:00</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 1 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Jueves">Jueves, 11:15</a>
+                    </div>
+                </div>
+
+                <!-- Profesional 2: Dr. Martín López -->
+                <div class="doc-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=0d9488&color=fff&bold=true" alt="Dr. Martín López" class="doc-avatar me-3">
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">Dr. Martín López</h5>
+                                <span class="text-teal small fw-semibold" style="color: #0d9488;">Cirugía Maxilofacial e Implantes • MP 5092</span><br>
+                                <small class="text-muted"><i class="bi bi-star-fill text-warning me-1"></i>4.8 (89 pacientes atendidos)</small>
+                            </div>
+                        </div>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                            Ver Agenda
+                        </a>
+                    </div>
+                    <p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i>Próximos turnos libres:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Viernes">Viernes, 10:00</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 2 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Lunes">Lunes, 15:30</a>
+                    </div>
+                </div>
+
+                <!-- Profesional 3: Dra. Karina González -->
+                <div class="doc-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://ui-avatars.com/api/?name=Karina+Gonzalez&background=7c3aed&color=fff&bold=true" alt="Dra. Karina González" class="doc-avatar me-3">
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">Dra. Karina González</h5>
+                                <span class="text-purple small fw-semibold" style="color: #7c3aed;">Odontología General y Prótesis • MP 3840</span><br>
+                                <small class="text-muted"><i class="bi bi-star-fill text-warning me-1"></i>5.0 (210 pacientes atendidos)</small>
+                            </div>
+                        </div>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 3 })" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                            Ver Agenda
+                        </a>
+                    </div>
+                    <p class="text-muted small mb-2"><i class="bi bi-clock me-1"></i>Próximos turnos libres:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 3 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Martes">Martes, 11:00</a>
+                        <a href="@Url.Action("Reservar", "Turno", new { odontologoId = 3 })" class="slot-pill" data-bs-toggle="tooltip" title="Agendar para Miércoles">Miércoles, 16:30</a>
                     </div>
                 </div>
             </div>
 
-            <!-- COLUMNA DERECHA: Widgets de Turno y Especialidades -->
+            <!-- COLUMNA DERECHA: Widget de Próximo Turno y Especialidades -->
             <div class="col-lg-4">
 
-                <!-- LÓGICA DE OCULTAMIENTO: Si el TempData["OcultarTurno"] es NULL, dibuja la tarjeta.
-                     Si es true (porque el paciente acaba de cancelar el turno en el controlador), ignora todo este bloque. -->
+                <!-- WIDGET PRÓXIMO TURNO -->
                 @if (TempData["OcultarTurno"] == null)
                 {
                     <div class="next-turno-card">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small opacity-75 fw-semibold">Próximo Turno</span>
+                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1 small fw-bold">
+                                <i class="bi bi-pin-angle-fill me-1"></i> Próxima Cita
+                            </span>
 
-                            <!-- API Google Calendar: Genera un evento pre-armado con la info del turno -->
-                            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Turno+Odontologico+-+Clinica+Dental+Rosario&dates=20261112T123000Z/20261112T130000Z&details=Control+General+con+Dra.+Valeria+Gomez+en+Consultorio+3&location=Clinica+Dental+Rosario"
+                            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Turno+Odontologico+-+Clinica+Dental+Rosario&dates=20261112T123000Z/20261112T130000Z&details=Control+General+con+Dra.+Karina+Gonzalez+en+Consultorio+3&location=Clinica+Dental+Rosario"
                                target="_blank"
                                class="calendar-btn"
                                data-bs-toggle="tooltip"
-                               data-bs-placement="top"
-                               title="Sincronizar este turno en tu Google Calendar">
+                               title="Sincronizar con Google Calendar">
                                 <i class="bi bi-calendar-plus"></i>
                             </a>
                         </div>
 
-                        <h4 class="fw-bold mb-1">12 Nov, 09:30 AM</h4>
-                        <p class="small mb-1">Control General</p>
-                        <p class="small opacity-75 mb-3">Dra. Karina González • Consultorio 3</p>
+                        <h3 class="fw-extrabold mb-1">12 Nov, 09:30 AM</h3>
+                        <p class="mb-1 fw-semibold text-white">Control General</p>
+                        <p class="small text-white-50 mb-3"><i class="bi bi-geo-alt me-1"></i>Dra. Karina González • Consultorio 3</p>
 
-                        <!-- Botones de Interacción del Turno -->
-                        <div class="d-flex gap-2 mt-3">
-                            <button class="btn btn-light w-100 fw-bold text-primary rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Ver detalles completos de la reserva">
-                                Ver Detalles
-                            </button>
+                        <div class="d-flex gap-2 mt-2">
+                            <a href="@Url.Action("MisTurnos", "Home")" class="btn btn-light w-100 fw-bold text-primary rounded-pill py-2 shadow-sm">
+                                <i class="bi bi-eye-fill me-1"></i> Ver Detalle
+                            </a>
 
-                            <!-- Formulario de Cancelación: Apunta a TurnoController -> Cancelar. Posee validación JS nativa. -->
-                            <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro que querés cancelar este turno? Esta acción no se puede deshacer.');">
+                            <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro que querés cancelar este turno?');">
                                 <input type="hidden" name="idTurno" value="1" />
-                                <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2 shadow-sm" data-bs-toggle="tooltip" title="Cancelar y liberar este horario">
+                                <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2">
                                     Cancelar
                                 </button>
                             </form>
                         </div>
                     </div>
                 }
+                else
+                {
+                    <div class="bg-white border rounded-4 p-4 text-center mb-4 shadow-sm">
+                        <div class="text-muted mb-2"><i class="bi bi-calendar-x fs-1"></i></div>
+                        <h6 class="fw-bold text-dark">No tenés turnos agendados</h6>
+                        <p class="text-muted small mb-3">Te recomendamos un control periódico cada 6 meses.</p>
+                        <a href="@Url.Action("Reservar", "Turno")" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i> Agendar Cita
+                        </a>
+                    </div>
+                }
 
-                <!-- Grilla de Especialidades Odontológicas (Siempre visible) -->
-                <h5 class="fw-bold mb-3">Especialidades Odontológicas</h5>
-                <div class="row g-2">
+                <!-- ESPECIALIDADES ODONTOLÓGICAS (BSQ Pág 3) -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">Especialidades</h5>
+                    <small class="text-muted">6 áreas</small>
+                </div>
+
+                <div class="row g-2 mb-4">
                     <div class="col-6">
-                        <div class="specialty-box" data-bs-toggle="tooltip" title="Tratamientos de conducto y preservación dental">
+                        <a href="@Url.Action("Reservar", "Turno", new { especialidad = "Endodoncia" })" class="specialty-box" data-bs-toggle="tooltip" title="Tratamiento de conducto">
                             <div class="specialty-icon"><i class="bi bi-activity"></i></div>
-                            <span class="small fw-semibold text-secondary">Endodoncia</span>
-                        </div>
+                            <span class="specialty-label">Endodoncia</span>
+                        </a>
                     </div>
                     <div class="col-6">
-                        <div class="specialty-box" data-bs-toggle="tooltip" title="Brackets, alineadores e higiene de mordida">
+                        <a href="@Url.Action("Reservar", "Turno", new { especialidad = "Ortodoncia" })" class="specialty-box" data-bs-toggle="tooltip" title="Brackets y alineadores">
                             <div class="specialty-icon"><i class="bi bi-grid-3x3-gap"></i></div>
-                            <span class="small fw-semibold text-secondary">Ortodoncia</span>
-                        </div>
+                            <span class="specialty-label">Ortodoncia</span>
+                        </a>
                     </div>
                     <div class="col-6">
-                        <div class="specialty-box" data-bs-toggle="tooltip" title="Extracciones complejas y cirugías orales">
+                        <a href="@Url.Action("Reservar", "Turno", new { especialidad = "Cirugía Maxilofacial" })" class="specialty-box" data-bs-toggle="tooltip" title="Extracciones y muelas de juicio">
                             <div class="specialty-icon"><i class="bi bi-tools"></i></div>
-                            <span class="small fw-semibold text-secondary">Cirugía</span>
-                        </div>
+                            <span class="specialty-label">Cirugía</span>
+                        </a>
                     </div>
                     <div class="col-6">
-                        <div class="specialty-box" data-bs-toggle="tooltip" title="Reemplazo de piezas dentales e implantes">
+                        <a href="@Url.Action("Reservar", "Turno", new { especialidad = "Implantología" })" class="specialty-box" data-bs-toggle="tooltip" title="Implantes dentales y prótesis">
                             <div class="specialty-icon"><i class="bi bi-shield-plus"></i></div>
-                            <span class="small fw-semibold text-secondary">Implantología</span>
-                        </div>
+                            <span class="specialty-label">Implantología</span>
+                        </a>
                     </div>
                     <div class="col-6">
-                        <div class="specialty-box" data-bs-toggle="tooltip" title="Atención odontológica especializada para niños">
+                        <a href="@Url.Action("Reservar", "Turno", new { especialidad = "Odontopediatría" })" class="specialty-box" data-bs-toggle="tooltip" title="Atención para niños">
                             <div class="specialty-icon"><i class="bi bi-person-heart"></i></div>
-                            <span class="small fw-semibold text-secondary">Odontopediatría</span>
-                        </div>
+                            <span class="specialty-label">Odontopediatría</span>
+                        </a>
                     </div>
                     <div class="col-6">
-                        <div class="specialty-box" data-bs-toggle="tooltip" title="Tratamientos de encías y limpieza profunda">
+                        <a href="@Url.Action("Reservar", "Turno", new { especialidad = "Periodoncia" })" class="specialty-box" data-bs-toggle="tooltip" title="Tratamiento de encías">
                             <div class="specialty-icon"><i class="bi bi-bandaid"></i></div>
-                            <span class="small fw-semibold text-secondary">Periodoncia</span>
-                        </div>
+                            <span class="specialty-label">Periodoncia</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- BANNER DE SALUD PREVENTIVA -->
+                <div class="tip-banner shadow-sm">
+                    <i class="bi bi-lightbulb-fill fs-2"></i>
+                    <div>
+                        <strong class="d-block small text-uppercase">Cuidado Preventivo</strong>
+                        <span class="small" style="line-height: 1.3; display: block;">Recordá cambiar tu cepillo dental cada 3 meses y utilizar hilo dental diariamente.</span>
                     </div>
                 </div>
 
             </div>
         </div>
 
-    </div>
-
-    <!-- MODAL CONFIRMACIÓN CERRAR SESIÓN PACIENTE -->
-    <div class="modal fade" id="modalCerrarSesionPaciente" tabindex="-1" aria-labelledby="modalCerrarSesionPacienteLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(135deg, #0d3b66 0%, #1d6fa5 100%);">
-                    <h5 class="modal-title fw-bold fs-6 d-flex align-items-center gap-2" id="modalCerrarSesionPacienteLabel">
-                        <i class="bi bi-door-open-fill opacity-75"></i> Confirmación de Salida
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body p-4 text-center">
-                    <div class="mb-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 72px; height: 72px; background-color: #eef6ff; color: #0d3b66;">
-                            <i class="bi bi-box-arrow-right fs-1" style="margin-left: 3px;"></i>
-                        </div>
-                    </div>
-                    <h5 class="fw-bold text-dark mb-2">¿Querés cerrar sesión?</h5>
-                    <p class="text-muted small mb-0 px-2">
-                        Al salir, finalizará tu sesión como <strong>@nombrePaciente</strong> y serás redirigido a la pantalla de ingreso.
-                    </p>
-                </div>
-                <div class="modal-footer bg-light border-0 justify-content-center gap-2 py-3">
-                    <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border shadow-sm" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i> Cancelar
-                    </button>
-                    <a href="@Url.Action("Login", "Home")" class="btn rounded-pill px-4 fw-bold shadow-sm text-white" style="background: linear-gradient(135deg, #0d3b66, #0d6efd); border: none;">
-                        <i class="bi bi-box-arrow-right me-1"></i> Sí, Cerrar Sesión
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCRIPT INICIALIZADOR: Carga Bootstrap y activa los Tooltips (mensajes flotantes estilo AdBlock) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // Inicializar Tooltips
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
+
+            // Buscador en tiempo real de profesionales
+            var buscador = document.getElementById("buscadorEspecialistas");
+            if (buscador) {
+                buscador.addEventListener("input", function (e) {
+                    var filter = e.target.value.toLowerCase();
+                    var cards = document.querySelectorAll(".doc-card");
+                    cards.forEach(function (card) {
+                        var text = card.innerText.toLowerCase();
+                        card.style.display = text.includes(filter) ? "" : "none";
+                    });
+                });
+            }
         });
     </script>
-</body>
-</html>
+}

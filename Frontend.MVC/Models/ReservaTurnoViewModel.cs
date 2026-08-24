@@ -1,27 +1,33 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Frontend.MVC.Models
 {
     public class ReservaTurnoViewModel
     {
-        [Required(ErrorMessage = "Debe seleccionar un profesional.")]
-        public int OdontologoId { get; set; }
+        public int? OdontologoId { get; set; }
 
-        public string? NombreOdontologo { get; set; } // Para mostrar en la vista de confirmación
+        public string? NombreOdontologo { get; set; }
+
+        public string? Especialidad { get; set; }
 
         [Required(ErrorMessage = "Debe seleccionar una fecha.")]
-        [DataType(DataType.Date)]
-        public DateTime FechaSeleccionada { get; set; }
+        public string? FechaSeleccionada { get; set; }
 
         [Required(ErrorMessage = "Debe seleccionar un horario.")]
-        [DataType(DataType.Time)]
-        public TimeSpan HorarioSeleccionado { get; set; }
+        public string? HorarioSeleccionado { get; set; }
 
         [Required(ErrorMessage = "Debe elegir un método de pago.")]
-        public string MetodoPago { get; set; } // Podría ser "ObraSocial" o "Particular"
+        public string MetodoPago { get; set; } = "ObraSocial"; // "ObraSocial" o "Particular"
 
-        [Required]
+        public string ObraSocialNombre { get; set; } = "OSDE (Plan 210)";
+
+        public decimal ArancelConsulta { get; set; } = 15000m;
+
+        public decimal CopagoAPagar { get; set; } = 0m;
+
         [Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar las políticas de cancelación para continuar.")]
-        public bool AceptaPoliticas { get; set; }
+        public bool AceptaPoliticas { get; set; } = true;
+
+        public bool EstaInhabilitado { get; set; } = false;
     }
-}
+}

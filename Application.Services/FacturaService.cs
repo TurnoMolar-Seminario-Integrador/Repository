@@ -51,10 +51,11 @@ namespace Application.Services
         {
             var pago = new Pago(
                 codPago: 0,
-                monto: dto.Monto,
+                nroTurno: dto.CodTurno ?? dto.CodAtencion ?? 1,
                 fechaYHoraPago: dto.FechaYHoraPago,
+                monto: dto.Monto,
                 tipoMetodoPago: dto.TipoMetodoPago,
-                codAtencion: dto.CodAtencion ?? 1
+                codAtencion: dto.CodAtencion
             );
 
             await _facturaRepository.AddAsync(pago);

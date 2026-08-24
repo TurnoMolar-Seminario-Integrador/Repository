@@ -1,150 +1,18 @@
 @{
     ViewData["Title"] = "Métodos de Pago - Clínica Dental Rosario";
-    Layout = null;
+    ViewData["ActiveTab"] = "MetodosDePago";
+    Layout = "_LayoutPaciente";
+
     var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
     var idPaciente = ViewData["IdPaciente"] ?? "10042";
 
     // MAGIA VISUAL: Si existe el TempData de éxito (porque acabamos de pagar), la deuda es 0.
     // Si no, simulamos que debe 15.500 pesos.
     decimal deudaActual = TempData["PagoExitoso"] != null ? 0.00m : 15500.00m;
-
-    var estadoPaciente = deudaActual > 0 ? "INHABILITADO" : "HABILITADO";
-    var badgeClass = deudaActual > 0 ? "bg-danger text-white" : "badge-habilitado";
 }
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"]</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
-
+@section Styles {
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', sans-serif;
-            color: #333;
-            overflow-x: hidden;
-        }
-
-        .sidebar {
-            width: 260px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: #ffffff;
-            border-right: 1px solid #e5e5e5;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            z-index: 100;
-        }
-
-        .profile-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 20px;
-        }
-
-        .profile-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .profile-info h6 {
-            font-size: 0.95rem;
-            font-weight: bold;
-            margin: 0;
-        }
-
-        .profile-info small {
-            font-size: 0.78rem;
-            color: #6c757d;
-        }
-
-        .badge-habilitado {
-            background-color: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .status-badge-global {
-            font-size: 0.65rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 3px;
-        }
-
-        .nav-menu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            color: #495057;
-            text-decoration: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            margin-bottom: 5px;
-        }
-
-            .nav-link:hover {
-                background-color: #f1f3f5;
-                color: #0d6efd;
-            }
-
-            .nav-link.active {
-                background-color: #0d6efd;
-                color: #ffffff;
-            }
-
-        .main-content {
-            margin-left: 260px;
-            padding: 30px;
-        }
-
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .brand-title {
-            color: #0d3b66;
-            font-weight: bold;
-            font-size: 1.3rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand-logo {
-            width: 32px;
-            height: auto;
-        }
-
         .balance-card {
             background: linear-gradient(135deg, #0d3b66, #1d6fa5);
             color: white;
@@ -153,14 +21,14 @@
             box-shadow: 0 4px 15px rgba(13,59,102,0.2);
         }
 
-            .balance-card.pagado {
-                background: linear-gradient(135deg, #0f5132, #198754);
-            }
+        .balance-card.pagado {
+            background: linear-gradient(135deg, #0f5132, #198754);
+        }
 
         .payment-method-card {
             background: #fff;
-            border: 1px solid #eaeaea;
-            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
             padding: 20px;
             display: flex;
             align-items: center;
@@ -168,49 +36,19 @@
             transition: all 0.2s;
         }
 
+        .payment-method-card:hover {
+            border-color: #bfdbfe;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.06);
+        }
+
         /* Estilos para que las tarjetas de crédito parezcan seleccionables en el Modal */
         .tarjeta-radio:checked + .payment-method-card {
-            border-color: #0d6efd;
-            background-color: #f8fbff;
-            box-shadow: 0 4px 10px rgba(13,110,253,0.15);
+            border-color: #2563eb;
+            background-color: #eff6ff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
         }
     </style>
-</head>
-<body>
-
-    <div class="sidebar">
-        <div class="profile-section">
-            <img src="https://ui-avatars.com/api/?name=@nombrePaciente&background=0d6efd&color=fff" class="profile-avatar" />
-            <div class="profile-info">
-                <h6>@nombrePaciente</h6>
-                <small>ID: #@idPaciente</small><br>
-                <span class="status-badge-global @badgeClass">ESTADO: @estadoPaciente</span>
-            </div>
-        </div>
-
-        <!-- MENÚ GLOBAL 100% FUNCIONAL -->
-        <ul class="nav-menu">
-            <li><a href="@Url.Action("MisTurnos", "Home")" class="nav-link"><i class="bi bi-calendar3"></i> Mis Turnos</a></li>
-            <li><a href="@Url.Action("HistorialClinico", "Home")" class="nav-link"><i class="bi bi-file-medical"></i> Historial Clínico</a></li>
-            <li><a href="@Url.Action("MetodosDePago", "Home")" class="nav-link active"><i class="bi bi-wallet2"></i> Métodos de Pago</a></li>
-            <li><a href="@Url.Action("Seguros", "Home")" class="nav-link"><i class="bi bi-shield-check"></i> Seguros/Obras Sociales</a></li>
-            <li><a href="@Url.Action("Index", "Home")" class="nav-link"><i class="bi bi-house-door"></i> Inicio</a></li>
-            <li><a href="@Url.Action("Configuracion", "Home")" class="nav-link"><i class="bi bi-gear"></i> Configuración</a></li>
-            <li style="margin-top: auto;">
-                <a href="#" class="nav-link text-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#modalCerrarSesionPaciente">
-                    <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <div class="main-content">
-        <div class="top-header">
-            <h5 class="brand-title">
-                <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo" class="brand-logo" /> Clínica Dental Rosario
-            </h5>
-            <button class="btn btn-light rounded-circle shadow-sm" style="width: 40px; height: 40px;"><i class="bi bi-bell"></i></button>
-        </div>
+}
 
         <!-- Alerta de Éxito al pagar -->
         @if (TempData["PagoExitoso"] != null)
@@ -356,42 +194,8 @@
         </div>
     </div>
 
-    <!-- MODAL CONFIRMACIÓN CERRAR SESIÓN PACIENTE -->
-    <div class="modal fade" id="modalCerrarSesionPaciente" tabindex="-1" aria-labelledby="modalCerrarSesionPacLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(135deg, #0d3b66 0%, #1d6fa5 100%);">
-                    <h5 class="modal-title fw-bold fs-6 d-flex align-items-center gap-2" id="modalCerrarSesionPacLabel">
-                        <i class="bi bi-door-open-fill opacity-75"></i> Confirmación de Salida
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white opacity-75" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body p-4 text-center">
-                    <div class="mb-3">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 72px; height: 72px; background-color: #eef6ff; color: #0d3b66;">
-                            <i class="bi bi-box-arrow-right fs-1" style="margin-left: 3px;"></i>
-                        </div>
-                    </div>
-                    <h5 class="fw-bold text-dark mb-2">¿Querés cerrar sesión?</h5>
-                    <p class="text-muted small mb-0 px-2">
-                        Serás redirigido a la pantalla de ingreso y tu sesión se cerrará.
-                    </p>
-                </div>
-                <div class="modal-footer bg-light border-0 justify-content-center gap-2 py-3">
-                    <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border shadow-sm" data-bs-dismiss="modal">
-                        <i class="bi bi-x-lg me-1"></i> Cancelar
-                    </button>
-                    <a href="@Url.Action("Login", "Home")" class="btn rounded-pill px-4 fw-bold shadow-sm text-white" style="background: linear-gradient(135deg, #0d3b66, #0d6efd); border: none;">
-                        <i class="bi bi-box-arrow-right me-1"></i> Sí, Cerrar Sesión
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Script chiquito para mostrar el tilde azul al seleccionar una tarjeta en el Modal -->
+@section Scripts {
+    <!-- Script para mostrar el tilde azul al seleccionar una tarjeta en el Modal -->
     <script>
         document.querySelectorAll('.tarjeta-radio').forEach(radio => {
             radio.addEventListener('change', function() {
@@ -404,5 +208,4 @@
             });
         });
     </script>
-</body>
-</html>
+}

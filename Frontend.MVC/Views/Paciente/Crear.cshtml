@@ -1,7 +1,7 @@
 @model TurnoMolar.Models.PacienteViewModel
 
 @{
-    ViewData["Title"] = "Alta de Paciente - Clínica Odontológica Rosario";
+    ViewData["Title"] = "Registro de Paciente - Clínica Dental Rosario";
     Layout = null;
 }
 
@@ -11,253 +11,272 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
+    <!-- Bootstrap 5 CSS & Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
+
     <style>
-        :root {
-            --bg-color: #f0f4f8;
-            --card-bg: #ffffff;
-            --text-color: #333333;
-            --border-color: #cccccc;
-            --input-bg: #ffffff;
-        }
-
-        /* Adaptación automática para pantallas/sistemas en modo oscuro */
-        @@media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #121212;
-                --card-bg: #1e1e1e;
-                --text-color: #e0e0e0;
-                --border-color: #444444;
-                --input-bg: #2d2d2d;
-            }
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 40px 20px;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 30px 15px;
+            color: #1e293b;
         }
 
         .registro-card {
-            background-color: var(--card-bg);
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 500px;
+            background-color: #ffffff;
             width: 100%;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            max-width: 580px;
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(13, 59, 102, 0.08);
+            border: 1px solid #eaeef2;
         }
 
-        .header-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 25px;
-            gap: 15px;
+        .logo-container {
+            text-align: center;
+            margin-bottom: 1.8rem;
         }
 
-            .header-container img {
-                width: 50px;
-                height: auto;
-            }
+        .brand-logo {
+            width: 65px;
+            height: auto;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 4px 6px rgba(0, 70, 148, 0.15));
+        }
 
-        h2 {
+        h1 {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #0d3b66;
+            margin: 0 0 4px 0;
+        }
+
+        p.subtitle {
+            font-size: 0.85rem;
+            color: #64748b;
             margin: 0;
-            color: #004694;
         }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            font-weight: 600;
-            font-size: 0.9em;
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 700;
             margin-bottom: 5px;
+            color: #334155;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
             display: block;
         }
 
-        .form-control {
+        .form-control-custom {
             width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
+            padding: 10px 14px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            background-color: #ffffff;
+            color: #1e293b;
             box-sizing: border-box;
+            transition: all 0.2s ease;
         }
 
-            .form-control:focus {
-                border-color: #004694;
-                outline: none;
-            }
+        .form-control-custom:focus {
+            border-color: #0d6efd;
+            background-color: #ffffff;
+            color: #1e293b;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
 
-        .btn-primary {
+        .btn-enter {
+            background-color: #0d3b66;
+            color: #ffffff;
+            border: none;
             width: 100%;
             padding: 12px;
-            background-color: #004694;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1em;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
             cursor: pointer;
-            margin-top: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(13, 59, 102, 0.2);
         }
 
-            .btn-primary:hover {
-                background-color: #003370;
-            }
+        .btn-enter:hover {
+            background-color: #002d62;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(13, 59, 102, 0.25);
+        }
 
-        .alert {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-weight: bold;
+        .back-link {
             text-align: center;
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
         }
 
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .back-link a {
+            color: #0d6efd;
+            font-weight: 600;
+            text-decoration: none;
         }
 
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+        .back-link a:hover {
+            text-decoration: underline;
         }
 
-        .input-group {
-            display: flex;
-            gap: 10px;
+        footer {
+            margin-top: 2rem;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            text-align: center;
+            line-height: 1.4;
         }
     </style>
 </head>
 <body>
 
     <div class="registro-card">
-
-        <!-- Título y Logo -->
-        <div class="header-container">
-            <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo Diente" />
-            <h2>Registrar Paciente</h2>
+        <!-- Logo y Cabecera -->
+        <div class="logo-container">
+            <img src="~/images/diente-al-estilo-doodle_78370-4795.avif" alt="Logo Clínica Dental" class="brand-logo" />
+            <h1>Registrar Nuevo Paciente</h1>
+            <p class="subtitle">Completá tus datos para crear tu cuenta y solicitar turnos</p>
         </div>
 
         <!-- Alertas de Éxito o Error -->
         @if (TempData["MensajeExito"] != null)
         {
-            <div class="alert alert-success">
-                @TempData["MensajeExito"]
+            <div class="alert alert-success alert-dismissible fade show rounded-3 py-2 px-3 mb-3 d-flex align-items-center" role="alert" style="font-size: 0.88rem;">
+                <i class="bi bi-check-circle-fill me-2 fs-6"></i>
+                <div>@TempData["MensajeExito"]</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
 
         @if (TempData["MensajeError"] != null)
         {
-            <div class="alert alert-danger">
-                @TempData["MensajeError"]
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 py-2 px-3 mb-3 d-flex align-items-center" role="alert" style="font-size: 0.88rem;">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-6"></i>
+                <div>@TempData["MensajeError"]</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
 
         <form asp-controller="Paciente" asp-action="Crear" method="post">
+            @Html.AntiForgeryToken()
 
-            <div class="input-group">
-                <div class="form-group" style="flex: 1;">
-                    <label asp-for="NombrePers">Nombre</label>
-                    <input asp-for="NombrePers" class="form-control" />
-                    <span asp-validation-for="NombrePers" style="color: red; font-size: 0.8em;"></span>
+            <!-- Nombre y Apellido -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="NombrePers" class="form-label">Nombre</label>
+                    <input asp-for="NombrePers" class="form-control-custom" placeholder="Ej: Manuel" required />
+                    <span asp-validation-for="NombrePers" class="text-danger small"></span>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label asp-for="Apellido">Apellido</label>
-                    <input asp-for="Apellido" class="form-control" />
-                    <span asp-validation-for="Apellido" style="color: red; font-size: 0.8em;"></span>
+                <div class="col-md-6">
+                    <label asp-for="Apellido" class="form-label">Apellido</label>
+                    <input asp-for="Apellido" class="form-control-custom" placeholder="Ej: Fernández" required />
+                    <span asp-validation-for="Apellido" class="text-danger small"></span>
                 </div>
             </div>
 
-            <!-- Nuevo Grupo: Tipo y Número de Documento -->
-            <div class="form-group">
-                <label>Documento de Identidad</label>
-                <div class="input-group">
-                    <select asp-for="TipoDocumento" class="form-control" style="flex: 0.3;">
+            <!-- Tipo y Número de Documento -->
+            <div class="mb-3">
+                <label class="form-label">Documento de Identidad</label>
+                <div class="d-flex gap-2">
+                    <select asp-for="TipoDocumento" class="form-control-custom" style="max-width: 120px;">
                         <option value="DNI">DNI</option>
                         <option value="CUIL">CUIL</option>
                         <option value="Pasaporte">Pasaporte</option>
                         <option value="Otros">Otros</option>
                     </select>
-                    <input asp-for="DniPers" class="form-control" placeholder="Número de documento" style="flex: 0.7;" />
+                    <input asp-for="DniPers" class="form-control-custom flex-grow-1" placeholder="Número de documento sin puntos" required />
                 </div>
-                <span asp-validation-for="DniPers" style="color: red; font-size: 0.8em;"></span>
+                <span asp-validation-for="DniPers" class="text-danger small"></span>
             </div>
 
-            <!-- Nuevo Campo: Fecha de Nacimiento -->
-            <div class="form-group">
-                <label asp-for="FechaNacimiento">Fecha de Nacimiento</label>
-                <!-- HTML5 input type="date" levanta el calendario nativo del navegador -->
-                <input asp-for="FechaNacimiento" type="date" class="form-control" />
-                <span asp-validation-for="FechaNacimiento" style="color: red; font-size: 0.8em;"></span>
+            <!-- Fecha de Nacimiento -->
+            <div class="mb-3">
+                <label asp-for="FechaNacimiento" class="form-label">Fecha de Nacimiento</label>
+                <input asp-for="FechaNacimiento" type="date" class="form-control-custom" required />
+                <span asp-validation-for="FechaNacimiento" class="text-danger small"></span>
             </div>
 
-            <div class="input-group">
-                <div class="form-group" style="flex: 1;">
-                    <label asp-for="TelefonoPers">Teléfono</label>
-                    <input asp-for="TelefonoPers" class="form-control" />
-                    <span asp-validation-for="TelefonoPers" style="color: red; font-size: 0.8em;"></span>
+            <!-- Teléfono y Correo Electrónico -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="TelefonoPers" class="form-label">Teléfono Móvil</label>
+                    <input asp-for="TelefonoPers" class="form-control-custom" placeholder="Ej: 341-5551234" required />
+                    <span asp-validation-for="TelefonoPers" class="text-danger small"></span>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label asp-for="MailPer">Correo Electrónico</label>
-                    <input asp-for="MailPer" type="email" class="form-control" />
-                    <span asp-validation-for="MailPer" style="color: red; font-size: 0.8em;"></span>
+                <div class="col-md-6">
+                    <label asp-for="MailPer" class="form-label">Correo Electrónico</label>
+                    <input asp-for="MailPer" type="email" class="form-control-custom" placeholder="tu@email.com" required />
+                    <span asp-validation-for="MailPer" class="text-danger small"></span>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label asp-for="Domicilio">Domicilio</label>
-                <input asp-for="Domicilio" class="form-control" />
+            <!-- Domicilio -->
+            <div class="mb-3">
+                <label asp-for="Domicilio" class="form-label">Domicilio Residencial</label>
+                <input asp-for="Domicilio" class="form-control-custom" placeholder="Calle, Número, Ciudad" />
             </div>
 
-            <!-- Grupo: Obra Social con la opción "Otra" -->
-            <div class="form-group">
-                <label asp-for="IdObraSocial">Obra Social</label>
-                <select asp-for="IdObraSocial" class="form-control" id="selectObraSocial">
+            <!-- Obra Social -->
+            <div class="mb-3">
+                <label asp-for="IdObraSocial" class="form-label">Obra Social o Prepaga</label>
+                <select asp-for="IdObraSocial" class="form-control-custom" id="selectObraSocial">
                     <option value="">Seleccione una obra social...</option>
                     <option value="OSDE">OSDE</option>
-                    <option value="IAPOS">IAPOS (Estatales y provinciales)</option>
+                    <option value="Swiss Medical">Swiss Medical</option>
+                    <option value="IAPOS">IAPOS</option>
                     <option value="Sancor Salud">Sancor Salud</option>
                     <option value="Federada Salud">Federada Salud</option>
                     <option value="Jerarquicos Salud">Jerárquicos Salud</option>
-                    <option value="Swiss Medical">Swiss Medical</option>
-                    <option value="Union Personal">Unión Personal (Accord Salud)</option>
                     <option value="Galeno">Galeno</option>
                     <option value="Particular">Particular (Sin Obra Social)</option>
                     <option value="Otra">Otra (Especificar)</option>
                 </select>
-                <span asp-validation-for="IdObraSocial" style="color: red; font-size: 0.8em;"></span>
+                <span asp-validation-for="IdObraSocial" class="text-danger small"></span>
             </div>
 
-            <!-- Este campo está oculto por defecto, se muestra por JS -->
-            <div class="form-group" id="divOtraObraSocial" style="display: none;">
-                <label asp-for="OtraObraSocial">Especifique su Obra Social</label>
-                <input asp-for="OtraObraSocial" class="form-control" placeholder="Escriba el nombre de su cobertura..." />
-                <span asp-validation-for="OtraObraSocial" style="color: red; font-size: 0.8em;"></span>
+            <!-- Campo desplegable para 'Otra' Obra Social -->
+            <div class="mb-4" id="divOtraObraSocial" style="display: none;">
+                <label asp-for="OtraObraSocial" class="form-label">Nombre de tu Obra Social</label>
+                <input asp-for="OtraObraSocial" class="form-control-custom" placeholder="Escribí el nombre de tu cobertura..." />
+                <span asp-validation-for="OtraObraSocial" class="text-danger small"></span>
             </div>
 
-            <button type="submit" class="btn-primary">Registrar Paciente</button>
+            <button type="submit" class="btn-enter">
+                <i class="bi bi-person-plus-fill me-1"></i> Registrar Paciente
+            </button>
 
-            <div style="text-align: center; margin-top: 20px;">
-                <a asp-controller="Home" asp-action="Login" style="color: #004694; text-decoration: none; font-size: 0.9em;">&larr; Volver al inicio de sesión</a>
+            <div class="back-link">
+                ¿Ya tenés una cuenta? <a asp-controller="Home" asp-action="Login">Iniciar sesión</a>
             </div>
         </form>
+
+        <footer>
+            © 2026 Clínica Dental Rosario. Todos los derechos reservados.<br />
+            Sistema Integral de Gestión Clínica
+        </footer>
     </div>
 
-    <!-- Script para controlar la lógica del desplegable "Otra" -->
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             var selectOS = document.getElementById("selectObraSocial");
             var divOtraOS = document.getElementById("divOtraObraSocial");
 
-            // Función que chequea el valor y muestra/oculta
             function toggleOtraObraSocial() {
                 if (selectOS && selectOS.value === "Otra") {
                     if (divOtraOS) divOtraOS.style.display = "block";
@@ -268,10 +287,7 @@
                 }
             }
 
-            // Ejecutar al cargar la página (por si recarga con errores y ya estaba en "Otra")
             toggleOtraObraSocial();
-
-            // Escuchar cambios en el select
             selectOS.addEventListener("change", toggleOtraObraSocial);
         });
     </script>

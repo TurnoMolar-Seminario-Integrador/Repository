@@ -1,11 +1,11 @@
+@model Frontend.MVC.Models.MisTurnosViewModel
 @{
     ViewData["Title"] = "Mis Turnos - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "MisTurnos";
     Layout = "_LayoutPaciente";
 
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-    var estadoPaciente = "HABILITADO";
+    var proximosTurnos = Model.Turnos.Where(t => t.Estado != "CANCELADO" && t.Estado != "ATENDIDO").ToList();
+    var historialTurnos = Model.Turnos.Where(t => t.Estado == "ATENDIDO" || t.Estado == "CANCELADO").ToList();
 }
 
 @section Styles {
@@ -52,6 +52,11 @@
             color: #15803d;
         }
 
+        .status-cancelled {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
         .detalle-item {
             border-bottom: 1px solid #f1f5f9;
             padding: 10px 0;
@@ -61,7 +66,7 @@
             border-bottom: none;
         }
 
-        /* Sidebar info cards (BSQ Pág 7) */
+        /* Sidebar info cards */
         .info-box-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -79,264 +84,324 @@
     </style>
 }
 
-        <!-- Encabezado con Botón Nuevo Turno -->
-        <div class="mb-4 d-flex justify-content-between align-items-end">
-            <div>
-                <h3 class="fw-extrabold text-dark mb-1">Gestión de Turnos</h3>
-                <p class="text-muted small mb-0">Consulta, reprograma o cancela tus citas odontológicas agendadas.</p>
-            </div>
-            <a href="@Url.Action("Reservar", "Turno")" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
-                <i class="bi bi-plus-circle-fill me-2"></i>Nuevo Turno
-            </a>
-        </div>
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-        <!-- Layout de 2 Columnas (BSQ Pág 7) -->
-        <div class="row g-4">
-            
-            <!-- Columna Izquierda: Listado de Turnos -->
-            <div class="col-lg-8">
-                <ul class="nav nav-pills mb-4 gap-2" id="turnosTabs" role="tablist">
-                    <li class="nav-item">
-                        <button class="nav-link active rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="tab" data-bs-target="#proximos" type="button">
-                            Próximos Turnos
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link rounded-pill px-4 fw-bold text-muted bg-white border" data-bs-toggle="tab" data-bs-target="#historial" type="button">
-                            Historial
-                        </button>
-                    </li>
-                </ul>
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-                <div class="tab-content">
-                    <!-- PESTAÑA: PRÓXIMOS TURNOS -->
-                    <div class="tab-pane fade show active" id="proximos">
+<!-- Encabezado con Botón Nuevo Turno -->
+<div class="mb-4 d-flex justify-content-between align-items-end">
+    <div>
+        <h3 class="fw-extrabold text-dark mb-1">Gestión de Turnos</h3>
+        <p class="text-muted small mb-0">Consulta, reprograma, valora o cancela tus citas odontológicas agendadas.</p>
+    </div>
+    <a href="@Url.Action("Reservar", "Turno")" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+        <i class="bi bi-plus-circle-fill me-2"></i>Nuevo Turno
+    </a>
+</div>
+
+<!-- Layout de 2 Columnas -->
+<div class="row g-4">
+    
+    <!-- Columna Izquierda: Listado de Turnos -->
+    <div class="col-lg-8">
+        <ul class="nav nav-pills mb-4 gap-2" id="turnosTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="tab" data-bs-target="#proximos" type="button">
+                    Próximos Turnos (@proximosTurnos.Count)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link rounded-pill px-4 fw-bold text-muted bg-white border" data-bs-toggle="tab" data-bs-target="#historial" type="button">
+                    Historial (@historialTurnos.Count)
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- PESTAÑA: PRÓXIMOS TURNOS -->
+            <div class="tab-pane fade show active" id="proximos">
+                @if (proximosTurnos.Any())
+                {
+                    @foreach (var t in proximosTurnos)
+                    {
+                        var docNombre = t.Odontologo != null ? $"{t.Odontologo.Nombre} {t.Odontologo.Apellido}" : "Odontólogo Asignado";
+                        var espNombre = t.Especialidad?.Nombre ?? "Consulta Odontológica";
+                        var diaNum = t.FechaYHoraReserva.Day.ToString();
+                        var mesTexto = t.FechaYHoraReserva.ToString("MMM").ToUpper();
+
                         <div class="turno-card">
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="turno-date">
-                                        <h3 class="mb-0 fw-extrabold">12</h3>
-                                        <small class="fw-bold text-uppercase">NOV</small>
+                                        <h3 class="mb-0 fw-extrabold">@diaNum</h3>
+                                        <small class="fw-bold text-uppercase">@mesTexto</small>
                                     </div>
                                     <div>
-                                        <span class="turno-status status-active mb-1 d-inline-block">Vigente</span>
-                                        <h5 class="fw-bold mb-1 text-dark">Control General</h5>
+                                        <span class="turno-status status-active mb-1 d-inline-block">@t.Estado</span>
+                                        <h5 class="fw-bold mb-1 text-dark">@espNombre</h5>
                                         <p class="text-muted small mb-0">
-                                            <i class="bi bi-person-fill me-1 text-primary"></i> Dra. Karina González • 09:30 AM • Consultorio 3
+                                            <i class="bi bi-person-fill me-1 text-primary"></i> @docNombre • @t.FechaYHoraReserva.ToString("HH:mm") hs • Consultorio 1
                                         </p>
                                     </div>
                                 </div>
 
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalDetalleTurno">
-                                        <i class="bi bi-info-circle me-1"></i> Ver Detalle
-                                    </button>
+                                    <a href="@Url.Action("Comprobante", "Turno", new { idTurno = t.CodTurno })" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                                        <i class="bi bi-receipt me-1"></i> Comprobante
+                                    </a>
 
-                                    <button class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#modalReprogramar">
+                                    <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-dark"
+                                            onclick="abrirModalReprogramar(@t.CodTurno, '@docNombre', '@t.FechaYHoraReserva.ToString("yyyy-MM-dd")', '@t.FechaYHoraReserva.ToString("HH:mm")')">
                                         Reprogramar
                                     </button>
 
-                                    <form asp-controller="Turno" asp-action="Cancelar" method="post" onsubmit="return confirm('¿Confirmás la cancelación de este turno?');">
-                                        <input type="hidden" name="idTurno" value="1" />
+                                    <form asp-controller="Turno" asp-action="Cancelar" method="post" onsubmit="return confirm('¿Confirmás la cancelación del turno #@t.CodTurno?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idTurno" value="@t.CodTurno" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">Cancelar</button>
                                     </form>
                                 </div>
                             </div>
                         </div>
+                    }
+                }
+                else
+                {
+                    <div class="bg-white border rounded-4 p-5 text-center shadow-sm">
+                        <i class="bi bi-calendar-check fs-1 text-muted mb-3 d-block"></i>
+                        <h5 class="fw-bold text-dark">No tenés turnos activos agendados</h5>
+                        <p class="text-muted small mb-4">Podés solicitar un turno con nuestros especialistas en simples pasos.</p>
+                        <a href="@Url.Action("Reservar", "Turno")" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-plus-lg me-1"></i> Solicitar Turno
+                        </a>
                     </div>
+                }
+            </div>
 
-                    <!-- PESTAÑA: HISTORIAL -->
-                    <div class="tab-pane fade" id="historial">
+            <!-- PESTAÑA: HISTORIAL -->
+            <div class="tab-pane fade" id="historial">
+                @if (historialTurnos.Any())
+                {
+                    @foreach (var t in historialTurnos)
+                    {
+                        var docNombre = t.Odontologo != null ? $"{t.Odontologo.Nombre} {t.Odontologo.Apellido}" : "Odontólogo Asignado";
+                        var espNombre = t.Especialidad?.Nombre ?? "Consulta Odontológica";
+                        var isAtendido = t.Estado == "ATENDIDO";
+                        var valoracion = t.Atencion?.Valoracion;
+
                         <div class="turno-card">
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="turno-date bg-light text-secondary border-0">
-                                        <h3 class="mb-0 fw-extrabold">15</h3>
-                                        <small class="fw-bold text-uppercase">OCT</small>
+                                        <h3 class="mb-0 fw-extrabold">@t.FechaYHoraReserva.Day</h3>
+                                        <small class="fw-bold text-uppercase">@t.FechaYHoraReserva.ToString("MMM").ToUpper()</small>
                                     </div>
                                     <div>
-                                        <span class="turno-status status-completed mb-1 d-inline-block">Completado</span>
-                                        <h5 class="fw-bold mb-1 text-dark">Control de Ortodoncia</h5>
+                                        <span class="turno-status @(isAtendido ? "status-completed" : "status-cancelled") mb-1 d-inline-block">
+                                            @t.Estado
+                                        </span>
+                                        <h5 class="fw-bold mb-1 text-dark">@espNombre</h5>
                                         <p class="text-muted small mb-0">
-                                            <i class="bi bi-person-fill me-1 text-secondary"></i> Dra. Elena Silva • Atendido
+                                            <i class="bi bi-person-fill me-1 text-secondary"></i> @docNombre • @t.FechaYHoraReserva.ToString("dd/MM/yyyy HH:mm") hs
                                         </p>
                                     </div>
                                 </div>
 
-                                <button class="btn btn-sm btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalValoracion">
-                                    <i class="bi bi-star-fill me-1"></i> Valorar Atención
-                                </button>
+                                <div>
+                                    @if (isAtendido)
+                                    {
+                                        if (valoracion != null)
+                                        {
+                                            <span class="badge bg-warning bg-opacity-25 text-dark border border-warning px-3 py-2 rounded-pill fw-bold">
+                                                <i class="bi bi-star-fill text-warning me-1"></i> Calificado: @valoracion.Calificacion / 5
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark"
+                                                    onclick="abrirModalValoracion(@t.CodTurno, '@docNombre', '@espNombre', '@t.FechaYHoraReserva.ToString("dd/MM/yyyy")')">
+                                                <i class="bi bi-star-fill me-1"></i> Valorar Atención
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small"><i class="bi bi-x-circle me-1"></i>Turno Cancelado</span>
+                                    }
+                                </div>
                             </div>
                         </div>
+                    }
+                }
+                else
+                {
+                    <div class="bg-white border rounded-4 p-5 text-center shadow-sm">
+                        <i class="bi bi-clock-history fs-1 text-muted mb-3 d-block"></i>
+                        <h5 class="fw-bold text-dark">No hay registros en el historial</h5>
+                        <p class="text-muted small mb-0">Tus atenciones completadas o turnos anteriores se listarán aquí.</p>
                     </div>
-                </div>
-            </div>
-
-            <!-- Columna Derecha: Información Importante y Asistencia (BSQ Pág 7) -->
-            <div class="col-lg-4">
-                <div class="info-box-card">
-                    <h6 class="fw-bold text-dark mb-3">
-                        <i class="bi bi-info-circle-fill text-primary me-2"></i>Información Importante
-                    </h6>
-                    <ul class="list-unstyled small text-muted mb-0 d-flex flex-column gap-2">
-                        <li class="d-flex gap-2">
-                            <i class="bi bi-clock-history text-primary mt-1"></i>
-                            <span>Llegar <strong>15 minutos antes</strong> de la cita para el registro en recepción.</span>
-                        </li>
-                        <li class="d-flex gap-2">
-                            <i class="bi bi-card-heading text-primary mt-1"></i>
-                            <span>Traer <strong>DNI y carnet de Obra Social</strong> vigente.</span>
-                        </li>
-                        <li class="d-flex gap-2">
-                            <i class="bi bi-shield-exclamation text-warning mt-1"></i>
-                            <span>Cancelaciones con menos de <strong>24 hs</strong> aplican cargo administrativo.</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="info-box-card bg-primary bg-opacity-10 border-primary border-opacity-25">
-                    <h6 class="fw-bold text-primary mb-2">
-                        <i class="bi bi-chat-dots-fill me-2"></i>¿Necesitas ayuda?
-                    </h6>
-                    <p class="small text-muted mb-3">Si tienes dudas sobre tu tratamiento o cobertura, comunícate con nuestro asistente.</p>
-                    <a href="https://wa.me/5493411234567" target="_blank" class="btn btn-primary rounded-pill w-100 fw-bold btn-sm shadow-sm">
-                        <i class="bi bi-whatsapp me-1"></i> Hablar con la Clínica
-                    </a>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ==========================================
-         MODAL: REPROGRAMAR TURNO
-         ========================================== -->
-    <div class="modal fade" id="modalReprogramar" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header bg-primary text-white border-0 py-3 px-4">
-                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-calendar2-range me-2"></i>Reprogramar Turno</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="#" method="post">
-                    <div class="modal-body p-4">
-                        <div class="alert alert-primary border-0 rounded-3 mb-4 d-flex align-items-center gap-3">
-                            <i class="bi bi-info-circle-fill fs-3"></i>
-                            <div>
-                                <small class="d-block text-uppercase fw-bold opacity-75">Turno Actual</small>
-                                <strong>12 Noviembre, 09:30 AM</strong> con Dra. Karina González
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small text-uppercase text-muted">1. Selecciona el nuevo día</label>
-                            <input type="date" class="form-control form-control-lg bg-light rounded-3" name="NuevaFecha" required min="2026-08-08">
-                        </div>
-
-                        <div class="mb-2">
-                            <label class="form-label fw-bold small text-uppercase text-muted">2. Elige un horario disponible</label>
-                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                <input type="radio" class="btn-check" name="NuevoHorario" id="hora1" autocomplete="off" required>
-                                <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora1">09:00 AM</label>
-
-                                <input type="radio" class="btn-check" name="NuevoHorario" id="hora2" autocomplete="off">
-                                <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora2">10:30 AM</label>
-
-                                <input type="radio" class="btn-check" name="NuevoHorario" id="hora3" autocomplete="off">
-                                <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora3">11:15 AM</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light border-0 py-3">
-                        <button type="button" class="btn btn-light rounded-pill px-4 border" data-bs-dismiss="modal">Mantener actual</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Confirmar Cambio</button>
-                    </div>
-                </form>
+                }
             </div>
         </div>
     </div>
 
-    <!-- ==========================================
-         MODAL: DETALLE DEL TURNO
-         ========================================== -->
-    <div class="modal fade" id="modalDetalleTurno" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header bg-primary text-white border-0 py-3 px-4">
-                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-card-list me-2"></i>Detalle del Turno</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+    <!-- Columna Derecha: Información Importante y Asistencia -->
+    <div class="col-lg-4">
+        <div class="info-box-card">
+            <h6 class="fw-bold text-dark mb-3">
+                <i class="bi bi-info-circle-fill text-primary me-2"></i>Información Importante
+            </h6>
+            <ul class="list-unstyled small text-muted mb-0 d-flex flex-column gap-2">
+                <li class="d-flex gap-2">
+                    <i class="bi bi-clock-history text-primary mt-1"></i>
+                    <span>Llegar <strong>15 minutos antes</strong> de la cita para el registro en recepción.</span>
+                </li>
+                <li class="d-flex gap-2">
+                    <i class="bi bi-card-heading text-primary mt-1"></i>
+                    <span>Presentar <strong>DNI y carnet de Obra Social</strong> o comprobante digital.</span>
+                </li>
+                <li class="d-flex gap-2">
+                    <i class="bi bi-shield-exclamation text-warning mt-1"></i>
+                    <span>Cancelaciones con menos de <strong>24 hs</strong> pueden registrarse en el legajo.</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="info-box-card bg-primary bg-opacity-10 border-primary border-opacity-25">
+            <h6 class="fw-bold text-primary mb-2">
+                <i class="bi bi-chat-dots-fill me-2"></i>¿Necesitas ayuda?
+            </h6>
+            <p class="small text-muted mb-3">Si tenés dudas sobre tu tratamiento, turno o cobertura, escribinos directamente.</p>
+            <a href="https://wa.me/5493411234567" target="_blank" class="btn btn-primary rounded-pill w-100 fw-bold btn-sm shadow-sm">
+                <i class="bi bi-whatsapp me-1"></i> Contactar a la Clínica
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<!-- ==========================================
+     MODAL: REPROGRAMAR TURNO
+     ========================================== -->
+<div class="modal fade" id="modalReprogramar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-calendar2-range me-2"></i>Reprogramar Turno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Turno" asp-action="Reprogramar" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="reprogIdTurno" name="idTurnoOriginal" value="0" />
+
                 <div class="modal-body p-4">
-                    <div class="text-center mb-4">
-                        <span class="badge bg-success mb-2 px-3 py-2 rounded-pill">Turno Confirmado</span>
-                        <h4 class="fw-bold text-dark">Control General</h4>
-                        <p class="text-muted small">Consulta de rutina y diagnóstico</p>
+                    <div class="alert alert-primary border-0 rounded-3 mb-4 d-flex align-items-center gap-3">
+                        <i class="bi bi-info-circle-fill fs-3"></i>
+                        <div>
+                            <small class="d-block text-uppercase fw-bold opacity-75">Profesional</small>
+                            <strong id="reprogDoctorNombre">Dra. Karina González</strong>
+                        </div>
                     </div>
 
-                    <div class="detalle-item d-flex justify-content-between">
-                        <span class="text-muted fw-semibold">Profesional</span>
-                        <span class="fw-bold text-dark">Dra. Karina González</span>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-uppercase text-muted">1. Seleccioná la nueva fecha</label>
+                        <input type="date" class="form-control form-control-lg bg-light rounded-3" id="reprogNuevaFecha" name="nuevaFecha" required min="@DateTime.Today.ToString("yyyy-MM-dd")" value="@DateTime.Today.AddDays(3).ToString("yyyy-MM-dd")">
                     </div>
-                    <div class="detalle-item d-flex justify-content-between">
-                        <span class="text-muted fw-semibold">Fecha y Hora</span>
-                        <span class="fw-bold text-dark">12 Noviembre, 09:30 AM</span>
-                    </div>
-                    <div class="detalle-item d-flex justify-content-between">
-                        <span class="text-muted fw-semibold">Ubicación</span>
-                        <span class="fw-bold text-dark">Consultorio 3 - Sede Centro</span>
-                    </div>
-                    <div class="detalle-item d-flex justify-content-between">
-                        <span class="text-muted fw-semibold">Cobertura</span>
-                        <span class="fw-bold text-dark">Obra Social (OSDE)</span>
-                    </div>
-                </div>
 
-                <div class="modal-footer bg-light border-0 d-flex justify-content-between py-3">
-                    <a href="@Url.Action("Comprobante", "Turno", new { fecha = "12 Nov, 09:30 AM" })" class="btn btn-outline-primary rounded-pill px-3 fw-bold">
-                        <i class="bi bi-receipt me-1"></i> Ver Comprobante
-                    </a>
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-uppercase text-muted">2. Elegí un horario disponible</label>
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <input type="radio" class="btn-check" name="nuevoHorario" id="hora1" value="09:00" checked>
+                            <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora1">09:00 AM</label>
+
+                            <input type="radio" class="btn-check" name="nuevoHorario" id="hora2" value="10:30">
+                            <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora2">10:30 AM</label>
+
+                            <input type="radio" class="btn-check" name="nuevoHorario" id="hora3" value="14:15">
+                            <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora3">02:15 PM</label>
+
+                            <input type="radio" class="btn-check" name="nuevoHorario" id="hora4" value="16:00">
+                            <label class="btn btn-outline-primary rounded-pill px-4 py-2" for="hora4">04:00 PM</label>
+                        </div>
+                    </div>
                 </div>
-            </div>
+                <div class="modal-footer bg-light border-0 py-3">
+                    <button type="button" class="btn btn-light rounded-pill px-4 border" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Confirmar Reprogramación</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- ==========================================
-         MODAL: VALORAR ATENCIÓN (CUU04)
-         ========================================== -->
-    <div class="modal fade" id="modalValoracion" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header bg-warning text-dark border-0 py-3 px-4">
-                    <h5 class="modal-title fw-bold fs-6"><i class="bi bi-star-fill me-2"></i>Valorar Atención</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center p-4">
-                    <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=2563eb&color=fff&bold=true" class="rounded-circle mb-3" width="70" alt="Doctor">
-                    <h6 class="fw-bold mb-0 text-dark">Dra. Elena Silva</h6>
-                    <p class="text-muted small mb-4">Control de Ortodoncia • 15 Oct, 2026</p>
-
-                    <form action="#" method="post">
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small text-uppercase text-muted">¿Cómo calificarías tu experiencia?</label>
-                            <select class="form-select form-select-lg text-center rounded-3" name="Puntuacion" required>
-                                <option value="" selected disabled>Selecciona una calificación...</option>
-                                <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
-                                <option value="4">⭐⭐⭐⭐ Muy buena</option>
-                                <option value="3">⭐⭐⭐ Buena</option>
-                                <option value="2">⭐⭐ Regular</option>
-                                <option value="1">⭐ Mala</option>
-                            </select>
-                        </div>
-                        <div class="mb-4 text-start">
-                            <label class="form-label fw-bold small text-uppercase text-muted">Comentarios u observaciones</label>
-                            <textarea class="form-control rounded-3" name="Comentario" rows="3" placeholder="¿Cómo fue la puntualidad, instalaciones o trato recibido?"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow-sm">
-                            Enviar Valoración
-                        </button>
-                    </form>
-                </div>
+<!-- ==========================================
+     MODAL: VALORAR ATENCIÓN (CUU04)
+     ========================================== -->
+<div class="modal fade" id="modalValoracion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-warning text-dark border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold fs-6"><i class="bi bi-star-fill me-2"></i>Valorar Atención Recibida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form asp-controller="Turno" asp-action="Calificar" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="valIdTurno" name="idTurno" value="0" />
+
+                <div class="modal-body text-center p-4">
+                    <h6 class="fw-bold mb-1 text-dark" id="valDoctorNombre">Dra. Elena Silva</h6>
+                    <p class="text-muted small mb-4" id="valDetalleAtencion">Control Odontológico</p>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-uppercase text-muted">¿Cómo calificarías la atención recibida?</label>
+                        <select class="form-select form-select-lg text-center rounded-3" name="calificacion" required>
+                            <option value="5" selected>⭐⭐⭐⭐⭐ Excelente (5 estrellas)</option>
+                            <option value="4">⭐⭐⭐⭐ Muy buena (4 estrellas)</option>
+                            <option value="3">⭐⭐⭐ Buena (3 estrellas)</option>
+                            <option value="2">⭐⭐ Regular (2 estrellas)</option>
+                            <option value="1">⭐ Mala (1 estrella)</option>
+                        </select>
+                    </div>
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Comentarios u observaciones</label>
+                        <textarea class="form-control rounded-3" name="comentarios" rows="3" placeholder="¿Cómo fue el trato, puntualidad e instalaciones?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow-sm">
+                        Guardar Valoración
+                    </button>
+                </div>
+            </form>
         </div>
-    </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function abrirModalReprogramar(idTurno, doctorNombre, fechaActual, horaActual) {
+            document.getElementById('reprogIdTurno').value = idTurno;
+            document.getElementById('reprogDoctorNombre').innerText = doctorNombre;
+            var modal = new bootstrap.Modal(document.getElementById('modalReprogramar'));
+            modal.show();
+        }
+
+        function abrirModalValoracion(idTurno, doctorNombre, especialidad, fecha) {
+            document.getElementById('valIdTurno').value = idTurno;
+            document.getElementById('valDoctorNombre').innerText = doctorNombre;
+            document.getElementById('valDetalleAtencion').innerText = especialidad + ' • ' + fecha;
+            var modal = new bootstrap.Modal(document.getElementById('modalValoracion'));
+            modal.show();
+        }
+    </script>
+}

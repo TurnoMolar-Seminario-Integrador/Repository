@@ -1,11 +1,12 @@
+@model Frontend.MVC.Models.SegurosViewModel
 @{
     ViewData["Title"] = "Seguros y Obras Sociales - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "Seguros";
     Layout = "_LayoutPaciente";
 
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-    var estadoPaciente = "HABILITADO";
+    var os = Model.ObraSocialActual;
+    var nombrePaciente = $"{Model.Paciente.Nombre} {Model.Paciente.Apellido}";
+    var tieneOS = os != null;
 }
 
 @section Styles {
@@ -18,6 +19,10 @@
             box-shadow: 0 10px 25px rgba(13, 59, 102, 0.2);
             position: relative;
             overflow: hidden;
+        }
+
+        .credential-card.particular {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
         }
 
         .credential-card::after {
@@ -33,57 +38,96 @@
 
         .update-box {
             background: #fff;
-            border: 1px dashed #cbd5e1;
+            border: 1px solid #e2e8f0;
             border-radius: 20px;
-            padding: 30px;
-            text-align: center;
+            padding: 26px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.02);
         }
     </style>
 }
 
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <div class="mb-4">
     <h3 class="fw-extrabold text-dark mb-1">Mi Cobertura Médica</h3>
-    <p class="text-muted small">Visualiza los datos de tu prepaga u obra social vinculada.</p>
+    <p class="text-muted small">Visualiza y actualiza la prepaga u obra social vinculada a tu historia clínica.</p>
 </div>
 
 <div class="row g-4">
     <div class="col-lg-6">
         <h5 class="fw-bold mb-3 text-dark">Credencial Activa</h5>
         <!-- Tarjeta de Credencial Digital -->
-        <div class="credential-card">
+        <div class="credential-card @(tieneOS ? "" : "particular")">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="fw-extrabold mb-0">OSDE</h3>
+                <h3 class="fw-extrabold mb-0">@(tieneOS ? os!.NombreOS : "Particular")</h3>
                 <i class="bi bi-shield-check fs-1 opacity-75"></i>
             </div>
             <div class="mb-4">
-                <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Nombre del Titular</p>
+                <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Titular Registrado</p>
                 <h5 class="fw-bold">@nombrePaciente</h5>
             </div>
             <div class="d-flex justify-content-between">
                 <div>
-                    <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Nro. Afiliado</p>
-                    <h6 class="fw-bold mb-0">34567890-01</h6>
+                    <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Nro. Documento</p>
+                    <h6 class="fw-bold mb-0">@Model.Paciente.TipoDocumento @Model.Paciente.NroDocumento</h6>
                 </div>
                 <div>
-                    <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Plan</p>
-                    <h6 class="fw-bold mb-0">210 (Directo)</h6>
+                    <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Plan / Categoría</p>
+                    <h6 class="fw-bold mb-0">@(tieneOS ? os!.PlanCobertura : "Atención Privada")</h6>
+                </div>
+                <div>
+                    <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Estado</p>
+                    <h6 class="fw-bold mb-0 text-success"><i class="bi bi-check-circle-fill"></i> Activa</h6>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="col-lg-6">
-        <h5 class="fw-bold mb-3 text-dark">Actualización de Datos</h5>
+        <h5 class="fw-bold mb-3 text-dark">Modificar Cobertura</h5>
         <div class="update-box">
-            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px; background: #eff6ff; color: #2563eb;">
-                <i class="bi bi-cloud-arrow-up fs-2"></i>
-            </div>
-            <h5 class="fw-bold text-dark mb-2">¿Cambiaste de obra social?</h5>
-            <p class="text-muted small mb-4">Para mantener tu cobertura al día, envíanos una foto de tu nueva credencial física o digital. La secretaría validará tus datos a la brevedad.</p>
-            <button class="btn btn-outline-primary rounded-pill px-4 fw-bold">
-                <i class="bi bi-upload me-2"></i>Subir nueva credencial
-            </button>
+            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-arrow-repeat text-primary me-2"></i>Actualizar Obra Social / Prepaga</h6>
+            <p class="text-muted small mb-3">Seleccioná tu nueva cobertura médica para aplicar las tarifas y copagos correspondientes.</p>
+            
+            <form asp-controller="Home" asp-action="ActualizarSeguro" method="post">
+                @Html.AntiForgeryToken()
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Seleccionar Entidad</label>
+                    <select class="form-select rounded-3 py-2" name="idObraSocial" required>
+                        @foreach (var o in Model.ObrasSocialesDisponibles)
+                        {
+                            var isSelected = Model.Paciente.IdentificadorOS == o.IdentificadorOS;
+                            <option value="@o.IdentificadorOS" selected="@isSelected">
+                                @o.NombreOS - Plan: @o.PlanCobertura (Copago: $@o.ArancelOS.ToString("N0"))
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Nro. de Credencial / Afiliado (Opcional)</label>
+                    <input type="text" class="form-control rounded-3 py-2" name="nroAfiliado" placeholder="Ej: 34567890-01" />
+                </div>
+
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold w-100 py-2 shadow-sm">
+                    <i class="bi bi-check-circle-fill me-1"></i> Guardar Nueva Cobertura
+                </button>
+            </form>
         </div>
     </div>
 </div>

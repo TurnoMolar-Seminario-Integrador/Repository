@@ -4,7 +4,7 @@ namespace Domain.Model
     {
         public int CodValoracion { get; private set; }
         public int Calificacion { get; private set; }
-        public string? Observaciones { get; private set; }
+        public string? Observaciones { get; set; }
 
         public int CodAtencion { get; private set; }
         public virtual AtencionOdontologica Atencion { get; private set; }

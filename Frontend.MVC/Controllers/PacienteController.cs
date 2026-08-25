@@ -1,91 +1,134 @@
+using Data;
+using Domain.Model;
 using Microsoft.AspNetCore.Mvc;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
-using DTOs;
+using Microsoft.EntityFrameworkCore;
 using TurnoMolar.Models;
 
 namespace TurnoMolar.Controllers
 {
     public class PacienteController : Controller
     {
-        private readonly HttpClient _httpClient;
+        private readonly TurnoMolarDbContext _context;
+        private readonly ILogger<PacienteController> _logger;
 
-        // Inyectamos el HttpClient que configuramos en Program.cs
-        public PacienteController(HttpClient httpClient, IConfiguration configuration)
+        public PacienteController(TurnoMolarDbContext context, ILogger<PacienteController> logger)
         {
-            _httpClient = httpClient;
-
-            // Se obtiene la URL base de la WebAPI desde la configuración o usa la por defecto (puerto 7266/5263 de la WebAPI)
-            if (_httpClient.BaseAddress == null)
-            {
-                var apiBaseUrl = configuration["ApiBaseUrl"] ?? "https://localhost:7266/";
-                _httpClient.BaseAddress = new Uri(apiBaseUrl);
-            }
+            _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
         public IActionResult Crear()
         {
-            return View();
+            return View(new PacienteViewModel());
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Crear(PacienteViewModel modelo)
         {
-            // Validación personalizada: si eligió "Otra" obra social pero no escribió cuál en el campo de texto
             if (modelo.IdObraSocial == "Otra" && string.IsNullOrWhiteSpace(modelo.OtraObraSocial))
             {
                 ModelState.AddModelError("OtraObraSocial", "Por favor, especificá el nombre de la obra social.");
             }
 
+            if (!int.TryParse(modelo.DniPers, out int dniParsed) || dniParsed <= 0)
+            {
+                ModelState.AddModelError("DniPers", "Ingresá un número de documento válido.");
+            }
+
             if (ModelState.IsValid)
             {
-                // Mapeo correcto al DTO esperado por la WebAPI y Application.Services
-                int.TryParse(modelo.DniPers, out int dniParsed);
-
-                var pacienteDto = new PacienteDTO
-                {
-                    Nombre = modelo.NombrePers,
-                    Apellido = modelo.Apellido,
-                    Dni = dniParsed,
-                    Telefono = modelo.TelefonoPers,
-                    Email = modelo.MailPer,
-                    Domicilio = modelo.Domicilio,
-                    EstadoHabilitado = modelo.EstadoHabilitacion
-                };
-
                 try
                 {
-                    // Disparamos la petición POST al endpoint /pacientes definido en WebAPI
-                    var response = await _httpClient.PostAsJsonAsync("pacientes", pacienteDto);
+                    // Validar si el paciente ya existe en BD
+                    var existe = await _context.Pacientes
+                        .AnyAsync(p => p.NroDocumento == dniParsed && p.TipoDocumento == (modelo.TipoDocumento ?? "DNI"));
 
-                    if (response.IsSuccessStatusCode)
+                    if (existe)
                     {
-                        // Se guardó bien: mostramos mensaje de éxito y limpiamos formulario
-                        TempData["MensajeExito"] = "¡Paciente registrado correctamente!";
-                        ModelState.Clear();
-                        return View(new PacienteViewModel());
+                        TempData["MensajeError"] = $"El paciente con documento {dniParsed} ya se encuentra registrado en el sistema.";
+                        return View(modelo);
                     }
-                    else
+
+                    // Determinar ID de Obra Social
+                    int? idOs = null;
+                    if (!string.IsNullOrEmpty(modelo.IdObraSocial) && modelo.IdObraSocial != "Particular")
                     {
-                        var responseBody = await response.Content.ReadAsStringAsync();
-                        TempData["MensajeError"] = $"Error de la API ({response.StatusCode}): {responseBody}";
+                        var nombreBuscado = modelo.IdObraSocial == "Otra" ? modelo.OtraObraSocial : modelo.IdObraSocial;
+                        var osExistente = await _context.ObrasSociales
+                            .FirstOrDefaultAsync(o => o.NombreOS.ToLower().Contains(nombreBuscado!.ToLower()));
+
+                        if (osExistente != null)
+                        {
+                            idOs = osExistente.IdentificadorOS;
+                        }
                     }
+
+                    // 1. Crear Entidad Paciente (DER)
+                    var nuevoPaciente = new Paciente(
+                        modelo.TipoDocumento ?? "DNI",
+                        dniParsed,
+                        modelo.NombrePers,
+                        modelo.Apellido,
+                        modelo.FechaNacimiento ?? new DateTime(1995, 1, 1),
+                        modelo.TelefonoPers,
+                        modelo.MailPer,
+                        modelo.Domicilio ?? "Rosario",
+                        "HABILITADO",
+                        0m,
+                        idOs
+                    );
+                    _context.Pacientes.Add(nuevoPaciente);
+
+                    // 2. Crear Historia Clínica de base (DER)
+                    var hc = new HistoriaClinica(
+                        0,
+                        nuevoPaciente.TipoDocumento,
+                        nuevoPaciente.NroDocumento,
+                        DateTime.Now,
+                        "Sin antecedentes registrados en el alta.",
+                        "Ninguna declarada.",
+                        "Ficha clínica de registro inicial."
+                    );
+                    _context.HistoriasClinicas.Add(hc);
+
+                    // 3. Crear Cuenta de Usuario para que pueda iniciar sesión (Seguridad EC03)
+                    var usuarioExistente = await _context.Usuarios
+                        .AnyAsync(u => u.EntidadId == dniParsed || u.Username == dniParsed.ToString());
+
+                    if (!usuarioExistente)
+                    {
+                        var nuevoUsuario = new Usuario(
+                            0,
+                            dniParsed.ToString(),
+                            "paciente123",
+                            "Paciente",
+                            $"{modelo.NombrePers} {modelo.Apellido}",
+                            modelo.MailPer,
+                            true,
+                            dniParsed
+                        );
+                        _context.Usuarios.Add(nuevoUsuario);
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    TempData["MensajeExito"] = $"¡Paciente registrado con éxito! Podés iniciar sesión con tu DNI ({dniParsed}) y contraseña provisoria: 'paciente123'.";
+                    ModelState.Clear();
+                    return View(new PacienteViewModel());
                 }
                 catch (Exception ex)
                 {
-                    // Por si la API está apagada o no hay conexión
-                    TempData["MensajeError"] = $"No se pudo conectar con el servidor: {ex.Message}";
+                    _logger.LogError(ex, "Error al registrar el paciente.");
+                    TempData["MensajeError"] = $"Ocurrió un error al guardar en la base de datos: {ex.Message}";
                 }
             }
             else
             {
-                // Si el ModelState es inválido (faltan datos requeridos)
                 TempData["MensajeError"] = "Por favor, revisá los campos marcados en rojo.";
             }
 
-            // Si falla la validación o hubo un error, devolvemos la vista con los avisos y los datos que ya había escrito
             return View(modelo);
         }
     }

@@ -28,8 +28,8 @@ namespace Domain.Model
 
         public void SetNroHC(int nroHC)
         {
-            if (nroHC <= 0)
-                throw new ArgumentException("El número de Historia Clínica debe ser mayor que 0.", nameof(nroHC));
+            if (nroHC < 0)
+                throw new ArgumentException("El número de Historia Clínica no puede ser negativo.", nameof(nroHC));
             NroHC = nroHC;
         }
 

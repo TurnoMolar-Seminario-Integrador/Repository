@@ -1,11 +1,8 @@
+@model Frontend.MVC.Models.ConfiguracionViewModel
 @{
     ViewData["Title"] = "Configuración - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "Configuracion";
     Layout = "_LayoutPaciente";
-
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-    var estadoPaciente = "HABILITADO";
 }
 
 @section Styles {
@@ -41,60 +38,91 @@
     </style>
 }
 
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <div class="mb-4">
     <h3 class="fw-extrabold text-dark mb-1">Configuración de Cuenta</h3>
-    <p class="text-muted small">Administra tus datos personales y preferencias de seguridad.</p>
+    <p class="text-muted small">Administra tus datos personales y preferencias de seguridad guardadas en la base de datos.</p>
 </div>
 
 <div class="row">
     <div class="col-lg-8">
-        <!-- Datos Personales -->
+        <!-- Datos Personales (Modificación ABM) -->
         <div class="config-card">
             <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-person-lines-fill me-2 text-primary"></i>Datos Personales</h5>
-            <form>
+            <form asp-controller="Home" asp-action="ActualizarPerfil" method="post">
+                @Html.AntiForgeryToken()
+
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Nombre Completo</label>
-                        <input type="text" class="form-control" value="Manuel Fernández">
+                        <input type="text" class="form-control bg-light" value="@Model.Nombre @Model.Apellido" disabled>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">DNI</label>
-                        <input type="text" class="form-control bg-light" value="34.567.890" disabled>
+                        <label class="form-label">Documento (@Model.TipoDocumento)</label>
+                        <input type="text" class="form-control bg-light" value="@Model.NroDocumento" disabled>
                     </div>
                 </div>
-                <div class="row g-3 mb-4">
+                <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Correo Electrónico</label>
-                        <input type="email" class="form-control" value="manuel.fer@email.com">
+                        <input type="email" class="form-control" name="email" value="@Model.Email" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Teléfono Móvil</label>
-                        <input type="text" class="form-control" value="+54 341 555-1234">
+                        <input type="text" class="form-control" name="telefono" value="@Model.Telefono" required>
                     </div>
                 </div>
-                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Guardar Cambios</button>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label class="form-label">Domicilio Residencial</label>
+                        <input type="text" class="form-control" name="domicilio" value="@Model.Domicilio" placeholder="Calle, Número, Ciudad" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                    <i class="bi bi-save me-1"></i> Guardar Cambios
+                </button>
             </form>
         </div>
 
-        <!-- Seguridad y Notificaciones -->
+        <!-- Seguridad y Cobertura -->
         <div class="config-card">
-            <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-shield-lock-fill me-2 text-primary"></i>Seguridad y Notificaciones</h5>
+            <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-shield-lock-fill me-2 text-primary"></i>Información de Cuenta y Seguridad</h5>
 
             <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
                 <div>
-                    <h6 class="fw-bold mb-1 text-dark">Contraseña de Acceso</h6>
-                    <p class="small text-muted mb-0">Última modificación hace 3 meses</p>
+                    <h6 class="fw-bold mb-1 text-dark">Estado del Paciente</h6>
+                    <span class="badge @(Model.EstadoPaciente == "HABILITADO" ? "bg-success" : "bg-danger") px-3 py-1 rounded-pill">
+                        @Model.EstadoPaciente
+                    </span>
                 </div>
-                <button class="btn btn-outline-secondary rounded-pill px-3 fw-semibold btn-sm">Cambiar</button>
+                <div>
+                    <h6 class="fw-bold mb-1 text-dark">Cobertura Actual</h6>
+                    <span class="text-muted small">@Model.ObraSocialNombre</span>
+                </div>
             </div>
 
             <div class="form-check form-switch mb-3">
                 <input class="form-check-input" type="checkbox" role="switch" id="notifEmail" checked>
-                <label class="form-check-label fw-semibold text-dark" for="notifEmail">Recibir recordatorios de turnos por Email</label>
+                <label class="form-check-label fw-semibold text-dark" for="notifEmail">Recibir recordatorios automáticos de turnos por Email</label>
             </div>
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="notifSms" checked>
-                <label class="form-check-label fw-semibold text-dark" for="notifSms">Recibir notificaciones por SMS / WhatsApp</label>
+                <label class="form-check-label fw-semibold text-dark" for="notifSms">Recibir alertas de citas por SMS / WhatsApp</label>
             </div>
         </div>
     </div>

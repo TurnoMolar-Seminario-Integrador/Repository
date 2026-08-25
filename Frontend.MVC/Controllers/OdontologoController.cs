@@ -1,13 +1,23 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace TurnoMolar.Controllers
 {
+    [Authorize(Roles = "Odontologo,ResponsableClinica,Admin")]
     public class OdontologoController : Controller
     {
-        // GET: /Odontologo/Index -> Panel Principal del Odontólogo
+        private void CargarDatosOdontologoViewData()
+        {
+            ViewData["NombreDoctor"] = User.FindFirst("NombreCompleto")?.Value ?? "Dra. Karina González";
+            ViewData["RolDoctor"] = User.IsInRole("ResponsableClinica") ? "RESPONSABLE CLÍNICO" : "ODONTÓLOGO";
+            ViewData["Matricula"] = "MP 3840";
+        }
+
+        // GET: /Odontologo/Index -> Panel Principal del Odontólogo / Responsable de la Clínica
         [HttpGet]
         public IActionResult Index()
         {
+            CargarDatosOdontologoViewData();
             return View();
         }
 
@@ -15,6 +25,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public IActionResult TurnosDelDia()
         {
+            CargarDatosOdontologoViewData();
             return View();
         }
 
@@ -22,6 +33,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public IActionResult GestionTurnos()
         {
+            CargarDatosOdontologoViewData();
             return View();
         }
 
@@ -29,6 +41,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public IActionResult ControlAsistencias()
         {
+            CargarDatosOdontologoViewData();
             return View();
         }
 
@@ -36,6 +49,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public IActionResult GestionAtenciones()
         {
+            CargarDatosOdontologoViewData();
             return View();
         }
 

@@ -1,6 +1,5 @@
 # Visual Studio
 .vs/
-*.sln
 *.user
 obj/
 bin/
@@ -9,21 +8,6 @@ bin/
 *.db
 *.db-shm
 *.db-wal
-
-# Backup files
-*.backup.json
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-shm
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db-shm
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-wal
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-shm
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/CodeChunks.db-wal
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db-shm
-/.vs/DentalClinic/CopilotIndices/17.14.1661.41761/SemanticSymbols.db-wal
 
 # Backup / temporales
 *.backup.json
@@ -35,3 +19,6 @@ TestResults/
 # Otros IDEs
 .idea/
 .vscode/
+
+# Archivos de conversación/historial local
+HISTORIAL_CONVERSACION.md

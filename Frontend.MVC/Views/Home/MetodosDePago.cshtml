@@ -1,14 +1,11 @@
+@model Frontend.MVC.Models.MetodosPagoViewModel
 @{
     ViewData["Title"] = "Métodos de Pago - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "MetodosDePago";
     Layout = "_LayoutPaciente";
 
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-
-    // MAGIA VISUAL: Si existe el TempData de éxito (porque acabamos de pagar), la deuda es 0.
-    // Si no, simulamos que debe 15.500 pesos.
-    decimal deudaActual = TempData["PagoExitoso"] != null ? 0.00m : 15500.00m;
+    var deudaActual = Model.SaldoPendiente;
+    var estaInhabilitado = Model.EstaInhabilitado;
 }
 
 @section Styles {
@@ -41,7 +38,6 @@
             box-shadow: 0 4px 14px rgba(37, 99, 235, 0.06);
         }
 
-        /* Estilos para que las tarjetas de crédito parezcan seleccionables en el Modal */
         .tarjeta-radio:checked + .payment-method-card {
             border-color: #2563eb;
             background-color: #eff6ff;
@@ -50,160 +46,172 @@
     </style>
 }
 
-        <!-- Alerta de Éxito al pagar -->
-        @if (TempData["PagoExitoso"] != null)
+<!-- Alerta de Éxito al pagar -->
+@if (TempData["PagoExitoso"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 bg-success text-white mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["PagoExitoso"]
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["MensajeInfo"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i> @TempData["MensajeInfo"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Estado de Cuenta y Pagos</h2>
+    <p class="text-muted small">Administrá tus saldos pendientes y revisá tu historial de pagos registrados en el sistema.</p>
+</div>
+
+<div class="row">
+    <!-- Columna Izquierda: Estado de Cuenta -->
+    <div class="col-lg-5 mb-4">
+
+        @if (deudaActual > 0)
         {
-            <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 bg-success text-white" role="alert">
-                <i class="bi bi-check-circle-fill me-2"></i> @TempData["PagoExitoso"]
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert alert-danger border-0 d-flex justify-content-between align-items-center rounded-top mb-0" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
+                <span class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Atención Requerida</span>
+                <span class="badge bg-white text-danger">INHABILITADO</span>
             </div>
         }
 
-        <div class="mb-4">
-            <h2 class="fw-bold text-dark mb-1">Estado de Cuenta y Pagos</h2>
-            <p class="text-muted small">Administrá tus saldos pendientes y revisá tu historial de facturación.</p>
+        <div class="balance-card @(deudaActual == 0 ? "pagado" : "")" style="@(deudaActual > 0 ? "border-top-left-radius: 0; border-top-right-radius: 0;" : "")">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="opacity-75">Saldo Pendiente de Pago</span>
+                <i class="bi bi-receipt fs-4"></i>
+            </div>
+            <h1 class="fw-bold mb-1 text-center py-3">$ @deudaActual.ToString("N2")</h1>
+
+            @if (deudaActual > 0)
+            {
+                <p class="small text-center opacity-75 mb-4">Poseés un saldo pendiente por tratamientos o cancelaciones. Por favor, regularizá tu situación para poder agendar nuevos turnos.</p>
+                <button class="btn btn-light w-100 fw-bold text-danger rounded-pill py-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPagarDeuda">
+                    <i class="bi bi-credit-card me-2"></i> Pagar Deuda Ahora
+                </button>
+            }
+            else
+            {
+                <p class="text-center opacity-75 mb-0"><i class="bi bi-check-circle-fill me-2"></i>Tu cuenta está completamente al día. Estado: HABILITADO.</p>
+            }
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Historial de Pagos y Métodos -->
+    <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">Historial de Pagos Realizados</h5>
+            <span class="badge bg-primary rounded-pill">@Model.HistorialPagos.Count registro(s)</span>
         </div>
 
-        <div class="row">
-            <!-- Columna Izquierda: Estado de Cuenta -->
-            <div class="col-lg-5 mb-4">
-
-                @if (deudaActual > 0)
-                {
-                    <div class="alert alert-danger border-0 d-flex justify-content-between align-items-center rounded-top mb-0" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
-                        <span class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Atención Requerida</span>
-                        <span class="badge bg-white text-danger">INHABILITADO</span>
-                    </div>
-                }
-
-                <div class="balance-card @(deudaActual == 0 ? "pagado" : "")" style="@(deudaActual > 0 ? "border-top-left-radius: 0; border-top-right-radius: 0;" : "")">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="opacity-75">Saldo Pendiente</span>
-                        <i class="bi bi-receipt fs-4"></i>
-                    </div>
-                    <h1 class="fw-bold mb-1 text-center py-3">$ @deudaActual.ToString("N2")</h1>
-
-                    @if (deudaActual > 0)
-                    {
-                        <p class="small text-center opacity-75 mb-4">Poseés una deuda por tratamientos anteriores. Por favor, regularizá tu saldo para poder agendar nuevos turnos.</p>
-                        <!-- BOTÓN QUE ABRE EL MODAL DE PAGO -->
-                        <button class="btn btn-light w-100 fw-bold text-danger rounded-pill py-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPagarDeuda">
-                            <i class="bi bi-credit-card me-2"></i> Pagar Ahora
-                        </button>
-                    }
-                    else
-                    {
-                        <p class="text-center opacity-75 mb-0"><i class="bi bi-check-circle-fill me-2"></i>Tu cuenta está completamente al día.</p>
-                    }
-                </div>
-            </div>
-
-            <!-- Columna Derecha: Métodos de Pago Guardados -->
-            <div class="col-lg-7">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0">Mis Tarjetas</h5>
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-plus-lg me-1"></i> Agregar</button>
-                </div>
-
-                <!-- Tarjeta 1 -->
+        @if (Model.HistorialPagos.Any())
+        {
+            @foreach (var pago in Model.HistorialPagos)
+            {
                 <div class="payment-method-card mb-3 shadow-sm">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="bg-light p-2 rounded"><i class="bi bi-credit-card-2-front fs-4 text-primary"></i></div>
+                        <div class="bg-light p-2 rounded text-success"><i class="bi bi-check2-circle fs-4"></i></div>
                         <div>
-                            <h6 class="fw-bold mb-0">Visa terminada en 4512</h6>
-                            <small class="text-muted">Vence 12/28</small>
+                            <h6 class="fw-bold mb-0 text-dark">Pago de Consulta - $@pago.Monto.ToString("N2")</h6>
+                            <small class="text-muted">@pago.FechaYHoraPago.ToString("dd/MM/yyyy HH:mm") hs • Método: @pago.TipoMetodoPago</small>
                         </div>
                     </div>
-                    <span class="badge bg-primary rounded-pill">Principal</span>
+                    <span class="badge bg-success bg-opacity-10 text-success fw-bold">PAGADO</span>
                 </div>
-
-                <!-- Tarjeta 2 -->
-                <div class="payment-method-card shadow-sm">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="bg-light p-2 rounded"><i class="bi bi-credit-card fs-4 text-secondary"></i></div>
-                        <div>
-                            <h6 class="fw-bold mb-0">Mastercard terminada en 8890</h6>
-                            <small class="text-muted">Vence 05/26</small>
-                        </div>
+            }
+        }
+        else
+        {
+            <div class="payment-method-card mb-3 shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-light p-2 rounded text-primary"><i class="bi bi-credit-card-2-front fs-4"></i></div>
+                    <div>
+                        <h6 class="fw-bold mb-0">Visa Débito (Predeterminada)</h6>
+                        <small class="text-muted">Habilitada para cobros directos en clínica</small>
                     </div>
-                    <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
                 </div>
+                <span class="badge bg-primary rounded-pill">Activa</span>
             </div>
+            <div class="bg-white border rounded-4 p-4 text-center text-muted small">
+                <i class="bi bi-receipt me-1"></i> Los recibos de tus próximos pagos se registrarán aquí automáticamente.
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL: PAGAR DEUDA
+     ========================================== -->
+<div class="modal fade" id="modalPagarDeuda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2 text-primary"></i>Abonar Saldo Pendiente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form asp-controller="Home" asp-action="PagarDeuda" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body p-4">
+
+                    <div class="text-center mb-4">
+                        <span class="text-muted small text-uppercase fw-bold d-block mb-1">Monto Total a Regularizar</span>
+                        <h2 class="fw-bold text-dark">$ @deudaActual.ToString("N2")</h2>
+                    </div>
+
+                    <label class="form-label fw-bold mb-3">Seleccioná la tarjeta para el pago</label>
+
+                    <div class="position-relative mb-2">
+                        <input type="radio" class="btn-check tarjeta-radio" name="metodoPago" id="tarjeta1" value="TARJETA_CREDITO_VISA" checked>
+                        <label class="payment-method-card w-100 m-0 cursor-pointer" for="tarjeta1" style="cursor: pointer;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-light p-2 rounded"><i class="bi bi-credit-card-2-front fs-5 text-primary"></i></div>
+                                <div class="text-start">
+                                    <h6 class="fw-bold mb-0 text-dark">Visa Crédito (terminada en 4512)</h6>
+                                    <small class="text-muted">Titular: @Model.Paciente.Nombre @Model.Paciente.Apellido</small>
+                                </div>
+                            </div>
+                            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+                        </label>
+                    </div>
+
+                    <div class="position-relative mb-4">
+                        <input type="radio" class="btn-check tarjeta-radio" name="metodoPago" id="tarjeta2" value="TARJETA_DEBITO_MASTER">
+                        <label class="payment-method-card w-100 m-0 cursor-pointer" for="tarjeta2" style="cursor: pointer;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-light p-2 rounded"><i class="bi bi-credit-card fs-5 text-secondary"></i></div>
+                                <div class="text-start">
+                                    <h6 class="fw-bold mb-0 text-dark">Mastercard Débito (terminada en 8890)</h6>
+                                </div>
+                            </div>
+                            <i class="bi bi-check-circle-fill text-primary d-none fs-5 check-icon"></i>
+                        </label>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light border-0 justify-content-between p-3">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                        <i class="bi bi-lock-fill me-1"></i> Confirmar y Pagar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-
-    <!-- ==========================================
-         MODAL: PAGAR DEUDA
-         ========================================== -->
-    <div class="modal fade" id="modalPagarDeuda" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-light border-0">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2"></i>Abonar Saldo Pendiente</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <!-- Formulario que apunta al método POST en tu HomeController -->
-                <form asp-controller="Home" asp-action="PagarDeuda" method="post">
-                    <div class="modal-body p-4">
-
-                        <div class="text-center mb-4">
-                            <span class="text-muted small text-uppercase fw-bold d-block mb-1">Monto a Pagar</span>
-                            <h2 class="fw-bold text-dark">$ @deudaActual.ToString("N2")</h2>
-                        </div>
-
-                        <label class="form-label fw-bold mb-3">Seleccioná un método de pago</label>
-
-                        <!-- Opción de Tarjeta 1 (Radio Oculto) -->
-                        <div class="position-relative mb-2">
-                            <input type="radio" class="btn-check tarjeta-radio" name="MetodoPago" id="tarjeta1" value="Visa4512" required>
-                            <label class="payment-method-card w-100 m-0 cursor-pointer" for="tarjeta1" style="cursor: pointer;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="bg-light p-2 rounded"><i class="bi bi-credit-card-2-front fs-5 text-primary"></i></div>
-                                    <div class="text-start">
-                                        <h6 class="fw-bold mb-0 text-dark">Visa terminada en 4512</h6>
-                                    </div>
-                                </div>
-                                <i class="bi bi-check-circle-fill text-primary d-none fs-5 check-icon"></i>
-                            </label>
-                        </div>
-
-                        <!-- Opción de Tarjeta 2 (Radio Oculto) -->
-                        <div class="position-relative mb-4">
-                            <input type="radio" class="btn-check tarjeta-radio" name="MetodoPago" id="tarjeta2" value="Mastercard8890">
-                            <label class="payment-method-card w-100 m-0 cursor-pointer" for="tarjeta2" style="cursor: pointer;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="bg-light p-2 rounded"><i class="bi bi-credit-card fs-5 text-secondary"></i></div>
-                                    <div class="text-start">
-                                        <h6 class="fw-bold mb-0 text-dark">Mastercard terminada en 8890</h6>
-                                    </div>
-                                </div>
-                                <i class="bi bi-check-circle-fill text-primary d-none fs-5 check-icon"></i>
-                            </label>
-                        </div>
-
-                    </div>
-                    <div class="modal-footer bg-light border-0 justify-content-between p-3">
-                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
-                            <i class="bi bi-lock-fill me-1"></i> Confirmar Pago
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+</div>
 
 @section Scripts {
-    <!-- Script para mostrar el tilde azul al seleccionar una tarjeta en el Modal -->
     <script>
         document.querySelectorAll('.tarjeta-radio').forEach(radio => {
             radio.addEventListener('change', function() {
-                // Ocultar todos los tildes
                 document.querySelectorAll('.check-icon').forEach(icon => icon.classList.add('d-none'));
-                // Mostrar el tilde de la tarjeta seleccionada
                 if(this.checked) {
-                    this.nextElementSibling.querySelector('.check-icon').classList.remove('d-none');
+                    var icon = this.nextElementSibling.querySelector('.check-icon');
+                    if (icon) icon.classList.remove('d-none');
                 }
             });
         });

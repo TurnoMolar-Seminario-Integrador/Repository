@@ -1,11 +1,11 @@
+@model Frontend.MVC.Models.HistorialClinicoViewModel
 @{
     ViewData["Title"] = "Historial Clínico - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "HistorialClinico";
     Layout = "_LayoutPaciente";
 
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-    var estadoPaciente = "HABILITADO";
+    var nroHc = Model.HistoriaClinica?.NroHC.ToString("D5") ?? "00001";
+    var fechaCreacion = Model.HistoriaClinica?.FechaCreacion.ToString("dd/MM/yyyy") ?? "15/01/2024";
 }
 
 @section Styles {
@@ -77,11 +77,6 @@
             background-color: #dcfce7;
             color: #15803d;
         }
-
-        .status-pending {
-            background-color: #fef3c7;
-            color: #b45309;
-        }
     </style>
 }
 
@@ -89,80 +84,118 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h3 class="fw-extrabold text-dark mb-1">Mi Historial Clínico</h3>
-        <p class="text-muted small mb-0">Registro completo de tus atenciones y tratamientos realizados.</p>
+        <p class="text-muted small mb-0">Registro digital cronológico de atenciones, diagnósticos y tratamientos odontológicos.</p>
     </div>
-    <button class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold">
-        <i class="bi bi-file-earmark-pdf me-2"></i>Descargar PDF
+    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold bg-white">
+        <i class="bi bi-printer me-2"></i>Imprimir Ficha
     </button>
 </div>
 
-        <!-- Tarjetas de Resumen -->
-        <div class="row mb-4 g-3">
-            <div class="col-md-4">
-                <div class="summary-card">
-                    <div class="summary-icon bg-primary text-white"><i class="bi bi-clipboard2-check"></i></div>
-                    <div>
-                        <h6 class="text-muted mb-1 small fw-bold">Tratamientos Realizados</h6>
-                        <h4 class="mb-0 fw-bold">12</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="summary-card">
-                    <div class="summary-icon"><i class="bi bi-clock-history"></i></div>
-                    <div>
-                        <h6 class="text-muted mb-1 small fw-bold">Última Visita</h6>
-                        <h4 class="mb-0 fw-bold fs-5">15 Oct, 2025</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="summary-card">
-                    <div class="summary-icon"><i class="bi bi-droplet"></i></div>
-                    <div>
-                        <h6 class="text-muted mb-1 small fw-bold">Grupo Sanguíneo</h6>
-                        <h4 class="mb-0 fw-bold fs-5">A Positivo (+)</h4>
-                    </div>
-                </div>
+<!-- Tarjetas de Resumen -->
+<div class="row mb-4 g-3">
+    <div class="col-md-4">
+        <div class="summary-card">
+            <div class="summary-icon bg-primary text-white"><i class="bi bi-file-earmark-medical"></i></div>
+            <div>
+                <small class="text-muted d-block fw-bold text-uppercase">Historia Clínica</small>
+                <h4 class="mb-0 fw-bold">Nro. #@nroHc</h4>
             </div>
         </div>
+    </div>
+    <div class="col-md-4">
+        <div class="summary-card">
+            <div class="summary-icon"><i class="bi bi-calendar-check"></i></div>
+            <div>
+                <small class="text-muted d-block fw-bold text-uppercase">Fecha de Alta</small>
+                <h4 class="mb-0 fw-bold fs-5">@fechaCreacion</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="summary-card">
+            <div class="summary-icon"><i class="bi bi-clipboard2-pulse"></i></div>
+            <div>
+                <small class="text-muted d-block fw-bold text-uppercase">Total Atenciones</small>
+                <h4 class="mb-0 fw-bold fs-5">@Model.Atenciones.Count registradas</h4>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <!-- Tabla de Registros Médicos -->
-        <h5 class="fw-bold mb-3 mt-2">Últimos Registros</h5>
-        <div class="table-responsive">
-            <table class="table table-custom table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th scope="col">Fecha</th>
-                        <th scope="col">Profesional</th>
-                        <th scope="col">Tratamiento</th>
-                        <th scope="col">Estado</th>
-                        <th scope="col">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><i class="bi bi-calendar-event me-2 text-muted"></i>15 Oct, 2025</td>
-                        <td><img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" width="30" class="rounded-circle me-2"> Dra. Elena Silva</td>
-                        <td class="fw-semibold">Control de Ortodoncia</td>
-                        <td><span class="status-badge status-completed">Completado</span></td>
-                        <td><button class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i> Ver receta</button></td>
-                    </tr>
-                    <tr>
-                        <td><i class="bi bi-calendar-event me-2 text-muted"></i>02 Sep, 2025</td>
-                        <td><img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=random" width="30" class="rounded-circle me-2"> Dr. Martín López</td>
-                        <td class="fw-semibold">Extracción 3er Molar</td>
-                        <td><span class="status-badge status-completed">Completado</span></td>
-                        <td><button class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i> Ver informe</button></td>
-                    </tr>
-                    <tr>
-                        <td><i class="bi bi-calendar-event me-2 text-muted"></i>10 Ago, 2025</td>
-                        <td><img src="https://ui-avatars.com/api/?name=Elena+Silva&background=random" width="30" class="rounded-circle me-2"> Dra. Elena Silva</td>
-                        <td class="fw-semibold">Limpieza General (Profilaxis)</td>
-                        <td><span class="status-badge status-completed">Completado</span></td>
-                        <td><button class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i> Ver receta</button></td>
-                    </tr>
-                </tbody>
-            </table>
+<!-- Antecedentes y Observaciones -->
+@if (Model.HistoriaClinica != null)
+{
+    <div class="card border-0 rounded-4 shadow-sm p-4 mb-4 bg-light">
+        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-info-circle-fill text-primary me-2"></i>Ficha Médica de Base</h6>
+        <div class="row g-3 small">
+            <div class="col-md-4">
+                <strong>Antecedentes:</strong> @(Model.HistoriaClinica.AntecedentesMedicos ?? "Sin antecedentes relevantes declarados.")
+            </div>
+            <div class="col-md-4">
+                <strong>Alergias:</strong> @(Model.HistoriaClinica.Alergias ?? "Ninguna reportada.")
+            </div>
+            <div class="col-md-4">
+                <strong>Observaciones:</strong> @(Model.HistoriaClinica.ObservacionesGeneral ?? "Paciente en condiciones óptimas.")
+            </div>
         </div>
-
+    </div>
+}
+
+<!-- Tabla de Registros Médicos -->
+<h5 class="fw-bold mb-3 mt-2">Atenciones Odontológicas Registradas</h5>
+<div class="table-responsive">
+    <table class="table table-custom table-hover align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Fecha y Hora</th>
+                <th scope="col">Profesional</th>
+                <th scope="col">Diagnóstico / Tratamiento</th>
+                <th scope="col">Insumos Utilizados</th>
+                <th scope="col">Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Atenciones.Any())
+            {
+                @foreach (var at in Model.Atenciones)
+                {
+                    var doc = at.Turno?.Odontologo != null ? $"{at.Turno.Odontologo.Nombre} {at.Turno.Odontologo.Apellido}" : "Dra. Karina González";
+                    var esp = at.Turno?.Especialidad?.Nombre ?? "Control Odontológico";
+                    var insumosCount = at.DetallesInsumos?.Count ?? 0;
+
+                    <tr>
+                        <td><i class="bi bi-calendar-event me-2 text-primary"></i>@at.FechaYHoraAtencionInicio.ToString("dd/MM/yyyy HH:mm") hs</td>
+                        <td>
+                            <img src="https://ui-avatars.com/api/?name=@doc&background=2563eb&color=fff" width="28" height="28" class="rounded-circle me-2" alt="Doc">
+                            <strong>@doc</strong>
+                        </td>
+                        <td>
+                            <span class="fw-semibold text-dark d-block">@esp</span>
+                            <small class="text-muted">@(at.Observaciones ?? "Tratamiento realizado conforme a protocolo.")</small>
+                        </td>
+                        <td>
+                            @if (insumosCount > 0)
+                            {
+                                <span class="badge bg-light text-dark border">@insumosCount insumo(s)</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Sin insumos extras</span>
+                            }
+                        </td>
+                        <td><span class="status-badge status-completed">Finalizada</span></td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        <i class="bi bi-clipboard-x fs-3 d-block mb-2"></i>
+                        No registrás atenciones clínicas anteriores registradas en el sistema.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

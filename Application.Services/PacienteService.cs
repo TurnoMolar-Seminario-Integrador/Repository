@@ -23,12 +23,11 @@ namespace Application.Services
                 nroDocumento: dto.NroDocumento,
                 nombre: dto.Nombre,
                 apellido: dto.Apellido,
+                fechaNacimiento: dto.FechaNacimiento,
                 telefono: dto.Telefono,
                 email: dto.Email,
                 domicilio: dto.Domicilio,
-                fechaNacimiento: dto.FechaNacimiento,
-                estadoPaciente: "ACTIVO",
-                montoAdeudado: 0,
+                estadoPaciente: dto.EstadoPaciente ?? "HABILITADO",
                 identificadorOS: dto.IdentificadorOS
             );
 
@@ -63,12 +62,11 @@ namespace Application.Services
                 nroDocumento: dto.NroDocumento,
                 nombre: dto.Nombre,
                 apellido: dto.Apellido,
+                fechaNacimiento: dto.FechaNacimiento,
                 telefono: dto.Telefono,
                 email: dto.Email,
                 domicilio: dto.Domicilio,
-                fechaNacimiento: dto.FechaNacimiento,
-                estadoPaciente: dto.EstadoPaciente ?? "ACTIVO",
-                montoAdeudado: dto.MontoAdeudado,
+                estadoPaciente: dto.EstadoPaciente ?? "HABILITADO",
                 identificadorOS: dto.IdentificadorOS
             );
 
@@ -95,8 +93,8 @@ namespace Application.Services
                 Domicilio = p.Domicilio,
                 FechaNacimiento = p.FechaNacimiento,
                 EstadoPaciente = p.EstadoPaciente,
-                MontoAdeudado = p.MontoAdeudado,
-                IdentificadorOS = p.IdentificadorOS
+                IdentificadorOS = p.IdentificadorOS,
+                NombreObraSocial = p.ObraSocial?.NombreOS
             };
         }
     }

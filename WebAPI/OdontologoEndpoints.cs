@@ -20,7 +20,7 @@ namespace WebAPI
                 return Results.Ok(list);
             });
 
-            group.MapGet("/{id:int}", async (int id, IOdontologoService service) =>
+            group.MapGet("/{id}", async (string id, IOdontologoService service) =>
             {
                 var o = await service.GetAsync("DNI", id);
                 return o == null ? Results.NotFound() : Results.Ok(o);
@@ -39,7 +39,7 @@ namespace WebAPI
                 }
             });
 
-            group.MapPut("/{id:int}", async (int id, OdontologoDTO dto, IOdontologoService service) =>
+            group.MapPut("/{id}", async (string id, OdontologoDTO dto, IOdontologoService service) =>
             {
                 dto.NroDocumento = id;
                 try
@@ -53,7 +53,7 @@ namespace WebAPI
                 }
             });
 
-            group.MapDelete("/{id:int}", async (int id, IOdontologoService service) =>
+            group.MapDelete("/{id}", async (string id, IOdontologoService service) =>
             {
                 var deleted = await service.DeleteAsync("DNI", id);
                 return deleted ? Results.NoContent() : Results.NotFound();

@@ -8,6 +8,7 @@ namespace Data
         Task<AtencionOdontologica?> GetAsync(int codAtencion);
         Task<AtencionOdontologica?> GetByCodTurnoAsync(int codTurno);
         Task<IEnumerable<AtencionOdontologica>> GetAllAsync();
+        Task<IEnumerable<AtencionOdontologica>> GetByPacienteDocAsync(string tipoDoc, string nroDoc);
         Task<IEnumerable<AtencionOdontologica>> GetByPacienteDocAsync(string tipoDoc, int nroDoc);
         Task<AtencionOdontologica> AddAsync(AtencionOdontologica atencion);
         Task<bool> UpdateAsync(AtencionOdontologica atencion);
@@ -31,8 +32,9 @@ namespace Data
                     .ThenInclude(t => t.Odontologo)
                 .Include(a => a.Turno)
                     .ThenInclude(t => t.Especialidad)
+                .Include(a => a.Turno)
+                    .ThenInclude(t => t.Pago)
                 .Include(a => a.Valoracion)
-                .Include(a => a.Pago)
                 .Include(a => a.DetallesInsumos)
                     .ThenInclude(d => d.Insumo);
         }
@@ -40,28 +42,33 @@ namespace Data
         public async Task<AtencionOdontologica?> GetAsync(int codAtencion)
         {
             return await IncludeAll()
-                .FirstOrDefaultAsync(a => a.CodAtencion == codAtencion);
+                .FirstOrDefaultAsync(a => a.IdAtencion == codAtencion);
         }
 
         public async Task<AtencionOdontologica?> GetByCodTurnoAsync(int codTurno)
         {
             return await IncludeAll()
-                .FirstOrDefaultAsync(a => a.CodTurno == codTurno);
+                .FirstOrDefaultAsync(a => a.NroTurno == codTurno);
         }
 
         public async Task<IEnumerable<AtencionOdontologica>> GetAllAsync()
         {
             return await IncludeAll()
-                .OrderByDescending(a => a.FechaYHoraAtencionInicio)
+                .OrderByDescending(a => a.FechaHoraAtencionInicio)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<AtencionOdontologica>> GetByPacienteDocAsync(string tipoDoc, string nroDoc)
+        {
+            return await IncludeAll()
+                .Where(a => a.Turno != null && a.Turno.TipoDocumentoPaciente == tipoDoc && a.Turno.NroDocumentoPaciente == nroDoc)
+                .OrderByDescending(a => a.FechaHoraAtencionInicio)
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<AtencionOdontologica>> GetByPacienteDocAsync(string tipoDoc, int nroDoc)
         {
-            return await IncludeAll()
-                .Where(a => a.PacienteTipoDoc == tipoDoc && a.PacienteNroDoc == nroDoc)
-                .OrderByDescending(a => a.FechaYHoraAtencionInicio)
-                .ToListAsync();
+            return await GetByPacienteDocAsync(tipoDoc, nroDoc.ToString());
         }
 
         public async Task<AtencionOdontologica> AddAsync(AtencionOdontologica atencion)
@@ -73,11 +80,11 @@ namespace Data
 
         public async Task<bool> UpdateAsync(AtencionOdontologica atencion)
         {
-            var existing = await _context.Atenciones.FindAsync(atencion.CodAtencion);
+            var existing = await _context.Atenciones.FindAsync(atencion.IdAtencion);
             if (existing == null)
                 return false;
 
-            existing.SetHorarioAtencion(atencion.FechaYHoraAtencionInicio, atencion.FechaYHoraAtencionFin);
+            existing.SetHorarioAtencion(atencion.FechaHoraAtencionInicio, atencion.FechaHoraAtencionFin);
             existing.Observaciones = atencion.Observaciones;
 
             await _context.SaveChangesAsync();

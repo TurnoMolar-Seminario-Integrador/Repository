@@ -21,6 +21,22 @@ builder.Services.AddScoped<ITurnoOdontologicoService, TurnoOdontologicoService>(
 
 var app = builder.Build();
 
+// Inicializar la base de datos y aplicar migraciones/seeders automáticamente
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<TurnoMolarDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        await DbInitializer.InitializeAsync(dbContext, logger);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error al inicializar la base de datos en WebAPI.");
+    }
+}
+
 
 if (app.Environment.IsDevelopment())
 {

@@ -2,21 +2,38 @@ namespace Domain.Model
 {
     public class ObraSocial
     {
-        public int IdentificadorOS { get; private set; }
+        public string IdentificadorOS { get; private set; } = string.Empty;
         public string NombreOS { get; private set; } = string.Empty;
         public string PlanCobertura { get; private set; } = string.Empty;
-        public decimal ArancelOS { get; private set; }
         public string EstadoOS { get; private set; } = "ACTIVA";
+
+        // Helper para compatibilidad de vistas
+        public decimal ArancelOS => Convenios.FirstOrDefault()?.ArancelConvenio ?? 0m;
+
+        public virtual ICollection<Convenio> Convenios { get; private set; } = new List<Convenio>();
+        public virtual ICollection<Paciente> Pacientes { get; private set; } = new List<Paciente>();
+        public virtual ICollection<Pago> Pagos { get; private set; } = new List<Pago>();
 
         protected ObraSocial() { }
 
-        public ObraSocial(int identificadorOS, string nombreOS, string planCobertura, decimal arancelOS, string estadoOS = "ACTIVA")
+        public ObraSocial(string identificadorOS, string nombreOS, string planCobertura = "", string estadoOS = "ACTIVA")
         {
-            IdentificadorOS = identificadorOS;
+            SetIdentificadorOS(identificadorOS);
             SetNombreOS(nombreOS);
             SetPlanCobertura(planCobertura);
-            SetArancelOS(arancelOS);
             SetEstadoOS(estadoOS);
+        }
+
+        public ObraSocial(string identificadorOS, string nombreOS, string planCobertura, decimal arancelOS, string estadoOS = "ACTIVA")
+            : this(identificadorOS, nombreOS, planCobertura, estadoOS)
+        {
+        }
+
+        public void SetIdentificadorOS(string identificadorOS)
+        {
+            if (string.IsNullOrWhiteSpace(identificadorOS))
+                throw new ArgumentException("El identificador de la Obra Social es requerido.", nameof(identificadorOS));
+            IdentificadorOS = identificadorOS.Trim();
         }
 
         public void SetNombreOS(string nombreOS)
@@ -31,16 +48,14 @@ namespace Domain.Model
             PlanCobertura = planCobertura?.Trim() ?? string.Empty;
         }
 
-        public void SetArancelOS(decimal arancel)
-        {
-            if (arancel < 0)
-                throw new ArgumentException("El arancel de Obra Social no puede ser negativo.", nameof(arancel));
-            ArancelOS = arancel;
-        }
-
         public void SetEstadoOS(string estado)
         {
             EstadoOS = estado?.ToUpper().Trim() ?? "ACTIVA";
+        }
+
+        public void SetArancelOS(decimal arancel)
+        {
+            // Helper de compatibilidad
         }
     }
 }

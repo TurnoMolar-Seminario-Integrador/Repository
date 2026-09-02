@@ -5,9 +5,19 @@ namespace DTOs
     public class PacienteDTO
     {
         public string TipoDocumento { get; set; } = "DNI";
-        public int NroDocumento { get; set; }
-        public int Id { get => NroDocumento; set => NroDocumento = value; }
-        public int Dni { get => NroDocumento; set => NroDocumento = value; }
+        public string NroDocumento { get; set; } = string.Empty;
+
+        public int Id
+        {
+            get => int.TryParse(NroDocumento, out var n) ? n : 0;
+            set => NroDocumento = value.ToString();
+        }
+
+        public int Dni
+        {
+            get => Id;
+            set => Id = value;
+        }
 
         public string Nombre { get; set; } = string.Empty;
         public string Apellido { get; set; } = string.Empty;
@@ -18,14 +28,15 @@ namespace DTOs
 
         public string Domicilio { get; set; } = string.Empty;
         public DateTime FechaNacimiento { get; set; } = new DateTime(1990, 1, 1);
-        public string EstadoPaciente { get; set; } = "ACTIVO";
+        public string EstadoPaciente { get; set; } = "HABILITADO";
         public bool EstadoHabilitado
         {
-            get => EstadoPaciente == "ACTIVO";
-            set => EstadoPaciente = value ? "ACTIVO" : "INACTIVO";
+            get => EstadoPaciente == "HABILITADO" || EstadoPaciente == "ACTIVO";
+            set => EstadoPaciente = value ? "HABILITADO" : "INHABILITADO";
         }
 
         public decimal? MontoAdeudado { get; set; }
-        public int? IdentificadorOS { get; set; }
+        public string? IdentificadorOS { get; set; }
+        public string? NombreObraSocial { get; set; }
     }
 }

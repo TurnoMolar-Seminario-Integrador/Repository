@@ -5,9 +5,19 @@ namespace DTOs
     public class OdontologoDTO
     {
         public string TipoDocumento { get; set; } = "DNI";
-        public int NroDocumento { get; set; }
-        public int Id { get => NroDocumento; set => NroDocumento = value; }
-        public int Dni { get => NroDocumento; set => NroDocumento = value; }
+        public string NroDocumento { get; set; } = string.Empty;
+
+        public int Id
+        {
+            get => int.TryParse(NroDocumento, out var n) ? n : 0;
+            set => NroDocumento = value.ToString();
+        }
+
+        public int Dni
+        {
+            get => Id;
+            set => Id = value;
+        }
 
         public string Nombre { get; set; } = string.Empty;
         public string Apellido { get; set; } = string.Empty;

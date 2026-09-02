@@ -2,15 +2,33 @@ namespace Domain.Model
 {
     public class Especialidad
     {
-        public int CodEspecialidad { get; private set; }
+        public int IdEspecialidad { get; private set; }
+        public int CodEspecialidad
+        {
+            get => IdEspecialidad;
+            private set => IdEspecialidad = value;
+        }
+
         public string Nombre { get; private set; } = string.Empty;
         public decimal ArancelParticular { get; private set; }
 
+        public virtual ICollection<Convenio> Convenios { get; private set; } = new List<Convenio>();
+        public virtual ICollection<DisponibilidadHoraria> DisponibilidadesHorarias { get; private set; } = new List<DisponibilidadHoraria>();
+        public virtual ICollection<Turno> Turnos { get; private set; } = new List<Turno>();
+
         protected Especialidad() { }
 
-        public Especialidad(int codEspecialidad, string nombre, decimal arancelParticular)
+        // Constructor con ID explícito (para compatibilidad interna)
+        public Especialidad(int idEspecialidad, string nombre, decimal arancelParticular)
         {
-            CodEspecialidad = codEspecialidad;
+            IdEspecialidad = idEspecialidad;
+            SetNombre(nombre);
+            SetArancelParticular(arancelParticular);
+        }
+
+        // Constructor sin ID — para seeder (EF IDENTITY lo asigna automáticamente)
+        public Especialidad(string nombre, decimal arancelParticular)
+        {
             SetNombre(nombre);
             SetArancelParticular(arancelParticular);
         }

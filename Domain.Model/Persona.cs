@@ -3,17 +3,39 @@ namespace Domain.Model
     public abstract class Persona
     {
         public string TipoDocumento { get; protected set; } = "DNI";
-        public int NroDocumento { get; protected set; }
+        public string NroDocumento { get; protected set; } = string.Empty;
         public string Nombre { get; protected set; } = string.Empty;
         public string Apellido { get; protected set; } = string.Empty;
         public DateTime FechaNacimiento { get; protected set; }
         public string Telefono { get; protected set; } = string.Empty;
         public string Email { get; protected set; } = string.Empty;
         public string Domicilio { get; protected set; } = string.Empty;
+        public string Clave { get; protected set; } = string.Empty;
+        public string SaltClave { get; protected set; } = string.Empty;
+        public DateTime FechaAlta { get; protected set; } = DateTime.Now;
+        public string Rol { get; protected set; } = string.Empty;
+
+        // Helper para compatibilidad numérica si se requiere
+        public int NroDocumentoInt
+        {
+            get => int.TryParse(NroDocumento, out var n) ? n : 0;
+        }
 
         protected Persona() { }
 
-        protected Persona(string tipoDocumento, int nroDocumento, string nombre, string apellido, DateTime fechaNacimiento, string telefono, string email, string domicilio)
+        protected Persona(
+            string tipoDocumento,
+            string nroDocumento,
+            string nombre,
+            string apellido,
+            DateTime fechaNacimiento,
+            string telefono,
+            string email,
+            string domicilio,
+            string clave = "",
+            string saltClave = "",
+            DateTime? fechaAlta = null,
+            string rol = "")
         {
             SetTipoDocumento(tipoDocumento);
             SetNroDocumento(nroDocumento);
@@ -23,6 +45,8 @@ namespace Domain.Model
             SetTelefono(telefono);
             SetEmail(email);
             SetDomicilio(domicilio);
+            SetCredenciales(clave, saltClave, rol);
+            FechaAlta = fechaAlta ?? DateTime.Now;
         }
 
         public void SetTipoDocumento(string tipoDocumento)
@@ -32,11 +56,11 @@ namespace Domain.Model
             TipoDocumento = tipoDocumento.ToUpper().Trim();
         }
 
-        public void SetNroDocumento(int nroDocumento)
+        public void SetNroDocumento(string nroDocumento)
         {
-            if (nroDocumento <= 0)
-                throw new ArgumentException("El número de documento debe ser mayor a 0.", nameof(nroDocumento));
-            NroDocumento = nroDocumento;
+            if (string.IsNullOrWhiteSpace(nroDocumento))
+                throw new ArgumentException("El número de documento no puede ser vacío.", nameof(nroDocumento));
+            NroDocumento = nroDocumento.Trim();
         }
 
         public void SetNombre(string nombre)
@@ -73,6 +97,23 @@ namespace Domain.Model
         public void SetDomicilio(string domicilio)
         {
             Domicilio = domicilio?.Trim() ?? string.Empty;
+        }
+
+        public void SetCredenciales(string clave, string saltClave, string rol)
+        {
+            Clave = clave ?? string.Empty;
+            SaltClave = saltClave ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(rol))
+            {
+                Rol = rol.Trim();
+            }
+        }
+
+        public void SetRol(string rol)
+        {
+            if (string.IsNullOrWhiteSpace(rol))
+                throw new ArgumentException("El rol es requerido.", nameof(rol));
+            Rol = rol.Trim();
         }
     }
 }

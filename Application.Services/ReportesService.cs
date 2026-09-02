@@ -45,23 +45,23 @@ namespace Application.Services
             {
                 Fecha = fecha.Date,
                 TotalTurnos = turnos.Count,
-                TurnosPendientes = turnos.Count(t => t.Estado == "RESERVADO"),
-                TurnosPresentes = turnos.Count(t => t.Estado == "CONFIRMADO"),
-                TurnosAtendidos = turnos.Count(t => t.Estado == "ATENDIDO"),
-                TurnosCancelados = turnos.Count(t => t.Estado == "CANCELADO"),
-                TurnosAusentes = turnos.Count(t => t.Estado == "AUSENTE"),
+                TurnosPendientes = turnos.Count(t => t.EstadoTurno == "RESERVADO"),
+                TurnosPresentes = turnos.Count(t => t.EstadoTurno == "CONFIRMADO"),
+                TurnosAtendidos = turnos.Count(t => t.EstadoTurno == "ATENDIDO"),
+                TurnosCancelados = turnos.Count(t => t.EstadoTurno == "CANCELADO"),
+                TurnosAusentes = turnos.Count(t => t.EstadoTurno == "AUSENTE"),
                 DetalleTurnos = turnos.Select(t => new TurnoOdontologicoDTO
                 {
-                    Id = t.CodTurno,
-                    Fecha = t.FechaYHoraReserva.Date,
-                    HorarioTurno = TimeOnly.FromDateTime(t.FechaYHoraReserva),
-                    EstadoTurno = t.Estado,
+                    Id = t.NroTurno,
+                    Fecha = t.FechaHoraTurno.Date,
+                    HorarioTurno = TimeOnly.FromDateTime(t.FechaHoraTurno),
+                    EstadoTurno = t.EstadoTurno,
                     MotivoCancelacion = t.MotivoCancelacion,
-                    PacienteNroDoc = t.PacienteNroDoc,
-                    NombrePaciente = t.Paciente != null ? $"{t.Paciente.Apellido}, {t.Paciente.Nombre}" : $"Paciente #{t.PacienteNroDoc}",
-                    OdontologoNroDoc = t.OdontologoNroDoc,
-                    NombreOdontologo = t.Odontologo != null ? $"Dr/a. {t.Odontologo.Apellido}, {t.Odontologo.Nombre}" : $"Odontólogo #{t.OdontologoNroDoc}",
-                    CodEspecialidad = t.CodEspecialidad,
+                    PacienteNroDoc = int.TryParse(t.NroDocumentoPaciente, out var pacDoc) ? pacDoc : 0,
+                    NombrePaciente = t.Paciente != null ? $"{t.Paciente.Apellido}, {t.Paciente.Nombre}" : $"Paciente #{t.NroDocumentoPaciente}",
+                    OdontologoNroDoc = int.TryParse(t.NroDocumentoOdontologo, out var docDoc) ? docDoc : 0,
+                    NombreOdontologo = t.Odontologo != null ? $"Dr/a. {t.Odontologo.Apellido}, {t.Odontologo.Nombre}" : $"Odontólogo #{t.NroDocumentoOdontologo}",
+                    CodEspecialidad = t.IdEspecialidad,
                     NombreEspecialidad = t.Especialidad?.Nombre ?? "Odontología"
                 }).ToList()
             };
@@ -70,7 +70,7 @@ namespace Application.Services
         public async Task<ReporteAusentismoDTO> GetReporteAusentismoAsync(DateTime fechaDesde, DateTime fechaHasta)
         {
             var turnos = (await _turnoRepository.GetAllAsync())
-                .Where(t => t.FechaYHoraReserva.Date >= fechaDesde.Date && t.FechaYHoraReserva.Date <= fechaHasta.Date)
+                .Where(t => t.FechaHoraTurno.Date >= fechaDesde.Date && t.FechaHoraTurno.Date <= fechaHasta.Date)
                 .ToList();
 
             var multas = (await _multaRepository.GetAllAsync())
@@ -78,7 +78,7 @@ namespace Application.Services
                 .ToList();
 
             int totalProgramados = turnos.Count;
-            int totalAusencias = turnos.Count(t => t.Estado == "AUSENTE");
+            int totalAusencias = turnos.Count(t => t.EstadoTurno == "AUSENTE");
             double porcentaje = totalProgramados > 0 ? ((double)totalAusencias / totalProgramados) * 100 : 0;
 
             return new ReporteAusentismoDTO
@@ -139,7 +139,7 @@ namespace Application.Services
                     CodAtencion = a.CodAtencion,
                     CodTurno = a.CodTurno,
                     PacienteTipoDoc = a.PacienteTipoDoc,
-                    PacienteNroDoc = a.PacienteNroDoc,
+                    PacienteNroDoc = int.TryParse(a.PacienteNroDoc, out var doc) ? doc : 0,
                     PacienteNombre = $"{paciente.Apellido}, {paciente.Nombre}",
                     OdontologoNombre = a.Turno?.Odontologo != null ? $"Dr/a. {a.Turno.Odontologo.Apellido}, {a.Turno.Odontologo.Nombre}" : "Profesional",
                     Observaciones = a.Observaciones,

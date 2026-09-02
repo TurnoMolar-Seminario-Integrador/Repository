@@ -2,20 +2,24 @@ namespace Domain.Model
 {
     public class DetalleInsumoUtilizado
     {
-        public int CodInsumo { get; private set; }
-        public int CodAtencion { get; private set; }
+        public int IdAtencion { get; private set; }
+        public int IdInsumo { get; private set; }
         public int CantidadUtilizada { get; private set; }
         public decimal CostoUnitarioAlMomento { get; private set; }
 
-        public virtual Insumo Insumo { get; private set; }
-        public virtual AtencionOdontologica Atencion { get; private set; }
+        public virtual AtencionOdontologica Atencion { get; private set; } = null!;
+        public virtual Insumo Insumo { get; private set; } = null!;
+
+        // Aliases para retrocompatibilidad
+        public int CodAtencion => IdAtencion;
+        public int CodInsumo => IdInsumo;
 
         protected DetalleInsumoUtilizado() { }
 
-        public DetalleInsumoUtilizado(int codInsumo, int codAtencion, int cantidadUtilizada, decimal costoUnitarioAlMomento)
+        public DetalleInsumoUtilizado(int idAtencion, int idInsumo, int cantidadUtilizada, decimal costoUnitarioAlMomento)
         {
-            CodInsumo = codInsumo;
-            CodAtencion = codAtencion;
+            IdAtencion = idAtencion;
+            IdInsumo = idInsumo;
             SetCantidadUtilizada(cantidadUtilizada);
             SetCostoUnitarioAlMomento(costoUnitarioAlMomento);
         }

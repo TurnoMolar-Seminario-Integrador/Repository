@@ -2,29 +2,61 @@ namespace Domain.Model
 {
     public class DisponibilidadHoraria
     {
-        public int CodDisponibilidad { get; private set; }
-
-        public string? OdontologoTipoDoc { get; private set; }
-        public int? OdontologoNroDoc { get; private set; }
-        public virtual Odontologo? Odontologo { get; private set; }
-
+        public string TipoDocumentoOdontologo { get; private set; } = "DNI";
+        public string NroDocumentoOdontologo { get; private set; } = string.Empty;
         public string DiaSemana { get; private set; } = string.Empty;
         public TimeOnly HoraInicio { get; private set; }
         public TimeOnly HoraFin { get; private set; }
+        public int IdEspecialidad { get; private set; }
 
-        public int? CodEspecialidad { get; private set; }
-        public virtual Especialidad? Especialidad { get; private set; }
+        public virtual Odontologo Odontologo { get; private set; } = null!;
+        public virtual Especialidad Especialidad { get; private set; } = null!;
+
+        // Helpers de compatibilidad
+        public string OdontologoTipoDoc => TipoDocumentoOdontologo;
+        public string OdontologoNroDoc => NroDocumentoOdontologo;
+        public int CodEspecialidad => IdEspecialidad;
 
         protected DisponibilidadHoraria() { }
 
-        public DisponibilidadHoraria(int codDisponibilidad, string diaSemana, TimeOnly horaInicio, TimeOnly horaFin, string? odontologoTipoDoc = null, int? odontologoNroDoc = null, int? codEspecialidad = null)
+        public DisponibilidadHoraria(
+            string tipoDocumentoOdontologo,
+            string nroDocumentoOdontologo,
+            string diaSemana,
+            TimeOnly horaInicio,
+            TimeOnly horaFin,
+            int idEspecialidad)
         {
-            CodDisponibilidad = codDisponibilidad;
-            OdontologoTipoDoc = odontologoTipoDoc;
-            OdontologoNroDoc = odontologoNroDoc;
+            TipoDocumentoOdontologo = tipoDocumentoOdontologo?.ToUpper().Trim() ?? "DNI";
+            SetNroDocumentoOdontologo(nroDocumentoOdontologo);
             SetDiaSemana(diaSemana);
             SetHorario(horaInicio, horaFin);
-            CodEspecialidad = codEspecialidad;
+            IdEspecialidad = idEspecialidad;
+        }
+
+        public DisponibilidadHoraria(
+            int codDisponibilidad,
+            string diaSemana,
+            TimeOnly horaInicio,
+            TimeOnly horaFin,
+            string? odontologoTipoDoc = null,
+            int? odontologoNroDoc = null,
+            int? codEspecialidad = null)
+            : this(
+                odontologoTipoDoc ?? "DNI",
+                (odontologoNroDoc ?? 0).ToString(),
+                diaSemana,
+                horaInicio,
+                horaFin,
+                codEspecialidad ?? 1)
+        {
+        }
+
+        public void SetNroDocumentoOdontologo(string nroDoc)
+        {
+            if (string.IsNullOrWhiteSpace(nroDoc))
+                throw new ArgumentException("El número de documento del odontólogo no puede ser vacío.", nameof(nroDoc));
+            NroDocumentoOdontologo = nroDoc.Trim();
         }
 
         public void SetDiaSemana(string diaSemana)

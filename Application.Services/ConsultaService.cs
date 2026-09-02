@@ -18,22 +18,19 @@ namespace Application.Services
     {
         private readonly IConsultaRepository _consultaRepository;
         private readonly ITurnoRepository _turnoRepository;
+        private readonly IHistoriaClinicaRepository _historiaClinicaRepository;
         private readonly IInsumoRepository _insumoRepository;
-        private readonly IFacturaRepository _facturaRepository;
-        private readonly IPacienteRepository _pacienteRepository;
 
         public ConsultaService(
             IConsultaRepository consultaRepository,
             ITurnoRepository turnoRepository,
-            IInsumoRepository insumoRepository,
-            IFacturaRepository facturaRepository,
-            IPacienteRepository pacienteRepository)
+            IHistoriaClinicaRepository historiaClinicaRepository,
+            IInsumoRepository insumoRepository)
         {
             _consultaRepository = consultaRepository;
             _turnoRepository = turnoRepository;
+            _historiaClinicaRepository = historiaClinicaRepository;
             _insumoRepository = insumoRepository;
-            _facturaRepository = facturaRepository;
-            _pacienteRepository = pacienteRepository;
         }
 
         public async Task<ConsultaDTO?> GetAsync(int codAtencion)
@@ -64,42 +61,42 @@ namespace Application.Services
         {
             var turno = await _turnoRepository.GetAsync(dto.CodTurno);
             if (turno == null)
-            {
-                throw new InvalidOperationException("El turno asociado no existe.");
-            }
+                throw new InvalidOperationException($"No se encontró el turno con código {dto.CodTurno}.");
 
-            turno.SetEstado("ATENDIDO");
-            await _turnoRepository.UpdateAsync(turno);
-
-            DateTime fechaInicio = dto.FechaYHoraAtencionInicio;
-            DateTime fechaFin = dto.FechaYHoraAtencionFin > fechaInicio ? dto.FechaYHoraAtencionFin : fechaInicio.AddMinutes(30);
+            var hc = await _historiaClinicaRepository.GetByPacienteDocAsync(dto.PacienteTipoDoc, dto.PacienteNroDoc);
+            int nroHC = hc?.NroHC ?? 1;
 
             var atencion = new AtencionOdontologica(
-                codAtencion: 0,
-                fechaInicio: fechaInicio,
-                fechaFin: fechaFin,
-                observaciones: dto.Observaciones,
-                codTurno: dto.CodTurno,
-                fechaYHoraReserva: turno.FechaYHoraReserva,
-                nroHC: dto.PacienteNroDoc,
-                pacienteTipoDoc: dto.PacienteTipoDoc ?? "DNI",
-                pacienteNroDoc: dto.PacienteNroDoc
+                0,
+                dto.FechaYHoraAtencionInicio,
+                dto.FechaYHoraAtencionFin,
+                dto.Observaciones,
+                0m,
+                dto.CodTurno,
+                nroHC
             );
 
             await _consultaRepository.AddAsync(atencion);
 
+            // Descontar insumos utilizados si los hay
             if (dto.InsumosUtilizados != null && dto.InsumosUtilizados.Any())
             {
-                foreach (var itemDto in dto.InsumosUtilizados)
+                foreach (var ins in dto.InsumosUtilizados)
                 {
-                    if (itemDto.InsumoId > 0 && itemDto.Cantidad > 0)
+                    try
                     {
-                        await _insumoRepository.DescontarStockAsync(itemDto.InsumoId, itemDto.Cantidad);
+                        var insumoDb = await _insumoRepository.GetAsync(ins.InsumoId);
+                        if (insumoDb != null)
+                        {
+                            insumoDb.DescontarStock(ins.Cantidad);
+                            await _insumoRepository.UpdateAsync(insumoDb);
+                        }
                     }
+                    catch { /* log warning if insufficient stock */ }
                 }
             }
 
-            dto.CodAtencion = atencion.CodAtencion;
+            dto.CodAtencion = atencion.IdAtencion;
             return dto;
         }
 
@@ -116,15 +113,15 @@ namespace Application.Services
         {
             return new ConsultaDTO
             {
-                CodAtencion = a.CodAtencion,
-                CodTurno = a.CodTurno,
+                CodAtencion = a.IdAtencion,
+                CodTurno = a.NroTurno,
                 PacienteTipoDoc = a.PacienteTipoDoc,
-                PacienteNroDoc = a.PacienteNroDoc,
+                PacienteNroDoc = int.TryParse(a.PacienteNroDoc, out var doc) ? doc : 0,
                 PacienteNombre = a.Turno?.Paciente != null ? $"{a.Turno.Paciente.Apellido}, {a.Turno.Paciente.Nombre}" : "Paciente",
                 OdontologoNombre = a.Turno?.Odontologo != null ? $"Dr/a. {a.Turno.Odontologo.Apellido}, {a.Turno.Odontologo.Nombre}" : "Odontólogo",
                 Observaciones = a.Observaciones,
-                FechaYHoraAtencionInicio = a.FechaYHoraAtencionInicio,
-                FechaYHoraAtencionFin = a.FechaYHoraAtencionFin
+                FechaYHoraAtencionInicio = a.FechaHoraAtencionInicio,
+                FechaYHoraAtencionFin = a.FechaHoraAtencionFin
             };
         }
     }

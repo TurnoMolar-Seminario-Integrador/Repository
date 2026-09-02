@@ -2,21 +2,25 @@ namespace Domain.Model
 {
     public class Valoracion
     {
-        public int CodValoracion { get; private set; }
+        public int IdValoracion { get; private set; }
         public int Calificacion { get; private set; }
         public string? Observaciones { get; set; }
+        public int IdAtencion { get; private set; }
 
-        public int CodAtencion { get; private set; }
-        public virtual AtencionOdontologica Atencion { get; private set; }
+        public virtual AtencionOdontologica Atencion { get; private set; } = null!;
+
+        // Aliases para retrocompatibilidad
+        public int CodValoracion => IdValoracion;
+        public int CodAtencion => IdAtencion;
 
         protected Valoracion() { }
 
-        public Valoracion(int codValoracion, int calificacion, string? observaciones, int codAtencion)
+        public Valoracion(int idValoracion, int calificacion, string? observaciones, int idAtencion)
         {
-            CodValoracion = codValoracion;
+            IdValoracion = idValoracion;
             SetCalificacion(calificacion);
             Observaciones = observaciones;
-            CodAtencion = codAtencion;
+            IdAtencion = idAtencion;
         }
 
         public void SetCalificacion(int calificacion)

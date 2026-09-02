@@ -5,6 +5,7 @@ namespace Data
 {
     public interface IObraSocialRepository
     {
+        Task<ObraSocial?> GetAsync(string identificadorOS);
         Task<ObraSocial?> GetAsync(int identificadorOS);
         Task<IEnumerable<ObraSocial>> GetAllAsync();
         Task<ObraSocial> AddAsync(ObraSocial obraSocial);
@@ -20,14 +21,27 @@ namespace Data
             _context = context;
         }
 
+        public async Task<ObraSocial?> GetAsync(string identificadorOS)
+        {
+            return await _context.ObrasSociales
+                .Include(o => o.Convenios)
+                .FirstOrDefaultAsync(o => o.IdentificadorOS == identificadorOS);
+        }
+
         public async Task<ObraSocial?> GetAsync(int identificadorOS)
         {
-            return await _context.ObrasSociales.FindAsync(identificadorOS);
+            var strId = identificadorOS.ToString();
+            return await _context.ObrasSociales
+                .Include(o => o.Convenios)
+                .FirstOrDefaultAsync(o => o.IdentificadorOS == strId);
         }
 
         public async Task<IEnumerable<ObraSocial>> GetAllAsync()
         {
-            return await _context.ObrasSociales.OrderBy(o => o.NombreOS).ToListAsync();
+            return await _context.ObrasSociales
+                .Include(o => o.Convenios)
+                .OrderBy(o => o.NombreOS)
+                .ToListAsync();
         }
 
         public async Task<ObraSocial> AddAsync(ObraSocial obraSocial)
@@ -45,7 +59,6 @@ namespace Data
 
             existing.SetNombreOS(obraSocial.NombreOS);
             existing.SetPlanCobertura(obraSocial.PlanCobertura);
-            existing.SetArancelOS(obraSocial.ArancelOS);
             existing.SetEstadoOS(obraSocial.EstadoOS);
 
             await _context.SaveChangesAsync();
@@ -55,6 +68,7 @@ namespace Data
 
     public interface IHistoriaClinicaRepository
     {
+        Task<HistoriaClinica?> GetByPacienteDocAsync(string tipoDocumento, string nroDocumento);
         Task<HistoriaClinica?> GetByPacienteDocAsync(string tipoDocumento, int nroDocumento);
         Task<HistoriaClinica?> GetByNroHCAsync(int nroHC);
         Task<HistoriaClinica> AddAsync(HistoriaClinica historiaClinica);
@@ -70,17 +84,24 @@ namespace Data
             _context = context;
         }
 
-        public async Task<HistoriaClinica?> GetByPacienteDocAsync(string tipoDocumento, int nroDocumento)
+        public async Task<HistoriaClinica?> GetByPacienteDocAsync(string tipoDocumento, string nroDocumento)
         {
             return await _context.HistoriasClinicas
                 .Include(h => h.Paciente)
-                .FirstOrDefaultAsync(h => h.PacienteTipoDoc == tipoDocumento && h.PacienteNroDoc == nroDocumento);
+                .Include(h => h.Atenciones)
+                .FirstOrDefaultAsync(h => h.TipoDocumentoPaciente == tipoDocumento && h.NroDocumentoPaciente == nroDocumento);
+        }
+
+        public async Task<HistoriaClinica?> GetByPacienteDocAsync(string tipoDocumento, int nroDocumento)
+        {
+            return await GetByPacienteDocAsync(tipoDocumento, nroDocumento.ToString());
         }
 
         public async Task<HistoriaClinica?> GetByNroHCAsync(int nroHC)
         {
             return await _context.HistoriasClinicas
                 .Include(h => h.Paciente)
+                .Include(h => h.Atenciones)
                 .FirstOrDefaultAsync(h => h.NroHC == nroHC);
         }
 

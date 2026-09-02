@@ -5,11 +5,13 @@ namespace Data
 {
     public interface IOdontologoRepository
     {
+        Task<Odontologo?> GetAsync(string tipoDocumento, string nroDocumento);
         Task<Odontologo?> GetAsync(string tipoDocumento, int nroDocumento);
         Task<IEnumerable<Odontologo>> GetAllAsync();
-        Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int codEspecialidad);
+        Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int idEspecialidad);
         Task<Odontologo> AddAsync(Odontologo odontologo);
         Task<bool> UpdateAsync(Odontologo odontologo);
+        Task<bool> DeleteAsync(string tipoDocumento, string nroDocumento);
         Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento);
         Task<bool> MatriculaExistsAsync(string matricula);
     }
@@ -23,29 +25,35 @@ namespace Data
             _context = context;
         }
 
-        public async Task<Odontologo?> GetAsync(string tipoDocumento, int nroDocumento)
+        public async Task<Odontologo?> GetAsync(string tipoDocumento, string nroDocumento)
         {
             return await _context.Odontologos
-                .Include(o => o.Especialidad)
-                .Include(o => o.Disponibilidad)
+                .Include(o => o.DisponibilidadesHorarias)
+                .ThenInclude(d => d.Especialidad)
                 .FirstOrDefaultAsync(o => o.TipoDocumento == tipoDocumento && o.NroDocumento == nroDocumento);
+        }
+
+        public async Task<Odontologo?> GetAsync(string tipoDocumento, int nroDocumento)
+        {
+            return await GetAsync(tipoDocumento, nroDocumento.ToString());
         }
 
         public async Task<IEnumerable<Odontologo>> GetAllAsync()
         {
             return await _context.Odontologos
-                .Include(o => o.Especialidad)
-                .Include(o => o.Disponibilidad)
+                .Include(o => o.DisponibilidadesHorarias)
+                .ThenInclude(d => d.Especialidad)
                 .OrderBy(o => o.Apellido)
                 .ThenBy(o => o.Nombre)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int codEspecialidad)
+        public async Task<IEnumerable<Odontologo>> GetByEspecialidadAsync(int idEspecialidad)
         {
             return await _context.Odontologos
-                .Include(o => o.Especialidad)
-                .Where(o => o.CodEspecialidad == codEspecialidad)
+                .Include(o => o.DisponibilidadesHorarias)
+                .ThenInclude(d => d.Especialidad)
+                .Where(o => o.DisponibilidadesHorarias.Any(d => d.IdEspecialidad == idEspecialidad))
                 .OrderBy(o => o.Apellido)
                 .ToListAsync();
         }
@@ -71,13 +79,13 @@ namespace Data
             existing.SetDomicilio(odontologo.Domicilio);
             existing.SetMatricula(odontologo.Matricula);
             existing.SetEstadoOdontologo(odontologo.EstadoOdontologo);
-            existing.AsignarEspecialidad(odontologo.Especialidad!);
+            existing.SetCredenciales(odontologo.Clave, odontologo.SaltClave, odontologo.Rol);
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento)
+        public async Task<bool> DeleteAsync(string tipoDocumento, string nroDocumento)
         {
             var odontologo = await _context.Odontologos
                 .FirstOrDefaultAsync(o => o.TipoDocumento == tipoDocumento && o.NroDocumento == nroDocumento);
@@ -87,6 +95,11 @@ namespace Data
             _context.Odontologos.Remove(odontologo);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<bool> DeleteAsync(string tipoDocumento, int nroDocumento)
+        {
+            return await DeleteAsync(tipoDocumento, nroDocumento.ToString());
         }
 
         public async Task<bool> MatriculaExistsAsync(string matricula)

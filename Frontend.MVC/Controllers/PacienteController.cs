@@ -41,9 +41,12 @@ namespace TurnoMolar.Controllers
             {
                 try
                 {
+                    var dniStr = dniParsed.ToString();
+                    var tipoDoc = modelo.TipoDocumento ?? "DNI";
+
                     // Validar si el paciente ya existe en BD
                     var existe = await _context.Pacientes
-                        .AnyAsync(p => p.NroDocumento == dniParsed && p.TipoDocumento == (modelo.TipoDocumento ?? "DNI"));
+                        .AnyAsync(p => p.NroDocumento == dniStr && p.TipoDocumento == tipoDoc);
 
                     if (existe)
                     {
@@ -52,12 +55,12 @@ namespace TurnoMolar.Controllers
                     }
 
                     // Determinar ID de Obra Social
-                    int? idOs = null;
+                    string? idOs = null;
                     if (!string.IsNullOrEmpty(modelo.IdObraSocial) && modelo.IdObraSocial != "Particular")
                     {
                         var nombreBuscado = modelo.IdObraSocial == "Otra" ? modelo.OtraObraSocial : modelo.IdObraSocial;
                         var osExistente = await _context.ObrasSociales
-                            .FirstOrDefaultAsync(o => o.NombreOS.ToLower().Contains(nombreBuscado!.ToLower()));
+                            .FirstOrDefaultAsync(o => o.NombreOS.ToLower().Contains(nombreBuscado!.ToLower()) || o.IdentificadorOS.ToLower() == nombreBuscado.ToLower());
 
                         if (osExistente != null)
                         {
@@ -65,10 +68,10 @@ namespace TurnoMolar.Controllers
                         }
                     }
 
-                    // 1. Crear Entidad Paciente (DER)
+                    // 1. Crear Entidad Paciente (MDF v1.01)
                     var nuevoPaciente = new Paciente(
-                        modelo.TipoDocumento ?? "DNI",
-                        dniParsed,
+                        tipoDoc,
+                        dniStr,
                         modelo.NombrePers,
                         modelo.Apellido,
                         modelo.FechaNacimiento ?? new DateTime(1995, 1, 1),
@@ -76,12 +79,16 @@ namespace TurnoMolar.Controllers
                         modelo.MailPer,
                         modelo.Domicilio ?? "Rosario",
                         "HABILITADO",
+                        idOs,
                         0m,
-                        idOs
+                        "paciente123",
+                        "",
+                        DateTime.Now,
+                        "Paciente"
                     );
                     _context.Pacientes.Add(nuevoPaciente);
 
-                    // 2. Crear Historia Clínica de base (DER)
+                    // 2. Crear Historia Clínica de base (MDF v1.01)
                     var hc = new HistoriaClinica(
                         0,
                         nuevoPaciente.TipoDocumento,
@@ -95,13 +102,13 @@ namespace TurnoMolar.Controllers
 
                     // 3. Crear Cuenta de Usuario para que pueda iniciar sesión (Seguridad EC03)
                     var usuarioExistente = await _context.Usuarios
-                        .AnyAsync(u => u.EntidadId == dniParsed || u.Username == dniParsed.ToString());
+                        .AnyAsync(u => u.EntidadId == dniParsed || u.Username == dniStr);
 
                     if (!usuarioExistente)
                     {
                         var nuevoUsuario = new Usuario(
                             0,
-                            dniParsed.ToString(),
+                            dniStr,
                             "paciente123",
                             "Paciente",
                             $"{modelo.NombrePers} {modelo.Apellido}",

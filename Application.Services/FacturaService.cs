@@ -50,12 +50,11 @@ namespace Application.Services
         public async Task<FacturaDTO> CrearFacturaAsync(FacturaDTO dto)
         {
             var pago = new Pago(
-                codPago: 0,
+                idPago: 0,
                 nroTurno: dto.CodTurno ?? dto.CodAtencion ?? 1,
-                fechaYHoraPago: dto.FechaYHoraPago,
+                fechaHoraPago: dto.FechaYHoraPago,
                 monto: dto.Monto,
-                tipoMetodoPago: dto.TipoMetodoPago,
-                codAtencion: dto.CodAtencion
+                metodoPago: dto.TipoMetodoPago
             );
 
             await _facturaRepository.AddAsync(pago);
@@ -67,7 +66,7 @@ namespace Application.Services
             var pago = await _facturaRepository.GetAsync(codPago);
             if (pago == null) return false;
 
-            pago.SetTipoMetodoPago(string.IsNullOrWhiteSpace(tipoMetodoPago) ? "EFECTIVO" : tipoMetodoPago);
+            pago.SetMetodoPago(string.IsNullOrWhiteSpace(tipoMetodoPago) ? "EFECTIVO" : tipoMetodoPago);
             return await _facturaRepository.UpdateAsync(pago);
         }
 
@@ -75,11 +74,11 @@ namespace Application.Services
         {
             return new FacturaDTO
             {
-                CodPago = p.CodPago,
+                CodPago = p.IdPago,
                 CodAtencion = p.CodAtencion,
                 Monto = p.Monto,
                 TipoMetodoPago = p.TipoMetodoPago,
-                FechaYHoraPago = p.FechaYHoraPago
+                FechaYHoraPago = p.FechaHoraPago
             };
         }
     }

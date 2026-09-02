@@ -17,7 +17,7 @@ namespace Application.Services
         {
             var fechaReserva = dto.Fecha.Add(dto.HorarioTurno.ToTimeSpan());
 
-            if (await turnoRepository.TurnoExistsAsync(fechaReserva, "DNI", dto.OdontologoNroDoc ?? 0))
+            if (await turnoRepository.TurnoExistsAsync(fechaReserva, "DNI", dto.OdontologoNroDoc?.ToString() ?? "0"))
             {
                 throw new ArgumentException($"Ya existe un turno para ese odontólogo en la fecha/hora indicada.");
             }
@@ -28,9 +28,9 @@ namespace Application.Services
                 dto.ModalidadPago ?? "PARTICULAR",
                 dto.CodEspecialidad ?? 1,
                 "DNI",
-                dto.OdontologoNroDoc ?? 0,
+                dto.OdontologoNroDoc?.ToString() ?? "0",
                 "DNI",
-                dto.PacienteNroDoc ?? 0,
+                dto.PacienteNroDoc?.ToString() ?? "0",
                 dto.EstadoTurno ?? "RESERVADO"
             );
 
@@ -38,14 +38,14 @@ namespace Application.Services
             return MapToDTO(turno);
         }
 
-        public async Task<bool> DeleteAsync(int codTurno)
+        public async Task<bool> DeleteAsync(int nroTurno)
         {
-            return await turnoRepository.DeleteAsync(codTurno);
+            return await turnoRepository.DeleteAsync(nroTurno);
         }
 
-        public async Task<TurnoOdontologicoDTO?> GetAsync(int codTurno)
+        public async Task<TurnoOdontologicoDTO?> GetAsync(int nroTurno)
         {
-            var turno = await turnoRepository.GetAsync(codTurno);
+            var turno = await turnoRepository.GetAsync(nroTurno);
             return turno == null ? null : MapToDTO(turno);
         }
 
@@ -63,9 +63,9 @@ namespace Application.Services
                 dto.ModalidadPago ?? "PARTICULAR",
                 dto.CodEspecialidad ?? 1,
                 "DNI",
-                dto.OdontologoNroDoc ?? 0,
+                dto.OdontologoNroDoc?.ToString() ?? "0",
                 "DNI",
-                dto.PacienteNroDoc ?? 0,
+                dto.PacienteNroDoc?.ToString() ?? "0",
                 dto.EstadoTurno ?? "RESERVADO"
             );
 
@@ -81,7 +81,7 @@ namespace Application.Services
             if (!string.IsNullOrWhiteSpace(criteriaDTO.EstadoTurno))
             {
                 var estadoBuscado = criteriaDTO.EstadoTurno.ToUpper().Trim();
-                turnos = turnos.Where(t => t.Estado == estadoBuscado);
+                turnos = turnos.Where(t => t.EstadoTurno == estadoBuscado);
             }
 
             return turnos.Select(MapToDTO).ToList();
@@ -91,15 +91,20 @@ namespace Application.Services
         {
             return new TurnoOdontologicoDTO
             {
-                Id = turno.CodTurno,
-                Fecha = turno.FechaYHoraReserva.Date,
-                HorarioTurno = TimeOnly.FromDateTime(turno.FechaYHoraReserva),
-                EstadoTurno = turno.Estado,
+                Id = turno.NroTurno,
+                Fecha = turno.FechaHoraTurno.Date,
+                HorarioTurno = TimeOnly.FromDateTime(turno.FechaHoraTurno),
+                EstadoTurno = turno.EstadoTurno,
                 MotivoCancelacion = turno.MotivoCancelacion,
                 ModalidadPago = turno.ModalidadPagoElegida,
-                CodEspecialidad = turno.CodEspecialidad,
-                OdontologoNroDoc = turno.OdontologoNroDoc,
-                PacienteNroDoc = turno.PacienteNroDoc
+                CodEspecialidad = turno.IdEspecialidad,
+                OdontologoNroDoc = int.TryParse(turno.NroDocumentoOdontologo, out var doc) ? doc : 0,
+                PacienteNroDoc = int.TryParse(turno.NroDocumentoPaciente, out var pac) ? pac : 0,
+                NombrePaciente = turno.Paciente != null ? $"{turno.Paciente.Nombre} {turno.Paciente.Apellido}" : null,
+                NombreOdontologo = turno.Odontologo != null ? $"Dr/a. {turno.Odontologo.Nombre} {turno.Odontologo.Apellido}" : null,
+                NombreEspecialidad = turno.Especialidad?.Nombre,
+                FechaCancelacion = turno.FechaHoraCancelacion,
+                FechaSolicitudReprogramacion = turno.FechaHoraReprogramacion
             };
         }
     }

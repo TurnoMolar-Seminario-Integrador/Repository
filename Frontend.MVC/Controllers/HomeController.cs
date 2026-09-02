@@ -171,15 +171,14 @@ namespace TurnoMolar.Controllers
         private async Task<Paciente> ObtenerPacienteActualAsync()
         {
             var idString = User.FindFirst("EntidadId")?.Value;
-            int.TryParse(idString, out int dni);
 
             Paciente? paciente = null;
-            if (dni > 0)
+            if (!string.IsNullOrEmpty(idString))
             {
                 paciente = await _context.Pacientes
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
-                    .FirstOrDefaultAsync(p => p.NroDocumento == dni);
+                    .FirstOrDefaultAsync(p => p.NroDocumento == idString);
             }
 
             if (paciente == null)
@@ -194,7 +193,7 @@ namespace TurnoMolar.Controllers
             {
                 paciente = new Paciente(
                     "DNI",
-                    34567890,
+                    "34567890",
                     "Manuel",
                     "Fernández",
                     new DateTime(1989, 4, 15),
@@ -202,15 +201,19 @@ namespace TurnoMolar.Controllers
                     "manuel.fer@email.com",
                     "Córdoba 1540, Rosario",
                     "HABILITADO",
+                    "OSDE",
                     0m,
-                    1
+                    "paciente123",
+                    "",
+                    DateTime.Now,
+                    "Paciente"
                 );
                 _context.Pacientes.Add(paciente);
                 await _context.SaveChangesAsync();
             }
 
             ViewData["NombrePaciente"] = $"{paciente.Nombre} {paciente.Apellido}";
-            ViewData["IdPaciente"] = paciente.NroDocumento.ToString();
+            ViewData["IdPaciente"] = paciente.NroDocumento;
             ViewData["EstadoPaciente"] = paciente.EstadoPaciente;
 
             return paciente;
@@ -230,21 +233,21 @@ namespace TurnoMolar.Controllers
                 .Include(t => t.Odontologo)
                 .Include(t => t.Especialidad)
                 .Include(t => t.Comprobante)
-                .Where(t => t.PacienteNroDoc == paciente.NroDocumento &&
-                            (t.Estado == "CONFIRMADO" || t.Estado == "RESERVADO" || t.Estado == "PENDIENTE") &&
-                            t.FechaYHoraReserva >= DateTime.Today)
-                .OrderBy(t => t.FechaYHoraReserva)
+                .Where(t => t.NroDocumentoPaciente == paciente.NroDocumento &&
+                            (t.EstadoTurno == "CONFIRMADO" || t.EstadoTurno == "RESERVADO" || t.EstadoTurno == "PENDIENTE") &&
+                            t.FechaHoraTurno >= DateTime.Today)
+                .OrderBy(t => t.FechaHoraTurno)
                 .FirstOrDefaultAsync();
 
             var turnosPendientesCount = await _context.Turnos
-                .CountAsync(t => t.PacienteNroDoc == paciente.NroDocumento && t.Estado != "CANCELADO" && t.Estado != "ATENDIDO");
+                .CountAsync(t => t.NroDocumentoPaciente == paciente.NroDocumento && t.EstadoTurno != "CANCELADO" && t.EstadoTurno != "ATENDIDO");
 
             var atencionesRealizadasCount = await _context.Atenciones
-                .CountAsync(a => a.PacienteNroDoc == paciente.NroDocumento ||
-                                (a.HistoriaClinica != null && a.HistoriaClinica.PacienteNroDoc == paciente.NroDocumento));
+                .CountAsync(a => a.Turno != null && a.Turno.NroDocumentoPaciente == paciente.NroDocumento);
 
             var odontologos = await _context.Odontologos
-                .Include(o => o.Especialidad)
+                .Include(o => o.DisponibilidadesHorarias)
+                    .ThenInclude(d => d.Especialidad)
                 .ToListAsync();
 
             var especialidades = await _context.Especialidades.ToListAsync();
@@ -278,11 +281,14 @@ namespace TurnoMolar.Controllers
                 .Include(t => t.Comprobante)
                 .Include(t => t.Atencion)
                     .ThenInclude(a => a!.Valoracion)
-                .Where(t => t.PacienteNroDoc == paciente.NroDocumento)
-                .OrderByDescending(t => t.FechaYHoraReserva)
+                .Where(t => t.NroDocumentoPaciente == paciente.NroDocumento)
+                .OrderByDescending(t => t.FechaHoraTurno)
                 .ToListAsync();
 
-            var odontologos = await _context.Odontologos.Include(o => o.Especialidad).ToListAsync();
+            var odontologos = await _context.Odontologos
+                .Include(o => o.DisponibilidadesHorarias)
+                    .ThenInclude(d => d.Especialidad)
+                .ToListAsync();
             var especialidades = await _context.Especialidades.ToListAsync();
 
             var viewModel = new MisTurnosViewModel
@@ -307,7 +313,8 @@ namespace TurnoMolar.Controllers
             var paciente = await ObtenerPacienteActualAsync();
 
             var historiaClinica = await _context.HistoriasClinicas
-                .FirstOrDefaultAsync(h => h.PacienteNroDoc == paciente.NroDocumento);
+                .Include(h => h.Paciente)
+                .FirstOrDefaultAsync(h => h.NroDocumentoPaciente == paciente.NroDocumento);
 
             var atenciones = await _context.Atenciones
                 .Include(a => a.Turno)
@@ -317,9 +324,8 @@ namespace TurnoMolar.Controllers
                 .Include(a => a.DetallesInsumos)
                     .ThenInclude(d => d.Insumo)
                 .Include(a => a.Valoracion)
-                .Where(a => a.PacienteNroDoc == paciente.NroDocumento ||
-                           (a.HistoriaClinica != null && a.HistoriaClinica.PacienteNroDoc == paciente.NroDocumento))
-                .OrderByDescending(a => a.FechaYHoraAtencionInicio)
+                .Where(a => a.Turno != null && a.Turno.NroDocumentoPaciente == paciente.NroDocumento)
+                .OrderByDescending(a => a.FechaHoraAtencionInicio)
                 .ToListAsync();
 
             var viewModel = new HistorialClinicoViewModel
@@ -333,7 +339,7 @@ namespace TurnoMolar.Controllers
         }
 
         // =========================================================================
-        // 4. MÉTODOS DE PAGO Y ESTADO DE CUENTA
+        // 4. MÉTODOS DE PAGO Y FACTURACIÓN
         // =========================================================================
 
         [HttpGet]
@@ -342,18 +348,18 @@ namespace TurnoMolar.Controllers
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var historialPagos = await _context.Pagos
+            var pagos = await _context.Pagos
                 .Include(p => p.Turno)
-                    .ThenInclude(t => t.Especialidad)
+                    .ThenInclude(t => t.Atencion)
                 .Include(p => p.ObraSocial)
-                .Where(p => p.Turno.PacienteNroDoc == paciente.NroDocumento)
-                .OrderByDescending(p => p.FechaYHoraPago)
+                .Where(p => p.Turno != null && p.Turno.NroDocumentoPaciente == paciente.NroDocumento)
+                .OrderByDescending(p => p.FechaHoraPago)
                 .ToListAsync();
 
             var viewModel = new MetodosPagoViewModel
             {
                 Paciente = paciente,
-                HistorialPagos = historialPagos
+                HistorialPagos = pagos
             };
 
             return View(viewModel);
@@ -371,11 +377,10 @@ namespace TurnoMolar.Controllers
                 var montoPagado = paciente.MontoAdeudado.Value;
 
                 var ultimoTurno = await _context.Turnos
-                    .FirstOrDefaultAsync(t => t.PacienteNroDoc == paciente.NroDocumento);
+                    .FirstOrDefaultAsync(t => t.NroDocumentoPaciente == paciente.NroDocumento);
 
                 if (ultimoTurno == null)
                 {
-                    // Si no tiene turnos previos, creamos un turno de referencia
                     var especialidad = await _context.Especialidades.FirstOrDefaultAsync();
                     var odontologo = await _context.Odontologos.FirstOrDefaultAsync();
 
@@ -383,9 +388,9 @@ namespace TurnoMolar.Controllers
                         0,
                         DateTime.Now,
                         "PARTICULAR",
-                        especialidad?.CodEspecialidad ?? 1,
+                        especialidad?.IdEspecialidad ?? 1,
                         "DNI",
-                        odontologo?.NroDocumento ?? 28456789,
+                        odontologo?.NroDocumento ?? "28456789",
                         "DNI",
                         paciente.NroDocumento,
                         "ATENDIDO"
@@ -396,7 +401,7 @@ namespace TurnoMolar.Controllers
 
                 var pago = new Pago(
                     0,
-                    ultimoTurno.CodTurno,
+                    ultimoTurno.NroTurno,
                     DateTime.Now,
                     montoPagado,
                     metodoPago,
@@ -433,6 +438,7 @@ namespace TurnoMolar.Controllers
             var paciente = await ObtenerPacienteActualAsync();
 
             var obrasSociales = await _context.ObrasSociales
+                .Include(o => o.Convenios)
                 .Where(o => o.EstadoOS == "ACTIVA")
                 .ToListAsync();
 
@@ -448,7 +454,7 @@ namespace TurnoMolar.Controllers
         [HttpPost]
         [Authorize(Roles = "Paciente,Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ActualizarSeguro(int idObraSocial, string? nroAfiliado)
+        public async Task<IActionResult> ActualizarSeguro(string idObraSocial, string? nroAfiliado)
         {
             var paciente = await ObtenerPacienteActualAsync();
 
@@ -480,7 +486,7 @@ namespace TurnoMolar.Controllers
             var viewModel = new ConfiguracionViewModel
             {
                 TipoDocumento = paciente.TipoDocumento,
-                NroDocumento = paciente.NroDocumento,
+                NroDocumento = paciente.NroDocumentoInt,
                 Nombre = paciente.Nombre,
                 Apellido = paciente.Apellido,
                 Telefono = paciente.Telefono,
@@ -511,7 +517,7 @@ namespace TurnoMolar.Controllers
             paciente.SetDomicilio(domicilio);
 
             var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.EntidadId == paciente.NroDocumento);
+                .FirstOrDefaultAsync(u => u.EntidadId == paciente.NroDocumentoInt || u.Username == paciente.NroDocumento);
 
             if (usuario != null)
             {

@@ -23,15 +23,14 @@ namespace Frontend.MVC.Controllers
         private async Task<Paciente> ObtenerPacienteActualAsync()
         {
             var idString = User.FindFirst("EntidadId")?.Value;
-            int.TryParse(idString, out int dni);
 
             Paciente? paciente = null;
-            if (dni > 0)
+            if (!string.IsNullOrEmpty(idString))
             {
                 paciente = await _context.Pacientes
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
-                    .FirstOrDefaultAsync(p => p.NroDocumento == dni);
+                    .FirstOrDefaultAsync(p => p.NroDocumento == idString);
             }
 
             if (paciente == null)
@@ -46,7 +45,7 @@ namespace Frontend.MVC.Controllers
             {
                 paciente = new Paciente(
                     "DNI",
-                    34567890,
+                    "34567890",
                     "Manuel",
                     "Fernández",
                     new DateTime(1989, 4, 15),
@@ -54,15 +53,19 @@ namespace Frontend.MVC.Controllers
                     "manuel.fer@email.com",
                     "Córdoba 1540, Rosario",
                     "HABILITADO",
+                    "OSDE",
                     0m,
-                    1
+                    "paciente123",
+                    "",
+                    DateTime.Now,
+                    "Paciente"
                 );
                 _context.Pacientes.Add(paciente);
                 await _context.SaveChangesAsync();
             }
 
             ViewData["NombrePaciente"] = $"{paciente.Nombre} {paciente.Apellido}";
-            ViewData["IdPaciente"] = paciente.NroDocumento.ToString();
+            ViewData["IdPaciente"] = paciente.NroDocumento;
             ViewData["EstadoPaciente"] = paciente.EstadoPaciente;
 
             return paciente;
@@ -80,17 +83,19 @@ namespace Frontend.MVC.Controllers
             var estaInhabilitado = paciente.EstadoPaciente == "INHABILITADO" || (paciente.MontoAdeudado.HasValue && paciente.MontoAdeudado.Value > 0);
 
             var odontologos = await _context.Odontologos
-                .Include(o => o.Especialidad)
+                .Include(o => o.DisponibilidadesHorarias)
+                    .ThenInclude(d => d.Especialidad)
                 .ToListAsync();
 
             var especialidades = await _context.Especialidades.ToListAsync();
 
-            var selectedDoc = odontologos.FirstOrDefault(o => o.NroDocumento == odontologoId) ?? odontologos.FirstOrDefault();
-            var selectedEsp = especialidades.FirstOrDefault(e => e.CodEspecialidad == (especialidadId ?? selectedDoc?.CodEspecialidad)) ?? especialidades.FirstOrDefault();
+            var docIdStr = odontologoId?.ToString();
+            var selectedDoc = odontologos.FirstOrDefault(o => o.NroDocumento == docIdStr) ?? odontologos.FirstOrDefault();
+            var selectedEsp = especialidades.FirstOrDefault(e => e.IdEspecialidad == (especialidadId ?? selectedDoc?.CodEspecialidad)) ?? especialidades.FirstOrDefault();
 
             var modelo = new ReservaTurnoViewModel
             {
-                OdontologoId = selectedDoc?.NroDocumento ?? 28456789,
+                OdontologoId = selectedDoc?.NroDocumentoInt ?? 28456789,
                 NombreOdontologo = selectedDoc != null ? $"{selectedDoc.Nombre} {selectedDoc.Apellido}" : "Dra. Elena Silva",
                 Especialidad = selectedEsp?.Nombre ?? "Odontología General",
                 FechaSeleccionada = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd"),
@@ -138,8 +143,8 @@ namespace Frontend.MVC.Controllers
                 }
             }
 
-            var docDni = modelo.OdontologoId ?? 28456789;
-            var odontologo = await _context.Odontologos.FirstOrDefaultAsync(o => o.NroDocumento == docDni);
+            var docDniStr = (modelo.OdontologoId ?? 28456789).ToString();
+            var odontologo = await _context.Odontologos.FirstOrDefaultAsync(o => o.NroDocumento == docDniStr);
             var especialidadId = odontologo?.CodEspecialidad ?? 1;
 
             var nuevoTurno = new Turno(
@@ -148,7 +153,7 @@ namespace Frontend.MVC.Controllers
                 modelo.MetodoPago?.ToUpper() == "PARTICULAR" ? "PARTICULAR" : "OBRA_SOCIAL",
                 especialidadId,
                 "DNI",
-                docDni,
+                docDniStr,
                 paciente.TipoDocumento,
                 paciente.NroDocumento,
                 "CONFIRMADO"
@@ -160,15 +165,14 @@ namespace Frontend.MVC.Controllers
             // Emisión de Comprobante de Turno Oficial con persistencia
             var comprobante = new ComprobanteDeTurno(
                 0,
-                nuevoTurno.CodTurno,
-                nuevoTurno.FechaYHoraReserva,
+                nuevoTurno.NroTurno,
                 DateTime.Now
             );
-            _context.Comprobantes.Add(comprobante);
+            _context.ComprobantesTurnos.Add(comprobante);
             await _context.SaveChangesAsync();
 
             TempData["MensajeExito"] = "¡Turno agendado exitosamente!";
-            return RedirectToAction("Comprobante", new { idTurno = nuevoTurno.CodTurno });
+            return RedirectToAction("Comprobante", new { idTurno = nuevoTurno.NroTurno });
         }
 
         // =========================================================================
@@ -186,7 +190,7 @@ namespace Frontend.MVC.Controllers
                 .Include(t => t.Paciente)
                     .ThenInclude(p => p.ObraSocial)
                 .Include(t => t.Comprobante)
-                .FirstOrDefaultAsync(t => t.CodTurno == idTurno);
+                .FirstOrDefaultAsync(t => t.NroTurno == idTurno);
 
             if (turno == null)
             {
@@ -194,149 +198,171 @@ namespace Frontend.MVC.Controllers
                 return RedirectToAction("MisTurnos", "Home");
             }
 
-            ViewData["IdTurno"] = turno.CodTurno;
-            ViewData["FechaTurno"] = turno.FechaYHoraReserva.ToString("dd 'de' MMMM, yyyy • HH:mm 'hs'", new CultureInfo("es-ES"));
+            ViewData["IdTurno"] = turno.NroTurno;
+            ViewData["FechaTurno"] = turno.FechaHoraTurno.ToString("dd 'de' MMMM, yyyy • HH:mm 'hs'", new CultureInfo("es-ES"));
             ViewData["Doctor"] = $"{turno.Odontologo.Nombre} {turno.Odontologo.Apellido} (MP {turno.Odontologo.Matricula})";
             ViewData["Especialidad"] = turno.Especialidad.Nombre;
-            ViewData["MetodoPago"] = turno.ModalidadPagoElegida == "OBRA_SOCIAL" && turno.Paciente.ObraSocial != null
-                ? $"{turno.Paciente.ObraSocial.NombreOS} ({turno.Paciente.ObraSocial.PlanCobertura})"
-                : "Particular (Pago en Clínica)";
-            ViewData["CodigoReserva"] = $"TM-{turno.FechaYHoraReserva.Year}-{turno.CodTurno:D4}A";
-            ViewData["NroComprobante"] = turno.Comprobante?.NroComprobante ?? turno.CodTurno;
+            ViewData["ModalidadPago"] = turno.ModalidadPagoElegida == "OBRA_SOCIAL" ? "Obra Social / Prepaga" : "Particular";
+            ViewData["EstadoTurno"] = turno.EstadoTurno;
+            ViewData["FechaEmision"] = turno.Comprobante?.FechaHoraEmision.ToString("dd/MM/yyyy HH:mm") ?? DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
-            return View();
+            return View(turno);
         }
 
         // =========================================================================
-        // BAJA / CANCELACIÓN DE TURNO
+        // CANCELAR TURNO
         // =========================================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Cancelar(int idTurno, string? motivo)
+        public async Task<IActionResult> Cancelar(int idTurno, string motivoCancelacion)
         {
-            var turno = await _context.Turnos.FindAsync(idTurno);
-            if (turno != null)
+            var paciente = await ObtenerPacienteActualAsync();
+
+            var turno = await _context.Turnos.FirstOrDefaultAsync(t => t.NroTurno == idTurno && t.NroDocumentoPaciente == paciente.NroDocumento);
+            if (turno == null)
             {
-                turno.Cancelar(motivo ?? "Cancelación solicitada por el paciente");
-                await _context.SaveChangesAsync();
-                TempData["MensajeExito"] = $"El turno #{idTurno} fue cancelado correctamente.";
+                TempData["MensajeError"] = "No se encontró el turno a cancelar.";
+                return RedirectToAction("MisTurnos", "Home");
+            }
+
+            // Regla de negocio: Si cancela con menos de 24 hs de anticipación, se aplica penalización
+            var horasRestantes = (turno.FechaHoraTurno - DateTime.Now).TotalHours;
+            decimal? penalizacion = null;
+
+            if (horasRestantes < 24 && horasRestantes > 0)
+            {
+                penalizacion = 5000m;
+                var montoActual = paciente.MontoAdeudado ?? 0m;
+                paciente.SetMontoAdeudado(montoActual + penalizacion.Value);
+                paciente.SetEstadoPaciente("INHABILITADO");
+            }
+
+            turno.Cancelar(motivoCancelacion ?? "Cancelado por el paciente", penalizacion);
+
+            await _context.SaveChangesAsync();
+
+            if (penalizacion.HasValue)
+            {
+                TempData["MensajeAdvertencia"] = $"El turno fue cancelado con menos de 24 hs de anticipación. Se registró un cargo por penalización de ${penalizacion.Value:N0} en tu cuenta.";
             }
             else
             {
-                TempData["MensajeError"] = "No se encontró el turno a cancelar.";
+                TempData["MensajeExito"] = "El turno fue cancelado correctamente sin penalizaciones.";
             }
 
             return RedirectToAction("MisTurnos", "Home");
         }
 
         // =========================================================================
-        // MODIFICACIÓN / REPROGRAMACIÓN DE TURNO
+        // REPROGRAMAR TURNO
         // =========================================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reprogramar(int idTurnoOriginal, string nuevaFecha, string nuevoHorario)
         {
-            var turnoOriginal = await _context.Turnos.FindAsync(idTurnoOriginal);
+            var paciente = await ObtenerPacienteActualAsync();
+
+            var turnoOriginal = await _context.Turnos.FirstOrDefaultAsync(t => t.NroTurno == idTurnoOriginal && t.NroDocumentoPaciente == paciente.NroDocumento);
             if (turnoOriginal == null)
             {
                 TempData["MensajeError"] = "No se encontró el turno original para reprogramar.";
                 return RedirectToAction("MisTurnos", "Home");
             }
 
-            DateTime nuevaFechaHora = DateTime.Today.AddDays(7).AddHours(10);
-            if (!string.IsNullOrEmpty(nuevaFecha) && DateTime.TryParse(nuevaFecha, out DateTime pDate))
+            DateTime nuevaFechaHora = turnoOriginal.FechaHoraTurno.AddDays(7);
+            if (!string.IsNullOrEmpty(nuevaFecha) && DateTime.TryParse(nuevaFecha, out DateTime parsedDate))
             {
-                nuevaFechaHora = pDate;
+                nuevaFechaHora = parsedDate;
                 if (!string.IsNullOrEmpty(nuevoHorario))
                 {
                     var parts = nuevoHorario.Split(':', ' ');
                     if (parts.Length >= 2 && int.TryParse(parts[0], out int h) && int.TryParse(parts[1], out int m))
                     {
-                        nuevaFechaHora = pDate.Date.AddHours(h).AddMinutes(m);
+                        nuevaFechaHora = parsedDate.Date.AddHours(h).AddMinutes(m);
                     }
                 }
             }
 
+            // Marcar turno original como REPROGRAMADO
+            turnoOriginal.Reprogramar(nuevaFechaHora);
+
+            // Crear nuevo turno vinculado al original
             var nuevoTurno = new Turno(
                 0,
                 nuevaFechaHora,
                 turnoOriginal.ModalidadPagoElegida,
-                turnoOriginal.CodEspecialidad,
-                turnoOriginal.OdontologoTipoDoc,
-                turnoOriginal.OdontologoNroDoc,
-                turnoOriginal.PacienteTipoDoc,
-                turnoOriginal.PacienteNroDoc,
-                "CONFIRMADO"
+                turnoOriginal.IdEspecialidad,
+                turnoOriginal.TipoDocumentoOdontologo,
+                turnoOriginal.NroDocumentoOdontologo,
+                turnoOriginal.TipoDocumentoPaciente,
+                turnoOriginal.NroDocumentoPaciente,
+                "CONFIRMADO",
+                null,
+                null,
+                turnoOriginal.NroTurno
             );
 
             _context.Turnos.Add(nuevoTurno);
             await _context.SaveChangesAsync();
 
-            turnoOriginal.Reprogramar(nuevaFechaHora, nuevoTurno.CodTurno);
-
-            var comprobante = new ComprobanteDeTurno(0, nuevoTurno.CodTurno, nuevoTurno.FechaYHoraReserva, DateTime.Now);
-            _context.Comprobantes.Add(comprobante);
-
+            // Emitir comprobante para el nuevo turno
+            var comprobante = new ComprobanteDeTurno(
+                0,
+                nuevoTurno.NroTurno,
+                DateTime.Now
+            );
+            _context.ComprobantesTurnos.Add(comprobante);
             await _context.SaveChangesAsync();
 
-            TempData["MensajeExito"] = $"¡Turno reprogramado con éxito para el {nuevaFechaHora:dd/MM/yyyy HH:mm} hs!";
-            return RedirectToAction("MisTurnos", "Home");
+            TempData["MensajeExito"] = $"¡Turno reprogramado exitosamente para el {nuevaFechaHora:dd/MM/yyyy HH:mm} hs!";
+            return RedirectToAction("Comprobante", new { idTurno = nuevoTurno.NroTurno });
         }
 
         // =========================================================================
-        // VALORACIÓN / CALIFICACIÓN DE ATENCIÓN
+        // VALORAR ATENCIÓN (CALIFICACIÓN Y RESEÑA)
         // =========================================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Calificar(int idTurno, int calificacion, string? comentarios)
+        public async Task<IActionResult> ValorarAtencion(int idTurno, int calificacion, string? comentarios)
         {
-            if (calificacion < 1 || calificacion > 5)
-            {
-                calificacion = 5;
-            }
+            var paciente = await ObtenerPacienteActualAsync();
 
             var turno = await _context.Turnos
                 .Include(t => t.Atencion)
-                    .ThenInclude(a => a!.Valoracion)
-                .Include(t => t.Paciente)
-                    .ThenInclude(p => p.HistoriaClinica)
-                .FirstOrDefaultAsync(t => t.CodTurno == idTurno);
+                .FirstOrDefaultAsync(t => t.NroTurno == idTurno && t.NroDocumentoPaciente == paciente.NroDocumento);
 
             if (turno == null)
             {
-                TempData["MensajeError"] = "No se encontró el turno a calificar.";
+                TempData["MensajeError"] = "No se encontró el turno para calificar.";
                 return RedirectToAction("MisTurnos", "Home");
             }
 
-            // Si el turno no tiene atención creada, la creamos para asociar la valoración
+            // Si aún no tiene atención registrada, creamos la atención completada
             if (turno.Atencion == null)
             {
-                var hc = turno.Paciente?.HistoriaClinica ?? await _context.HistoriasClinicas.FirstOrDefaultAsync(h => h.PacienteNroDoc == turno.PacienteNroDoc);
-                int nroHc = hc?.NroHC ?? 1;
+                var hc = await _context.HistoriasClinicas.FirstOrDefaultAsync(h => h.NroDocumentoPaciente == paciente.NroDocumento);
+                var nroHc = hc?.NroHC ?? 1;
 
                 var atencion = new AtencionOdontologica(
                     0,
-                    turno.FechaYHoraReserva,
-                    turno.FechaYHoraReserva.AddMinutes(30),
+                    turno.FechaHoraTurno,
+                    turno.FechaHoraTurno.AddMinutes(30),
                     "Control odontológico realizado.",
-                    turno.CodTurno,
-                    turno.FechaYHoraReserva,
-                    nroHc,
-                    "DNI",
-                    turno.PacienteNroDoc,
-                    15000m
+                    15000m,
+                    turno.NroTurno,
+                    nroHc
                 );
-                _context.Atenciones.Add(atencion);
+                _context.AtencionesOdontologicas.Add(atencion);
                 await _context.SaveChangesAsync();
 
                 turno.SetEstado("ATENDIDO");
             }
 
-            var atencionId = turno.Atencion != null ? turno.Atencion.CodAtencion : (await _context.Atenciones.FirstAsync(a => a.CodTurno == turno.CodTurno)).CodAtencion;
-            var valoracionExistente = await _context.Valoraciones.FirstOrDefaultAsync(v => v.CodAtencion == atencionId);
+            var atencionId = turno.Atencion != null ? turno.Atencion.IdAtencion : (await _context.AtencionesOdontologicas.FirstAsync(a => a.NroTurno == turno.NroTurno)).IdAtencion;
+            var valoracionExistente = await _context.Valoraciones.FirstOrDefaultAsync(v => v.IdAtencion == atencionId);
 
             if (valoracionExistente == null)
             {

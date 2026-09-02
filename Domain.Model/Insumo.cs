@@ -2,16 +2,24 @@ namespace Domain.Model
 {
     public class Insumo
     {
-        public int CodInsumo { get; private set; }
+        public int IdInsumo { get; private set; }
+        public int CodInsumo
+        {
+            get => IdInsumo;
+            private set => IdInsumo = value;
+        }
+
         public string Nombre { get; private set; } = string.Empty;
         public decimal CostoUnitario { get; private set; }
         public int StockDisponible { get; private set; }
 
+        public virtual ICollection<DetalleInsumoUtilizado> DetallesInsumos { get; private set; } = new List<DetalleInsumoUtilizado>();
+
         protected Insumo() { }
 
-        public Insumo(int codInsumo, string nombre, decimal costoUnitario, int stockDisponible)
+        public Insumo(int idInsumo, string nombre, decimal costoUnitario, int stockDisponible)
         {
-            CodInsumo = codInsumo;
+            IdInsumo = idInsumo;
             SetNombre(nombre);
             SetCostoUnitario(costoUnitario);
             SetStockDisponible(stockDisponible);

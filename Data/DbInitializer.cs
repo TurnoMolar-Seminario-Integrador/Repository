@@ -226,13 +226,13 @@ namespace Data
                 if (!await context.Insumos.AnyAsync())
                 {
                     await context.Insumos.AddRangeAsync(
-                        new Insumo(1, "Kit de Anestesia Local (Mepivacaína)", 2500m, 120),
-                        new Insumo(2, "Resina Compuesta Fotocurable", 6800m, 45),
-                        new Insumo(3, "Película Radiográfica Periapical", 1500m, 200),
-                        new Insumo(4, "Guantes de Látex Descartables (Par)", 400m, 500),
-                        new Insumo(5, "Babero y Eyector Descartable", 300m, 350),
-                        new Insumo(6, "Pasta para Profilaxis Dental", 1200m, 60),
-                        new Insumo(7, "Conos de Gutapercha Endodoncia", 4500m, 30)
+                        new Insumo("Kit de Anestesia Local (Mepivacaína)", 2500m, 120),
+                        new Insumo("Resina Compuesta Fotocurable", 6800m, 45),
+                        new Insumo("Película Radiográfica Periapical", 1500m, 200),
+                        new Insumo("Guantes de Látex Descartables (Par)", 400m, 500),
+                        new Insumo("Babero y Eyector Descartable", 300m, 350),
+                        new Insumo("Pasta para Profilaxis Dental", 1200m, 60),
+                        new Insumo("Conos de Gutapercha Endodoncia", 4500m, 30)
                     );
                     await context.SaveChangesAsync();
                 }

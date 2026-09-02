@@ -25,6 +25,13 @@ namespace Domain.Model
             SetStockDisponible(stockDisponible);
         }
 
+        public Insumo(string nombre, decimal costoUnitario, int stockDisponible)
+        {
+            SetNombre(nombre);
+            SetCostoUnitario(costoUnitario);
+            SetStockDisponible(stockDisponible);
+        }
+
         public void SetNombre(string nombre)
         {
             if (string.IsNullOrWhiteSpace(nombre))

@@ -24,9 +24,6 @@ namespace Data
         public DbSet<Paciente> Pacientes => Set<Paciente>();
         public DbSet<HistoriaClinica> HistoriasClinicas => Set<HistoriaClinica>();
 
-        // DbSets adicionales / utilitarios
-        public DbSet<Usuario> Usuarios => Set<Usuario>();
-
         // Propiedades de compatibilidad
         public DbSet<ComprobanteDeTurno> Comprobantes => ComprobantesTurnos;
         public DbSet<AtencionOdontologica> Atenciones => AtencionesOdontologicas;
@@ -331,16 +328,6 @@ namespace Data
                     .WithOne(p => p.HistoriaClinica)
                     .HasForeignKey<HistoriaClinica>(h => new { h.TipoDocumentoPaciente, h.NroDocumentoPaciente })
                     .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // USUARIOS (Para autenticación y administración general)
-            modelBuilder.Entity<Usuario>(e =>
-            {
-                e.ToTable("Usuarios");
-                e.HasKey(u => u.Id);
-                e.Property(u => u.Username).IsRequired().HasMaxLength(50);
-                e.Property(u => u.Rol).IsRequired().HasMaxLength(30);
-                e.HasIndex(u => u.Username).IsUnique();
             });
         }
     }

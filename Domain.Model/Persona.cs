@@ -60,7 +60,7 @@ namespace Domain.Model
         {
             if (string.IsNullOrWhiteSpace(nroDocumento))
                 throw new ArgumentException("El número de documento no puede ser vacío.", nameof(nroDocumento));
-            NroDocumento = nroDocumento.Trim();
+            NroDocumento = nroDocumento.ToUpper().Trim();
         }
 
         public void SetNombre(string nombre)

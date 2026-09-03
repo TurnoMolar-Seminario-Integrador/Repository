@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Application.Services;
 using Data;
 using Domain.Model;
+using DTOs;
 using Frontend.MVC.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -13,11 +15,13 @@ namespace TurnoMolar.Controllers
     public class HomeController : Controller
     {
         private readonly TurnoMolarDbContext _context;
+        private readonly IAuthService _authService;
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(TurnoMolarDbContext context, ILogger<HomeController> logger)
+        public HomeController(TurnoMolarDbContext context, IAuthService authService, ILogger<HomeController> logger)
         {
             _context = context;
+            _authService = authService;
             _logger = logger;
         }
 
@@ -31,7 +35,7 @@ namespace TurnoMolar.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
-                if (User.IsInRole("ResponsableClinica") || User.IsInRole("Odontologo") || User.IsInRole("Admin"))
+                if (User.IsInRole("ResponsableClinica") || User.IsInRole("Responsable de la Clínica") || User.IsInRole("Odontologo") || User.IsInRole("Admin"))
                 {
                     return RedirectToAction("Index", "Odontologo");
                 }
@@ -48,69 +52,36 @@ namespace TurnoMolar.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string dni, string? password, string? returnUrl = null)
+        public async Task<IActionResult> Login(string tipoDocumento, string nroDocumento, string? password, string? returnUrl = null)
         {
-            if (string.IsNullOrWhiteSpace(dni))
+            if (string.IsNullOrWhiteSpace(tipoDocumento) || string.IsNullOrWhiteSpace(nroDocumento))
             {
-                TempData["ErrorLogin"] = "Por favor, ingresá tu ID o nombre de usuario.";
+                TempData["ErrorLogin"] = "Por favor, ingresá tu tipo y número de documento.";
                 return View();
-            }
-
-            var input = dni.Trim();
-            var clave = (password ?? string.Empty).Trim();
-
-            if (input == "1" && string.IsNullOrEmpty(clave))
-            {
-                input = "28456789";
-                clave = "doc123";
-            }
-            else if (input == "2" && string.IsNullOrEmpty(clave))
-            {
-                input = "34567890";
-                clave = "paciente123";
             }
 
             try
             {
-                Usuario? usuario = null;
+                var respuesta = await _authService.LoginAsync(new LoginRequestDTO
+                {
+                    TipoDocumento = tipoDocumento.Trim(),
+                    NroDocumento = nroDocumento.Trim(),
+                    Password = (password ?? string.Empty).Trim()
+                });
 
-                if (int.TryParse(input, out int dniParsed))
+                if (respuesta == null)
                 {
-                    usuario = await _context.Usuarios
-                        .FirstOrDefaultAsync(u => u.EntidadId == dniParsed || u.Username.ToLower() == input.ToLower());
-                }
-                else
-                {
-                    usuario = await _context.Usuarios
-                        .FirstOrDefaultAsync(u => u.Username.ToLower() == input.ToLower());
-                }
-
-                if (usuario == null)
-                {
-                    TempData["ErrorLogin"] = $"El ID o usuario '{dni}' no se encuentra registrado en el sistema.";
-                    return View();
-                }
-
-                if (!usuario.Activo)
-                {
-                    TempData["ErrorLogin"] = "Tu usuario se encuentra deshabilitado. Contactá con la administración.";
-                    return View();
-                }
-
-                if (!string.IsNullOrEmpty(clave) && usuario.PasswordHash != clave && usuario.PasswordHash != "password123" && clave != "admin123" && clave != "doc123" && clave != "paciente123")
-                {
-                    TempData["ErrorLogin"] = "Contraseña incorrecta. Por favor, intentá nuevamente.";
+                    TempData["ErrorLogin"] = "Documento o contraseña incorrectos.";
                     return View();
                 }
 
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-                    new Claim(ClaimTypes.Name, usuario.Username),
-                    new Claim(ClaimTypes.Role, usuario.Rol),
-                    new Claim("NombreCompleto", usuario.NombreCompleto ?? usuario.Username),
-                    new Claim("Email", usuario.Email ?? string.Empty),
-                    new Claim("EntidadId", usuario.EntidadId?.ToString() ?? "0")
+                    new Claim(ClaimTypes.NameIdentifier, $"{respuesta.TipoDocumento}|{respuesta.NroDocumento}"),
+                    new Claim("TipoDocumento", respuesta.TipoDocumento),
+                    new Claim("NroDocumento", respuesta.NroDocumento),
+                    new Claim(ClaimTypes.Role, respuesta.Rol),
+                    new Claim("NombreCompleto", respuesta.NombreCompleto)
                 };
 
                 var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -125,14 +96,14 @@ namespace TurnoMolar.Controllers
                     new ClaimsPrincipal(claimsIdentity),
                     authProperties);
 
-                _logger.LogInformation("Usuario {Username} ({Rol}) autenticado con éxito.", usuario.Username, usuario.Rol);
+                _logger.LogInformation("Usuario {TipoDocumento} {NroDocumento} ({Rol}) autenticado con éxito.", respuesta.TipoDocumento, respuesta.NroDocumento, respuesta.Rol);
 
                 if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 {
                     return Redirect(returnUrl);
                 }
 
-                if (usuario.Rol == "ResponsableClinica" || usuario.Rol == "Odontologo" || usuario.Rol == "Admin")
+                if (respuesta.Rol == "ResponsableClinica" || respuesta.Rol == "Responsable de la Clínica" || respuesta.Rol == "Odontologo" || respuesta.Rol == "Admin")
                 {
                     return RedirectToAction("Index", "Odontologo");
                 }
@@ -170,15 +141,16 @@ namespace TurnoMolar.Controllers
 
         private async Task<Paciente> ObtenerPacienteActualAsync()
         {
-            var idString = User.FindFirst("EntidadId")?.Value;
+            var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
+            var nroDocumento = User.FindFirst("NroDocumento")?.Value;
 
             Paciente? paciente = null;
-            if (!string.IsNullOrEmpty(idString))
+            if (!string.IsNullOrEmpty(tipoDocumento) && !string.IsNullOrEmpty(nroDocumento))
             {
                 paciente = await _context.Pacientes
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
-                    .FirstOrDefaultAsync(p => p.NroDocumento == idString);
+                    .FirstOrDefaultAsync(p => p.TipoDocumento == tipoDocumento && p.NroDocumento == nroDocumento);
             }
 
             if (paciente == null)
@@ -515,14 +487,6 @@ namespace TurnoMolar.Controllers
             paciente.SetTelefono(telefono);
             paciente.SetEmail(email);
             paciente.SetDomicilio(domicilio);
-
-            var usuario = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.EntidadId == paciente.NroDocumentoInt || u.Username == paciente.NroDocumento);
-
-            if (usuario != null)
-            {
-                usuario.Email = email;
-            }
 
             await _context.SaveChangesAsync();
 

@@ -46,7 +46,7 @@ namespace TurnoMolar.Controllers
 
                     // Validar si el paciente ya existe en BD
                     var existe = await _context.Pacientes
-                        .AnyAsync(p => p.NroDocumento == dniStr && p.TipoDocumento == tipoDoc);
+                        .AnyAsync(p => p.NroDocumento == dniStr && p.TipoDocumento == tipoDoc.ToUpper());
 
                     if (existe)
                     {
@@ -69,6 +69,9 @@ namespace TurnoMolar.Controllers
                     }
 
                     // 1. Crear Entidad Paciente (MDF v1.01)
+                    // El propio Paciente es la cuenta de login (Clave/SaltClave/Rol viven acá,
+                    // no hay una tabla Usuarios aparte — ver AuthService/IUsuarioRepository).
+                    var (clave, salt) = PasswordHasher.Generar("paciente123");
                     var nuevoPaciente = new Paciente(
                         tipoDoc,
                         dniStr,
@@ -81,8 +84,8 @@ namespace TurnoMolar.Controllers
                         "HABILITADO",
                         idOs,
                         0m,
-                        "paciente123",
-                        "",
+                        clave,
+                        salt,
                         DateTime.Now,
                         "Paciente"
                     );
@@ -99,25 +102,6 @@ namespace TurnoMolar.Controllers
                         "Ficha clínica de registro inicial."
                     );
                     _context.HistoriasClinicas.Add(hc);
-
-                    // 3. Crear Cuenta de Usuario para que pueda iniciar sesión (Seguridad EC03)
-                    var usuarioExistente = await _context.Usuarios
-                        .AnyAsync(u => u.EntidadId == dniParsed || u.Username == dniStr);
-
-                    if (!usuarioExistente)
-                    {
-                        var nuevoUsuario = new Usuario(
-                            0,
-                            dniStr,
-                            "paciente123",
-                            "Paciente",
-                            $"{modelo.NombrePers} {modelo.Apellido}",
-                            modelo.MailPer,
-                            true,
-                            dniParsed
-                        );
-                        _context.Usuarios.Add(nuevoUsuario);
-                    }
 
                     await _context.SaveChangesAsync();
 

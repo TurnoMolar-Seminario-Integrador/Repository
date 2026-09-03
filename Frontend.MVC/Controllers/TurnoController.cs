@@ -22,15 +22,16 @@ namespace Frontend.MVC.Controllers
 
         private async Task<Paciente> ObtenerPacienteActualAsync()
         {
-            var idString = User.FindFirst("EntidadId")?.Value;
+            var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
+            var nroDocumento = User.FindFirst("NroDocumento")?.Value;
 
             Paciente? paciente = null;
-            if (!string.IsNullOrEmpty(idString))
+            if (!string.IsNullOrEmpty(tipoDocumento) && !string.IsNullOrEmpty(nroDocumento))
             {
                 paciente = await _context.Pacientes
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
-                    .FirstOrDefaultAsync(p => p.NroDocumento == idString);
+                    .FirstOrDefaultAsync(p => p.TipoDocumento == tipoDocumento && p.NroDocumento == nroDocumento);
             }
 
             if (paciente == null)

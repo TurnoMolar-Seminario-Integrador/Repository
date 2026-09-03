@@ -170,10 +170,23 @@
             <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
 
             <div class="form-group">
-                <label class="form-label">ID</label>
+                <label class="form-label">Tipo de Documento</label>
                 <div class="input-icon-wrapper">
                     <i class="bi bi-person-badge"></i>
-                    <input type="text" id="inputDni" name="dni" class="form-control-custom" autofocus required autocomplete="off" />
+                    <select id="inputTipoDocumento" name="tipoDocumento" class="form-control-custom" style="padding-left: 42px;" required>
+                        <option value="DNI">DNI</option>
+                        <option value="LC">LC</option>
+                        <option value="LE">LE</option>
+                        <option value="PAS">Pasaporte</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Número de Documento</label>
+                <div class="input-icon-wrapper">
+                    <i class="bi bi-hash"></i>
+                    <input type="text" id="inputNroDocumento" name="nroDocumento" class="form-control-custom" autofocus required autocomplete="off" />
                 </div>
             </div>
 

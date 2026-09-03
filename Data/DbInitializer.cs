@@ -64,6 +64,14 @@ namespace Data
                 // 4. RESPONSABLES DE CLINICA
                 if (!await context.ResponsablesClinica.AnyAsync())
                 {
+                    // Contraseña distinta a la de su fila en Odontologos ("doc123") a propósito:
+                    // así se puede probar el login como cada rol por separado.
+                    var (claveKarina, saltKarina) = PasswordHasher.Generar("resp123");
+                    // TODO: reemplazar por una persona real — placeholder para que exista
+                    // una fila con Rol="Admin" en ResponsablesClinica (ver MU: Admin y
+                    // "Responsable de la Clínica" son dos filas distintas, mismo modelo).
+                    var (claveAdmin, saltAdmin) = PasswordHasher.Generar("admin123");
+
                     await context.ResponsablesClinica.AddRangeAsync(
                         new ResponsableClinica(
                             "DNI",
@@ -74,10 +82,24 @@ namespace Data
                             "341-4567890",
                             "karina.gonzalez@turnomolar.com",
                             "Bv. Oroño 1234, Rosario",
-                            "doc123",
-                            "",
+                            claveKarina,
+                            saltKarina,
                             DateTime.Now,
                             "ResponsableClinica"
+                        ),
+                        new ResponsableClinica(
+                            "DNI",
+                            "20000000",
+                            "Administrador",
+                            "General",
+                            new DateTime(1985, 1, 1),
+                            "341-0000000",
+                            "admin@turnomolar.com",
+                            "Sede Central, Rosario",
+                            claveAdmin,
+                            saltAdmin,
+                            DateTime.Now,
+                            "Admin"
                         )
                     );
                     await context.SaveChangesAsync();
@@ -86,6 +108,7 @@ namespace Data
                 // 5. ODONTÓLOGOS
                 if (!await context.Odontologos.AnyAsync())
                 {
+                    var (clave1, salt1) = PasswordHasher.Generar("doc123");
                     var doc1 = new Odontologo(
                         "DNI",
                         "28456789",
@@ -97,12 +120,13 @@ namespace Data
                         "karina.gonzalez@turnomolar.com",
                         "Bv. Oroño 1234, Rosario",
                         "ACTIVO",
-                        "doc123",
-                        "",
+                        clave1,
+                        salt1,
                         DateTime.Now,
                         "Odontologo"
                     );
 
+                    var (clave2, salt2) = PasswordHasher.Generar("doc123");
                     var doc2 = new Odontologo(
                         "DNI",
                         "30123456",
@@ -114,12 +138,13 @@ namespace Data
                         "elena.silva@turnomolar.com",
                         "Av. Pellegrini 850, Rosario",
                         "ACTIVO",
-                        "doc123",
-                        "",
+                        clave2,
+                        salt2,
                         DateTime.Now,
                         "Odontologo"
                     );
 
+                    var (clave3, salt3) = PasswordHasher.Generar("doc123");
                     var doc3 = new Odontologo(
                         "DNI",
                         "26789012",
@@ -131,8 +156,8 @@ namespace Data
                         "martin.lopez@turnomolar.com",
                         "Santa Fe 2100, Rosario",
                         "ACTIVO",
-                        "doc123",
-                        "",
+                        clave3,
+                        salt3,
                         DateTime.Now,
                         "Odontologo"
                     );
@@ -156,6 +181,7 @@ namespace Data
                 // 7. PACIENTES
                 if (!await context.Pacientes.AnyAsync())
                 {
+                    var (clavePac1, saltPac1) = PasswordHasher.Generar("paciente123");
                     var pac1 = new Paciente(
                         "DNI",
                         "34567890",
@@ -168,12 +194,13 @@ namespace Data
                         "HABILITADO",
                         "OSDE",
                         0m,
-                        "paciente123",
-                        "",
+                        clavePac1,
+                        saltPac1,
                         DateTime.Now,
                         "Paciente"
                     );
 
+                    var (clavePac2, saltPac2) = PasswordHasher.Generar("paciente123");
                     var pac2 = new Paciente(
                         "DNI",
                         "38999111",
@@ -186,12 +213,13 @@ namespace Data
                         "HABILITADO",
                         "SWISS",
                         0m,
-                        "paciente123",
-                        "",
+                        clavePac2,
+                        saltPac2,
                         DateTime.Now,
                         "Paciente"
                     );
 
+                    var (clavePac3, saltPac3) = PasswordHasher.Generar("paciente123");
                     var pac3 = new Paciente(
                         "DNI",
                         "29888777",
@@ -204,8 +232,8 @@ namespace Data
                         "HABILITADO",
                         "PARTICULAR",
                         0m,
-                        "paciente123",
-                        "",
+                        clavePac3,
+                        saltPac3,
                         DateTime.Now,
                         "Paciente"
                     );
@@ -236,49 +264,6 @@ namespace Data
                     );
                     await context.SaveChangesAsync();
                 }
-
-                // 9. USUARIOS DE AUTENTICACIÓN
-                var usuariosDeseados = new List<Usuario>
-                {
-                    new Usuario(0, "karina.gonzalez", "doc123", "ResponsableClinica", "Dra. Karina González", "karina.gonzalez@turnomolar.com", true, 28456789),
-                    new Usuario(0, "28456789", "doc123", "ResponsableClinica", "Dra. Karina González", "karina.gonzalez@turnomolar.com", true, 28456789),
-                    new Usuario(0, "doctor1", "doc123", "ResponsableClinica", "Dra. Karina González", "karina.gonzalez@turnomolar.com", true, 28456789),
-
-                    new Usuario(0, "elena.silva", "doc123", "Odontologo", "Dra. Elena Silva", "elena.silva@turnomolar.com", true, 30123456),
-                    new Usuario(0, "30123456", "doc123", "Odontologo", "Dra. Elena Silva", "elena.silva@turnomolar.com", true, 30123456),
-                    new Usuario(0, "martin.lopez", "doc123", "Odontologo", "Dr. Martín López", "martin.lopez@turnomolar.com", true, 26789012),
-                    new Usuario(0, "26789012", "doc123", "Odontologo", "Dr. Martín López", "martin.lopez@turnomolar.com", true, 26789012),
-
-                    new Usuario(0, "manuel.fernandez", "paciente123", "Paciente", "Manuel Fernández", "manuel.fer@email.com", true, 34567890),
-                    new Usuario(0, "34567890", "paciente123", "Paciente", "Manuel Fernández", "manuel.fer@email.com", true, 34567890),
-                    new Usuario(0, "paciente1", "paciente123", "Paciente", "Manuel Fernández", "manuel.fer@email.com", true, 34567890),
-                    new Usuario(0, "laura.gomez", "paciente123", "Paciente", "Laura Gómez", "laura.gomez@gmail.com", true, 38999111),
-                    new Usuario(0, "38999111", "paciente123", "Paciente", "Laura Gómez", "laura.gomez@gmail.com", true, 38999111),
-                    new Usuario(0, "carlos.rossi", "paciente123", "Paciente", "Carlos Rossi", "carlos.rossi@hotmail.com", true, 29888777),
-                    new Usuario(0, "29888777", "paciente123", "Paciente", "Carlos Rossi", "carlos.rossi@hotmail.com", true, 29888777),
-
-                    new Usuario(0, "admin", "admin123", "Admin", "Administrador Principal", "admin@turnomolar.com", true, null),
-                    new Usuario(0, "recepcion", "recepcion123", "Recepcionista", "María López", "recepcion@turnomolar.com", true, null)
-                };
-
-                foreach (var u in usuariosDeseados)
-                {
-                    var existe = await context.Usuarios.FirstOrDefaultAsync(x => x.Username.ToLower() == u.Username.ToLower());
-                    if (existe == null)
-                    {
-                        await context.Usuarios.AddAsync(u);
-                    }
-                    else
-                    {
-                        existe.PasswordHash = u.PasswordHash;
-                        existe.Rol = u.Rol;
-                        existe.NombreCompleto = u.NombreCompleto;
-                        existe.Email = u.Email;
-                        existe.Activo = true;
-                        existe.EntidadId = u.EntidadId;
-                    }
-                }
-                await context.SaveChangesAsync();
 
                 logger?.LogInformation("Base de datos TurnoMolar (MDF v1.01) inicializada y seeders aplicados correctamente.");
             }

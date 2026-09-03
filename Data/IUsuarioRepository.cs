@@ -5,58 +5,78 @@ namespace Data
 {
     public interface IUsuarioRepository
     {
-        Task<Usuario?> GetByIdAsync(int id);
-        Task<Usuario?> GetByUsernameAsync(string username);
-        Task<IEnumerable<Usuario>> GetAllAsync();
-        Task<Usuario> AddAsync(Usuario usuario);
-        Task<bool> UpdateAsync(Usuario usuario);
+        // Busca (TipoDocumento, NroDocumento) en Pacientes, Odontologos y
+        // ResponsablesClinica. Devuelve todas las coincidencias: normalmente 0 o 1,
+        // pero puede haber más de una si la misma persona tiene cuentas
+        // independientes en más de un rol (ej. es Odontólogo y también Paciente).
+        Task<IEnumerable<Usuario>> BuscarCandidatosAsync(string tipoDocumento, string nroDocumento);
     }
-
+ 
     public class UsuarioRepository : IUsuarioRepository
     {
         private readonly TurnoMolarDbContext _context;
-
+ 
         public UsuarioRepository(TurnoMolarDbContext context)
         {
             _context = context;
         }
-
-        public async Task<Usuario?> GetByIdAsync(int id)
+ 
+        public async Task<IEnumerable<Usuario>> BuscarCandidatosAsync(string tipoDocumento, string nroDocumento)
         {
-            return await _context.Usuarios.FindAsync(id);
-        }
-
-        public async Task<Usuario?> GetByUsernameAsync(string username)
-        {
-            return await _context.Usuarios.FirstOrDefaultAsync(u => u.Username.ToLower() == username.Trim().ToLower());
-        }
-
-        public async Task<IEnumerable<Usuario>> GetAllAsync()
-        {
-            return await _context.Usuarios.ToListAsync();
-        }
-
-        public async Task<Usuario> AddAsync(Usuario usuario)
-        {
-            _context.Usuarios.Add(usuario);
-            await _context.SaveChangesAsync();
-            return usuario;
-        }
-
-        public async Task<bool> UpdateAsync(Usuario usuario)
-        {
-            var existing = await _context.Usuarios.FindAsync(usuario.Id);
-            if (existing == null)
-                return false;
-
-            existing.NombreCompleto = usuario.NombreCompleto;
-            existing.Email = usuario.Email;
-            existing.Rol = usuario.Rol;
-            existing.Activo = usuario.Activo;
-            existing.PasswordHash = usuario.PasswordHash;
-
-            await _context.SaveChangesAsync();
-            return true;
+            var candidatos = new List<Usuario>();
+ 
+            var paciente = await _context.Pacientes.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.TipoDocumento == tipoDocumento && p.NroDocumento == nroDocumento);
+            if (paciente != null)
+            {
+                candidatos.Add(new Usuario
+                {
+                    TipoDocumento = paciente.TipoDocumento,
+                    NroDocumento = paciente.NroDocumento,
+                    Nombre = paciente.Nombre,
+                    Apellido = paciente.Apellido,
+                    Email = paciente.Email,
+                    Rol = paciente.Rol,
+                    Clave = paciente.Clave,
+                    SaltClave = paciente.SaltClave
+                });
+            }
+ 
+            var odontologo = await _context.Odontologos.AsNoTracking()
+                .FirstOrDefaultAsync(o => o.TipoDocumento == tipoDocumento && o.NroDocumento == nroDocumento);
+            if (odontologo != null)
+            {
+                candidatos.Add(new Usuario
+                {
+                    TipoDocumento = odontologo.TipoDocumento,
+                    NroDocumento = odontologo.NroDocumento,
+                    Nombre = odontologo.Nombre,
+                    Apellido = odontologo.Apellido,
+                    Email = odontologo.Email,
+                    Rol = odontologo.Rol,
+                    Clave = odontologo.Clave,
+                    SaltClave = odontologo.SaltClave
+                });
+            }
+ 
+            var responsable = await _context.ResponsablesClinica.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.TipoDocumento == tipoDocumento && r.NroDocumento == nroDocumento);
+            if (responsable != null)
+            {
+                candidatos.Add(new Usuario
+                {
+                    TipoDocumento = responsable.TipoDocumento,
+                    NroDocumento = responsable.NroDocumento,
+                    Nombre = responsable.Nombre,
+                    Apellido = responsable.Apellido,
+                    Email = responsable.Email,
+                    Rol = responsable.Rol,
+                    Clave = responsable.Clave,
+                    SaltClave = responsable.SaltClave
+                });
+            }
+ 
+            return candidatos;
         }
     }
 }

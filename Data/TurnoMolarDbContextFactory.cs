@@ -25,7 +25,7 @@ namespace Data
             // Cadena de conexión de desarrollo para herramientas de migración
             // Para trabajo en equipo, cambiar a la cadena del host remoto compartido
             optionsBuilder.UseSqlServer(
-                "Server=clinicakarina_db.mssql.somee.com;Database=clinicakarina_db;User Id=manufg2006_SQLLogin_1;Password=jgvph71xn9;TrustServerCertificate=True;MultipleActiveResultSets=True;Encrypt=False;",
+                "Server=localhost;Database=clinicakarina_local;Integrated Security=True;TrustServerCertificate=True;MultipleActiveResultSets=true",
                 sqlOptions => sqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.FromSeconds(5),

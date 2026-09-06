@@ -468,7 +468,7 @@ namespace Frontend.MVC.Controllers
                 turnoOriginal.NroDocumentoOdontologo,
                 turnoOriginal.TipoDocumentoPaciente,
                 turnoOriginal.NroDocumentoPaciente,
-                "CONFIRMADO",
+                "RESERVADO",
                 null,
                 null,
                 turnoOriginal.NroTurno

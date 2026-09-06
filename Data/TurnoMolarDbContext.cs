@@ -39,6 +39,10 @@ namespace Data
                 e.ToTable("Especialidades");
                 e.HasKey(es => es.IdEspecialidad);
                 e.Property(es => es.IdEspecialidad).ValueGeneratedOnAdd();
+                // CodEspecialidad es sólo un alias en C# de IdEspecialidad (misma propiedad,
+                // otro nombre por compatibilidad); si no se ignora, EF Core la mapea como una
+                // columna propia y termina pisando IdEspecialidad con 0 al materializar.
+                e.Ignore(es => es.CodEspecialidad);
                 e.Property(es => es.Nombre).IsRequired().HasMaxLength(100);
                 e.HasIndex(es => es.Nombre).IsUnique();
                 e.Property(es => es.ArancelParticular).HasPrecision(12, 2);
@@ -265,6 +269,9 @@ namespace Data
                 e.ToTable("Insumos");
                 e.HasKey(i => i.IdInsumo);
                 e.Property(i => i.IdInsumo).ValueGeneratedOnAdd();
+                // Mismo caso que Especialidad.CodEspecialidad: CodInsumo es un alias de
+                // IdInsumo, no una columna real.
+                e.Ignore(i => i.CodInsumo);
                 e.Property(i => i.Nombre).IsRequired().HasMaxLength(150);
                 e.HasIndex(i => i.Nombre).IsUnique();
                 e.Property(i => i.CostoUnitario).HasPrecision(12, 2);

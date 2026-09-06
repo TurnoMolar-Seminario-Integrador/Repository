@@ -1,6 +1,8 @@
 using System.Globalization;
+using Application.Services;
 using Data;
 using Domain.Model;
+using DTOs;
 using Frontend.MVC.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,16 +10,31 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Frontend.MVC.Controllers
 {
-    [Authorize(Roles = "Paciente,Admin")]
+    // Responsable de la Clínica también puede acceder (alta manual de turnos, CUU01 alt 3.a).
+    [Authorize(Roles = "Paciente,Admin,ResponsableClinica")]
     public class TurnoController : Controller
     {
         private readonly TurnoMolarDbContext _context;
         private readonly ILogger<TurnoController> _logger;
+        private readonly IAgendaTurnoService _agendaTurnoService;
+        private readonly IEspecialidadRepository _especialidadRepository;
+        private readonly IOdontologoRepository _odontologoRepository;
+        private readonly IObraSocialRepository _obraSocialRepository;
 
-        public TurnoController(TurnoMolarDbContext context, ILogger<TurnoController> logger)
+        public TurnoController(
+            TurnoMolarDbContext context,
+            ILogger<TurnoController> logger,
+            IAgendaTurnoService agendaTurnoService,
+            IEspecialidadRepository especialidadRepository,
+            IOdontologoRepository odontologoRepository,
+            IObraSocialRepository obraSocialRepository)
         {
             _context = context;
             _logger = logger;
+            _agendaTurnoService = agendaTurnoService;
+            _especialidadRepository = especialidadRepository;
+            _odontologoRepository = odontologoRepository;
+            _obraSocialRepository = obraSocialRepository;
         }
 
         private async Task<Paciente> ObtenerPacienteActualAsync()
@@ -73,45 +90,131 @@ namespace Frontend.MVC.Controllers
         }
 
         // =========================================================================
-        // ALTA DE TURNO (RESERVAR)
+        // CUU01 - AGENDAR TURNO ODONTOLÓGICO (camino básico, pasos 2 a 6)
+        // La lógica de negocio (habilitación, turno pendiente, disponibilidad horaria,
+        // convenio de obra social, emisión de comprobante) vive en IAgendaTurnoService
+        // (Application.Services), no en este controlador — mismo criterio arquitectónico
+        // ya aplicado al login (ver AuthService / TurnoMolar_Login_Resumen).
         // =========================================================================
 
         [HttpGet]
-        public async Task<IActionResult> Reservar(int? odontologoId, int? especialidadId)
+        public async Task<IActionResult> Reservar(int? idEspecialidad)
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var estaInhabilitado = paciente.EstadoPaciente == "INHABILITADO" || (paciente.MontoAdeudado.HasValue && paciente.MontoAdeudado.Value > 0);
+            var especialidades = (await _especialidadRepository.GetAllAsync()).ToList();
 
-            var odontologos = await _context.Odontologos
-                .Include(o => o.DisponibilidadesHorarias)
-                    .ThenInclude(d => d.Especialidad)
-                .ToListAsync();
+            Especialidad? especialidadSeleccionada;
+            if (idEspecialidad.HasValue)
+            {
+                // El paciente (o un link "volver") ya eligió una especialidad puntual: la respetamos
+                // aunque no tenga turnos disponibles, para que vea el mensaje correspondiente.
+                especialidadSeleccionada = especialidades.FirstOrDefault(e => e.IdEspecialidad == idEspecialidad)
+                    ?? especialidades.FirstOrDefault();
+            }
+            else
+            {
+                // Primera visita sin especialidad elegida: en vez de tomar la primera en orden
+                // alfabético (que puede no tener ningún odontólogo asignado todavía), buscamos la
+                // primera que realmente tenga turnos disponibles en los próximos 30 días.
+                especialidadSeleccionada = null;
+                foreach (var esp in especialidades)
+                {
+                    var dias = await _agendaTurnoService.ObtenerDiasDisponiblesAsync(esp.IdEspecialidad, 30);
+                    if (dias.Any())
+                    {
+                        especialidadSeleccionada = esp;
+                        break;
+                    }
+                }
+                especialidadSeleccionada ??= especialidades.FirstOrDefault();
+            }
 
-            var especialidades = await _context.Especialidades.ToListAsync();
+            // Camino básico, paso 2: validar estado del paciente antes de mostrarle el calendario.
+            var estado = await _agendaTurnoService.ConsultarEstadoParaAgendarAsync(paciente.TipoDocumento, paciente.NroDocumento);
 
-            var docIdStr = odontologoId?.ToString();
-            var selectedDoc = odontologos.FirstOrDefault(o => o.NroDocumento == docIdStr) ?? odontologos.FirstOrDefault();
-            var selectedEsp = especialidades.FirstOrDefault(e => e.IdEspecialidad == (especialidadId ?? selectedDoc?.CodEspecialidad)) ?? especialidades.FirstOrDefault();
+            var obraSocial = string.IsNullOrWhiteSpace(paciente.IdentificadorOS)
+                ? null
+                : await _obraSocialRepository.GetAsync(paciente.IdentificadorOS);
+
+            ViewBag.Especialidades = especialidades;
+            ViewBag.EspecialidadSeleccionada = especialidadSeleccionada?.IdEspecialidad ?? 0;
+            ViewBag.MensajePoliticaCancelacion = _agendaTurnoService.ObtenerMensajePoliticaCancelacion();
+
+            ViewBag.Habilitado = estado.Habilitado;
+            ViewBag.MontoAdeudado = estado.MontoAdeudado;
+            ViewBag.TieneTurnoPendiente = estado.TieneTurnoPendiente;
+            ViewBag.TurnoPendiente = estado.TurnoPendiente;
+
+            ViewBag.TieneObraSocial = obraSocial != null;
+            ViewBag.NombreObraSocial = obraSocial != null ? $"{obraSocial.NombreOS} ({obraSocial.PlanCobertura})" : null;
 
             var modelo = new ReservaTurnoViewModel
             {
-                OdontologoId = selectedDoc?.NroDocumentoInt ?? 28456789,
-                NombreOdontologo = selectedDoc != null ? $"{selectedDoc.Nombre} {selectedDoc.Apellido}" : "Dra. Elena Silva",
-                Especialidad = selectedEsp?.Nombre ?? "Odontología General",
-                FechaSeleccionada = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd"),
-                HorarioSeleccionado = "09:30",
-                MetodoPago = paciente.ObraSocial != null ? "ObraSocial" : "Particular",
-                ObraSocialNombre = paciente.ObraSocial != null ? $"{paciente.ObraSocial.NombreOS} ({paciente.ObraSocial.PlanCobertura})" : "Particular / Sin Obra Social",
-                ArancelConsulta = selectedEsp?.ArancelParticular ?? 15000m,
-                CopagoAPagar = paciente.ObraSocial != null ? paciente.ObraSocial.ArancelOS : (selectedEsp?.ArancelParticular ?? 15000m),
-                EstaInhabilitado = estaInhabilitado
+                IdEspecialidad = especialidadSeleccionada?.IdEspecialidad ?? 0,
+                ModalidadPago = obraSocial != null ? "OBRA_SOCIAL" : "PARTICULAR"
             };
 
-            ViewBag.Odontologos = odontologos;
-            ViewBag.Especialidades = especialidades;
-
             return View(modelo);
+        }
+
+        // AJAX (paso 1 del wizard): odontólogos, aranceles, cobertura y días disponibles
+        // para la especialidad elegida (CUU01, diccionario de datos: sCalendarioTurnosDisponibles).
+        [HttpGet]
+        public async Task<IActionResult> DatosEspecialidad(int idEspecialidad)
+        {
+            var paciente = await ObtenerPacienteActualAsync();
+
+            var especialidad = await _especialidadRepository.GetAsync(idEspecialidad);
+            var odontologos = await _odontologoRepository.GetByEspecialidadAsync(idEspecialidad);
+            var diasDisponibles = await _agendaTurnoService.ObtenerDiasDisponiblesAsync(idEspecialidad);
+
+            var obraSocial = string.IsNullOrWhiteSpace(paciente.IdentificadorOS)
+                ? null
+                : await _obraSocialRepository.GetAsync(paciente.IdentificadorOS);
+
+            var obraSocialCubre = obraSocial != null
+                && await _agendaTurnoService.ObraSocialCubreEspecialidadAsync(obraSocial.IdentificadorOS, idEspecialidad);
+            var convenio = obraSocial?.Convenios.FirstOrDefault(c => c.IdEspecialidad == idEspecialidad);
+
+            return Json(new
+            {
+                nombreEspecialidad = especialidad?.Nombre ?? string.Empty,
+                arancelParticular = especialidad?.ArancelParticular ?? 0m,
+                tieneObraSocial = obraSocial != null,
+                nombreObraSocial = obraSocial?.NombreOS,
+                obraSocialCubre,
+                arancelObraSocial = convenio?.ArancelConvenio,
+                diasDisponibles = diasDisponibles.Select(d => d.ToString("yyyy-MM-dd")),
+                odontologos = odontologos.Select(o => new
+                {
+                    tipoDocumento = o.TipoDocumento,
+                    nroDocumento = o.NroDocumento,
+                    nombreCompleto = $"{o.Nombre} {o.Apellido}",
+                    matricula = o.Matricula
+                })
+            });
+        }
+
+        // AJAX (paso 1 del wizard): horarios disponibles de un día puntual
+        // (CUU01, diccionario de datos: sHorariosDisponiblesDia).
+        [HttpGet]
+        public async Task<IActionResult> Horarios(int idEspecialidad, string dia)
+        {
+            if (!DateTime.TryParse(dia, CultureInfo.InvariantCulture, DateTimeStyles.None, out var fecha))
+            {
+                return BadRequest(new { error = "Fecha inválida." });
+            }
+
+            var horarios = await _agendaTurnoService.ObtenerHorariosDisponiblesAsync(idEspecialidad, fecha);
+
+            return Json(horarios.Select(h => new
+            {
+                fechaHoraIso = h.FechaHoraTurno.ToString("yyyy-MM-ddTHH:mm:ss"),
+                odontologoTipoDocumento = h.OdontologoTipoDocumento,
+                odontologoNroDocumento = h.OdontologoNroDocumento,
+                nombreOdontologo = h.NombreOdontologo
+            }));
         }
 
         [HttpPost]
@@ -120,60 +223,126 @@ namespace Frontend.MVC.Controllers
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            if (paciente.EstadoPaciente == "INHABILITADO" || (paciente.MontoAdeudado.HasValue && paciente.MontoAdeudado.Value > 0))
+            // Alt 5.a: el paciente no acepta la política de cancelación -> se descarta la selección.
+            if (!modelo.AceptaPoliticas)
             {
-                TempData["MensajeError"] = "Tu cuenta se encuentra inhabilitada por registrar saldo pendiente. Regularizá tu deuda en Métodos de Pago.";
-                return RedirectToAction("Reservar");
+                TempData["MensajeError"] = "Para confirmar el turno primero tenés que aceptar la política de cancelación.";
+                return RedirectToAction("Reservar", new { idEspecialidad = modelo.IdEspecialidad });
             }
 
-            // Parsear Fecha y Hora seleccionadas
-            DateTime fechaHoraTurno = DateTime.Today.AddDays(2).AddHours(9).AddMinutes(30);
-            if (!string.IsNullOrEmpty(modelo.FechaSeleccionada))
+            if (!DateTime.TryParse(modelo.FechaHoraTurnoIso, CultureInfo.InvariantCulture, DateTimeStyles.None, out var fechaHoraTurno))
             {
-                if (DateTime.TryParse(modelo.FechaSeleccionada, out DateTime parsedDate))
-                {
-                    fechaHoraTurno = parsedDate;
-                    if (!string.IsNullOrEmpty(modelo.HorarioSeleccionado))
-                    {
-                        var timeParts = modelo.HorarioSeleccionado.Split(':', ' ');
-                        if (timeParts.Length >= 2 && int.TryParse(timeParts[0], out int h) && int.TryParse(timeParts[1], out int m))
-                        {
-                            fechaHoraTurno = parsedDate.Date.AddHours(h).AddMinutes(m);
-                        }
-                    }
-                }
+                TempData["MensajeError"] = "Elegí un horario válido antes de confirmar.";
+                return RedirectToAction("Reservar", new { idEspecialidad = modelo.IdEspecialidad });
             }
 
-            var docDniStr = (modelo.OdontologoId ?? 28456789).ToString();
-            var odontologo = await _context.Odontologos.FirstOrDefaultAsync(o => o.NroDocumento == docDniStr);
-            var especialidadId = odontologo?.CodEspecialidad ?? 1;
+            var request = new AgendarTurnoRequestDTO
+            {
+                TipoDocumentoPaciente = paciente.TipoDocumento,
+                NroDocumentoPaciente = paciente.NroDocumento,
+                IdEspecialidad = modelo.IdEspecialidad,
+                OdontologoTipoDocumento = modelo.OdontologoTipoDocumento,
+                OdontologoNroDocumento = modelo.OdontologoNroDocumento,
+                FechaHoraTurno = fechaHoraTurno,
+                ModalidadPago = modelo.ModalidadPago
+            };
 
-            var nuevoTurno = new Turno(
-                0,
-                fechaHoraTurno,
-                modelo.MetodoPago?.ToUpper() == "PARTICULAR" ? "PARTICULAR" : "OBRA_SOCIAL",
-                especialidadId,
-                "DNI",
-                docDniStr,
-                paciente.TipoDocumento,
-                paciente.NroDocumento,
-                "CONFIRMADO"
-            );
+            AgendarTurnoResultDTO resultado;
+            try
+            {
+                resultado = await _agendaTurnoService.AgendarTurnoAsync(request);
+            }
+            catch (ArgumentException ex)
+            {
+                TempData["MensajeError"] = ex.Message;
+                return RedirectToAction("Reservar", new { idEspecialidad = modelo.IdEspecialidad });
+            }
 
-            _context.Turnos.Add(nuevoTurno);
-            await _context.SaveChangesAsync();
+            switch (resultado.Resultado)
+            {
+                case ResultadoAgendarTurno.Reservado:
+                    TempData["MensajeExito"] = resultado.Mensaje;
+                    return RedirectToAction("Comprobante", new { idTurno = resultado.NroTurno });
 
-            // Emisión de Comprobante de Turno Oficial con persistencia
-            var comprobante = new ComprobanteDeTurno(
-                0,
-                nuevoTurno.NroTurno,
-                DateTime.Now
-            );
-            _context.ComprobantesTurnos.Add(comprobante);
-            await _context.SaveChangesAsync();
+                case ResultadoAgendarTurno.Inhabilitado:
+                    // Alt 2.a: se vuelve a mostrar el paso 2 con el aviso de deuda pendiente.
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return RedirectToAction("Reservar", new { idEspecialidad = modelo.IdEspecialidad });
 
-            TempData["MensajeExito"] = "¡Turno agendado exitosamente!";
-            return RedirectToAction("Comprobante", new { idTurno = nuevoTurno.NroTurno });
+                case ResultadoAgendarTurno.TurnoPendienteExistente:
+                    // Alt 2.b: FCU mostrando los datos del turno ya reservado.
+                    TempData["MensajeInfo"] = resultado.Mensaje;
+                    return RedirectToAction("MisTurnos", "Home");
+
+                case ResultadoAgendarTurno.ObraSocialSinConvenio:
+                case ResultadoAgendarTurno.HorarioNoDisponible:
+                default:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return RedirectToAction("Reservar", new { idEspecialidad = modelo.IdEspecialidad });
+            }
+        }
+
+        // Alt 2.a.1.a: el paciente abona la deuda y el sistema lo rehabilita ("Vuelve al paso 2").
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PagarDeuda()
+        {
+            var paciente = await ObtenerPacienteActualAsync();
+            await _agendaTurnoService.PagarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
+
+            TempData["MensajeExito"] = "¡Deuda regularizada! Ya podés agendar un nuevo turno.";
+            return RedirectToAction("Reservar");
+        }
+
+        // =========================================================================
+        // CUU01 ALT 3.a - ALTA MANUAL DE TURNO POR EL RESPONSABLE DE LA CLÍNICA
+        // Cuando el paciente no encuentra turnos disponibles/convenientes y acuerda
+        // directamente con la clínica una fecha y hora. Formulario simple orientado al
+        // personal administrativo (no reutiliza el wizard de autoservicio del paciente).
+        // =========================================================================
+
+        [HttpGet]
+        public async Task<IActionResult> ReservarManual()
+        {
+            if (!User.IsInRole("Admin") && !User.IsInRole("ResponsableClinica"))
+            {
+                return Forbid();
+            }
+
+            ViewBag.Especialidades = await _especialidadRepository.GetAllAsync();
+            ViewBag.Odontologos = await _odontologoRepository.GetAllAsync();
+
+            return View(new AgendarTurnoRequestDTO());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReservarManual(AgendarTurnoRequestDTO request)
+        {
+            if (!User.IsInRole("Admin") && !User.IsInRole("ResponsableClinica"))
+            {
+                return Forbid();
+            }
+
+            AgendarTurnoResultDTO resultado;
+            try
+            {
+                resultado = await _agendaTurnoService.AgendarTurnoManualAsync(request);
+            }
+            catch (ArgumentException ex)
+            {
+                TempData["MensajeError"] = ex.Message;
+                return RedirectToAction("ReservarManual");
+            }
+
+            if (resultado.Resultado == ResultadoAgendarTurno.Reservado)
+            {
+                TempData["MensajeExito"] = resultado.Mensaje;
+                return RedirectToAction("Comprobante", new { idTurno = resultado.NroTurno });
+            }
+
+            TempData["MensajeError"] = resultado.Mensaje;
+            return RedirectToAction("ReservarManual");
         }
 
         // =========================================================================

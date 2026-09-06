@@ -1,0 +1,104 @@
+@model DTOs.AgendarTurnoRequestDTO
+@using Domain.Model
+
+@{
+    ViewData["Title"] = "Cargar Turno Manual - Clínica Dental Rosario";
+    Layout = "_LayoutPaciente";
+    var especialidades = (IEnumerable<Especialidad>)ViewBag.Especialidades;
+    var odontologos = (IEnumerable<Odontologo>)ViewBag.Odontologos;
+}
+
+<div class="mb-4">
+    <h3 class="fw-extrabold text-dark mb-1">Cargar Turno Manual</h3>
+    <p class="text-muted small mb-0">
+        CUU01 · Camino alternativo 3.a: usá este formulario cuando un paciente se comunicó
+        directamente con la clínica porque no encontró turnos disponibles o convenientes.
+    </p>
+</div>
+
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger">@TempData["MensajeError"]</div>
+}
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success">@TempData["MensajeExito"]</div>
+}
+
+<div class="card shadow-sm border-0" style="max-width: 640px;">
+    <div class="card-body p-4">
+        <form asp-controller="Turno" asp-action="ReservarManual" method="post">
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <label class="form-label fw-semibold small">Tipo de Documento (paciente)</label>
+                    <select asp-for="TipoDocumentoPaciente" class="form-select">
+                        <option value="DNI">DNI</option>
+                        <option value="LC">LC</option>
+                        <option value="LE">LE</option>
+                        <option value="PAS">Pasaporte</option>
+                    </select>
+                </div>
+                <div class="col-sm-8">
+                    <label class="form-label fw-semibold small">N° de Documento (paciente)</label>
+                    <input asp-for="NroDocumentoPaciente" class="form-control" placeholder="Ej: 34567890" required />
+                </div>
+
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Especialidad</label>
+                    <select asp-for="IdEspecialidad" class="form-select">
+                        @foreach (var esp in especialidades)
+                        {
+                            <option value="@esp.IdEspecialidad">@esp.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Odontólogo</label>
+                    <select id="selectOdontologo" class="form-select">
+                        @foreach (var odont in odontologos)
+                        {
+                            <option value="@odont.TipoDocumento|@odont.NroDocumento">@odont.Nombre @odont.Apellido (MP @odont.Matricula)</option>
+                        }
+                    </select>
+                    <input type="hidden" asp-for="OdontologoTipoDocumento" id="inputOdontologoTipoDocumento" />
+                    <input type="hidden" asp-for="OdontologoNroDocumento" id="inputOdontologoNroDocumento" />
+                </div>
+
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Fecha y hora acordadas</label>
+                    <input asp-for="FechaHoraTurno" type="datetime-local" class="form-control" required />
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Forma de abonar</label>
+                    <select asp-for="ModalidadPago" class="form-select">
+                        <option value="PARTICULAR">Particular</option>
+                        <option value="OBRA_SOCIAL">Obra Social</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold mt-4">
+                <i class="bi bi-check-circle-fill me-2"></i>Registrar Turno
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var selectOdontologo = document.getElementById("selectOdontologo");
+            var inputTipo = document.getElementById("inputOdontologoTipoDocumento");
+            var inputNro = document.getElementById("inputOdontologoNroDocumento");
+
+            function sincronizarOdontologo() {
+                var partes = (selectOdontologo.value || "").split("|");
+                inputTipo.value = partes[0] || "";
+                inputNro.value = partes[1] || "";
+            }
+
+            selectOdontologo.addEventListener("change", sincronizarOdontologo);
+            sincronizarOdontologo();
+        });
+    </script>
+}

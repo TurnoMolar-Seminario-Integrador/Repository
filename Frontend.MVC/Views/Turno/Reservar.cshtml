@@ -1,13 +1,23 @@
 @model Frontend.MVC.Models.ReservaTurnoViewModel
+@using Domain.Model
+@using DTOs
 
 @{
     ViewData["Title"] = "Agendar Turno - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "MisTurnos";
     Layout = "_LayoutPaciente";
 
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-    var estadoPaciente = "HABILITADO";
+    var nombrePaciente = ViewData["NombrePaciente"] ?? "";
+    var idPaciente = ViewData["IdPaciente"] ?? "";
+
+    var especialidades = (IEnumerable<Especialidad>)ViewBag.Especialidades;
+    bool habilitado = ViewBag.Habilitado;
+    decimal montoAdeudado = ViewBag.MontoAdeudado;
+    bool tieneTurnoPendiente = ViewBag.TieneTurnoPendiente;
+    TurnoOdontologicoDTO? turnoPendiente = ViewBag.TurnoPendiente;
+    string mensajePolitica = ViewBag.MensajePoliticaCancelacion;
+    bool tieneObraSocial = ViewBag.TieneObraSocial;
+    string? nombreObraSocial = ViewBag.NombreObraSocial;
 }
 
 @section Styles {
@@ -33,13 +43,8 @@
             color: #94a3b8;
         }
 
-        .step-item.active {
-            color: #2563eb;
-        }
-
-        .step-item.completed {
-            color: #16a34a;
-        }
+        .step-item.active { color: #2563eb; }
+        .step-item.completed { color: #16a34a; }
 
         .step-number {
             width: 32px;
@@ -65,8 +70,7 @@
             color: #16a34a;
         }
 
-        /* Calendario Interactivo */
-        .calendar-card {
+        .calendar-card, .summary-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 18px;
@@ -74,167 +78,50 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.02);
         }
 
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .calendar-grid {
-            display: grid !important;
-            grid-template-columns: repeat(7, 1fr) !important;
-            gap: 8px !important;
-            text-align: center;
-            width: 100%;
-        }
-
-        .calendar-day-head {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #64748b;
-            padding-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .calendar-day-btn {
-            height: 46px;
-            width: 100%;
-            border-radius: 12px;
-            border: 1px solid #f1f5f9;
+        /* Chips de días disponibles (reemplazan la grilla de mes fija) */
+        .dia-chip {
+            border: 2px solid #e2e8f0;
             background-color: #ffffff;
             color: #334155;
-            font-weight: 600;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border-radius: 14px;
+            padding: 10px 16px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-align: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            outline: none;
-            padding: 0;
+            min-width: 78px;
         }
 
-        .calendar-day-btn:hover:not(.disabled) {
-            background-color: #eff6ff;
-            border-color: #3b82f6;
-            color: #2563eb;
-            transform: translateY(-1px);
-        }
+        .dia-chip:hover { border-color: #93c5fd; background-color: #eff6ff; }
 
-        /* Días con turnos disponibles (BSQ: resaltados con borde verde) */
-        .calendar-day-btn.dia-disponible {
-            border: 2px solid #22c55e !important;
-            background-color: #f0fdf4 !important;
-            color: #15803d !important;
-            font-weight: 800;
-        }
-
-        .calendar-day-btn.dia-disponible:hover {
-            background-color: #dcfce7 !important;
-            border-color: #16a34a !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
-        }
-
-        .calendar-day-btn.selected {
+        .dia-chip.selected {
             background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
             color: #ffffff !important;
             border-color: #2563eb !important;
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-            font-weight: 800;
         }
 
-        .calendar-day-btn.disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            background-color: #f8fafc !important;
-            border-color: #f1f5f9 !important;
-            color: #94a3b8 !important;
-        }
-
-        /* Slots de Horarios */
         .slot-btn {
             border: 1px solid #e2e8f0;
             background-color: #ffffff;
             color: #1e293b;
-            padding: 10px 18px;
+            padding: 10px 16px;
             border-radius: 12px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
-            outline: none;
         }
 
-        .slot-btn:hover {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
-            color: #2563eb;
-        }
+        .slot-btn:hover { border-color: #3b82f6; background-color: #eff6ff; color: #2563eb; }
 
         .slot-btn.selected {
             background-color: #2563eb !important;
             color: #ffffff !important;
             border-color: #2563eb !important;
             box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
-            font-weight: 700;
-        }
-
-        /* Tarjetas de Doctores y Resumen */
-        .summary-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-        }
-
-        .doctor-select-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 14px 16px;
-            transition: all 0.2s;
-            cursor: pointer;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            background: #ffffff;
-        }
-
-        .doctor-select-card:hover {
-            border-color: #93c5fd;
-            background-color: #f8fafc;
-        }
-
-        .doctor-select-card.selected {
-            border-color: #2563eb;
-            background-color: #eff6ff;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
-        }
-
-        .doc-avatar-sm {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-
-        /* Paso 2: Cobertura */
-        .info-pill-badge {
-            background-color: #f1f5f9;
-            color: #475569;
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 4px 12px;
-            border-radius: 20px;
         }
 
         .payment-box {
@@ -247,15 +134,9 @@
             margin-bottom: 14px;
         }
 
-        .payment-box:hover {
-            border-color: #93c5fd;
-        }
-
-        .payment-box.selected {
-            border-color: #2563eb !important;
-            background-color: #eff6ff !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
-        }
+        .payment-box:hover:not(.disabled) { border-color: #93c5fd; }
+        .payment-box.selected { border-color: #2563eb !important; background-color: #eff6ff !important; }
+        .payment-box.disabled { opacity: 0.5; cursor: not-allowed; background-color: #f8fafc; }
 
         .cancel-policy-box {
             background-color: #fffbeb;
@@ -263,535 +144,464 @@
             border-radius: 14px;
             padding: 16px 20px;
             color: #92400e;
-            font-size: 0.88rem;
+            font-size: 0.85rem;
+        }
+
+        .info-pill-badge {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
         }
     </style>
 }
 
-<!-- Top Header Actions -->
+<!-- Top Header -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h3 class="fw-extrabold text-dark mb-1">Solicitar Nuevo Turno</h3>
-        <p class="text-muted small mb-0">Selecciona especialidad, profesional, día y horario de tu preferencia.</p>
+        <p class="text-muted small mb-0">Selecciona especialidad, día y horario de tu preferencia.</p>
     </div>
     <a href="@Url.Action("MisTurnos", "Home")" class="btn btn-outline-secondary rounded-pill px-4 fw-bold shadow-sm btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Volver a Mis Turnos
     </a>
 </div>
 
-<!-- BREADCRUMB -->
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb small text-muted mb-0">
-        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")" class="text-decoration-none text-muted">Inicio</a></li>
-        <li class="breadcrumb-item"><a href="@Url.Action("MisTurnos", "Home")" class="text-decoration-none text-muted">Mis Turnos</a></li>
-        <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Nuevo Turno</li>
-    </ol>
-</nav>
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger">@TempData["MensajeError"]</div>
+}
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success">@TempData["MensajeExito"]</div>
+}
 
-        <!-- STEPPER WIZARD -->
-        <div class="stepper-container">
-            <div class="step-item active" id="stepperStep1">
-                <div class="step-number">1</div>
-                <span>Selección de Fecha y Hora</span>
-            </div>
-            <i class="bi bi-chevron-right text-muted opacity-50"></i>
-            <div class="step-item" id="stepperStep2">
-                <div class="step-number">2</div>
-                <span>Confirmación y Cobertura</span>
-            </div>
-            <i class="bi bi-chevron-right text-muted opacity-50"></i>
-            <div class="step-item" id="stepperStep3">
-                <div class="step-number">3</div>
-                <span>Comprobante Emitido</span>
-            </div>
-        </div>
-
-        <!-- FORMULARIO DE RESERVA -->
-        <form asp-controller="Turno" asp-action="Reservar" method="post" id="formReservaTurno">
-            
-            <!-- Hidden inputs para enviar el modelo al controlador -->
-            <input type="hidden" asp-for="OdontologoId" id="inputOdontologoId" value="@(Model.OdontologoId ?? 1)" />
-            <input type="hidden" asp-for="NombreOdontologo" id="inputNombreOdontologo" value="@(Model.NombreOdontologo ?? "Dra. Elena Silva")" />
-            <input type="hidden" asp-for="Especialidad" id="inputEspecialidad" value="@(Model.Especialidad ?? "Ortodoncia y Endodoncia")" />
-            <input type="hidden" asp-for="FechaSeleccionada" id="inputFechaSeleccionada" value="12 Noviembre, 2026" />
-            <input type="hidden" asp-for="HorarioSeleccionado" id="inputHorarioSeleccionado" value="09:30 AM" />
-            <input type="hidden" asp-for="MetodoPago" id="inputMetodoPago" value="ObraSocial" />
-
-            <!-- ==========================================
-                 PASO 1: SELECCIÓN DE FECHA, HORA Y DOCTOR (BSQ Pág 5)
-                 ========================================== -->
-            <div id="seccionPaso1">
-                <div class="mb-4">
-                    <h3 class="fw-extrabold text-dark mb-1">Selección de Fecha y Hora</h3>
-                    <p class="text-muted small">Paso 1 de 3: Elige cuándo quieres tu cita odontológica y con qué profesional.</p>
-                </div>
-
-                <!-- Selector de Especialidad -->
-                <div class="mb-4">
-                    <label class="form-label fw-bold small text-uppercase text-muted">Especialidad Requerida</label>
-                    <select class="form-select form-select-lg rounded-4 shadow-sm fw-semibold" id="selectEspecialidad" style="font-size: 0.95rem;">
-                        <option value="Ortodoncia y Endodoncia" selected>Ortodoncia y Endodoncia</option>
-                        <option value="Cirugía Maxilofacial e Implantes">Cirugía Maxilofacial e Implantes</option>
-                        <option value="Odontología General">Odontología General</option>
-                        <option value="Odontopediatría">Odontopediatría</option>
-                        <option value="Periodoncia">Periodoncia</option>
-                    </select>
-                </div>
-
-                <div class="row g-4">
-                    <!-- Columna Izquierda: Calendario + Horarios -->
-                    <div class="col-lg-7">
-                        <div class="calendar-card mb-4">
-                            <div class="calendar-header">
-                                <h5 class="fw-bold text-dark mb-0" id="mesAnioTexto">Noviembre 2026</h5>
-                                <div class="d-flex gap-1">
-                                    <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm" id="btnPrevMonth"><i class="bi bi-chevron-left"></i></button>
-                                    <button type="button" class="btn btn-sm btn-light rounded-circle shadow-sm" id="btnNextMonth"><i class="bi bi-chevron-right"></i></button>
-                                </div>
-                            </div>
-
-                            <div class="calendar-grid mb-2">
-                                <div class="calendar-day-head">Lun</div>
-                                <div class="calendar-day-head">Mar</div>
-                                <div class="calendar-day-head">Mié</div>
-                                <div class="calendar-day-head">Jue</div>
-                                <div class="calendar-day-head">Vie</div>
-                                <div class="calendar-day-head">Sáb</div>
-                                <div class="calendar-day-head">Dom</div>
-
-                                <!-- Días del Calendario (Días disponibles con marco verde según BSQ) -->
-                                <button type="button" class="calendar-day-btn disabled">27</button>
-                                <button type="button" class="calendar-day-btn disabled">28</button>
-                                <button type="button" class="calendar-day-btn disabled">29</button>
-                                <button type="button" class="calendar-day-btn disabled">30</button>
-                                <button type="button" class="calendar-day-btn disabled">31</button>
-                                <button type="button" class="calendar-day-btn disabled">1</button>
-                                <button type="button" class="calendar-day-btn disabled">2</button>
-
-                                <button type="button" class="calendar-day-btn">3</button>
-                                <button type="button" class="calendar-day-btn">4</button>
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="05 Noviembre, 2026">5</button>
-                                <button type="button" class="calendar-day-btn">6</button>
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="07 Noviembre, 2026">7</button>
-                                <button type="button" class="calendar-day-btn disabled">8</button>
-                                <button type="button" class="calendar-day-btn disabled">9</button>
-
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="10 Noviembre, 2026">10</button>
-                                <button type="button" class="calendar-day-btn">11</button>
-                                <button type="button" class="calendar-day-btn dia-disponible selected" data-fecha="12 Noviembre, 2026">12</button>
-                                <button type="button" class="calendar-day-btn">13</button>
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="14 Noviembre, 2026">14</button>
-                                <button type="button" class="calendar-day-btn disabled">15</button>
-                                <button type="button" class="calendar-day-btn disabled">16</button>
-
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="17 Noviembre, 2026">17</button>
-                                <button type="button" class="calendar-day-btn">18</button>
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="19 Noviembre, 2026">19</button>
-                                <button type="button" class="calendar-day-btn">20</button>
-                                <button type="button" class="calendar-day-btn dia-disponible" data-fecha="21 Noviembre, 2026">21</button>
-                                <button type="button" class="calendar-day-btn disabled">22</button>
-                                <button type="button" class="calendar-day-btn disabled">23</button>
-                            </div>
-
-                            <div class="d-flex align-items-center gap-3 mt-3 pt-3 border-top small text-muted">
-                                <span class="d-flex align-items-center gap-1">
-                                    <span class="d-inline-block rounded-1 border border-2 border-success bg-success bg-opacity-10" style="width: 14px; height: 14px;"></span> Turnos libres
-                                </span>
-                                <span class="d-flex align-items-center gap-1">
-                                    <span class="d-inline-block rounded-1 bg-primary" style="width: 14px; height: 14px;"></span> Seleccionado
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Grilla de Horarios Disponibles -->
-                        <div class="calendar-card">
-                            <h6 class="fw-bold text-dark mb-3">Horarios Disponibles para el <span class="text-primary" id="fechaDisplaySlot">12 Noviembre, 2026</span></h6>
-
-                            <div class="mb-3">
-                                <small class="text-uppercase fw-bold text-muted d-block mb-2"><i class="bi bi-sun-fill text-warning me-1"></i> Turno Mañana</small>
-                                <div class="d-flex flex-wrap gap-2" id="slotsManana">
-                                    <button type="button" class="slot-btn" data-slot="09:00 AM">09:00</button>
-                                    <button type="button" class="slot-btn selected" data-slot="09:30 AM">09:30</button>
-                                    <button type="button" class="slot-btn" data-slot="10:00 AM">10:00</button>
-                                    <button type="button" class="slot-btn" data-slot="10:30 AM">10:30</button>
-                                    <button type="button" class="slot-btn" data-slot="11:00 AM">11:00</button>
-                                    <button type="button" class="slot-btn" data-slot="11:30 AM">11:30</button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <small class="text-uppercase fw-bold text-muted d-block mb-2"><i class="bi bi-cloud-sun-fill text-info me-1"></i> Turno Tarde</small>
-                                <div class="d-flex flex-wrap gap-2" id="slotsTarde">
-                                    <button type="button" class="slot-btn" data-slot="14:00 PM">14:00</button>
-                                    <button type="button" class="slot-btn" data-slot="14:30 PM">14:30</button>
-                                    <button type="button" class="slot-btn" data-slot="15:00 PM">15:00</button>
-                                    <button type="button" class="slot-btn" data-slot="15:30 PM">15:30</button>
-                                    <button type="button" class="slot-btn" data-slot="16:00 PM">16:00</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Columna Derecha: Odontólogos Disponibles (BSQ Pág 5) -->
-                    <div class="col-lg-5">
-                        <div class="summary-card">
-                            <h5 class="fw-bold text-dark mb-1">Odontólogos Disponibles</h5>
-                            <p class="text-muted small mb-3">Selecciona el profesional para tu atención.</p>
-
-                            <!-- Doctor 1 -->
-                            <div class="doctor-select-card selected" data-id="1" data-name="Dra. Elena Silva" data-esp="Ortodoncia y Endodoncia">
-                                <img src="https://ui-avatars.com/api/?name=Elena+Silva&background=2563eb&color=fff&bold=true" class="doc-avatar-sm" alt="Elena Silva">
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-bold mb-0 text-dark">Dra. Elena Silva</h6>
-                                    <small class="text-primary fw-semibold d-block">Ortodoncia y Endodoncia</small>
-                                    <small class="text-muted">⭐ 4.9 • Consultorio 2</small>
-                                </div>
-                                <i class="bi bi-check-circle-fill text-primary fs-5 check-icon"></i>
-                            </div>
-
-                            <!-- Doctor 2 -->
-                            <div class="doctor-select-card" data-id="2" data-name="Dr. Martín López" data-esp="Cirugía Maxilofacial e Implantes">
-                                <img src="https://ui-avatars.com/api/?name=Martin+Lopez&background=0d9488&color=fff&bold=true" class="doc-avatar-sm" alt="Martín López">
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-bold mb-0 text-dark">Dr. Martín López</h6>
-                                    <small class="text-teal fw-semibold d-block" style="color: #0d9488;">Cirugía e Implantes</small>
-                                    <small class="text-muted">⭐ 4.8 • Consultorio 4</small>
-                                </div>
-                                <i class="bi bi-circle text-muted fs-5 check-icon"></i>
-                            </div>
-
-                            <!-- Doctor 3 -->
-                            <div class="doctor-select-card" data-id="3" data-name="Dra. Karina González" data-esp="Odontología General">
-                                <img src="https://ui-avatars.com/api/?name=Karina+Gonzalez&background=7c3aed&color=fff&bold=true" class="doc-avatar-sm" alt="Karina González">
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-bold mb-0 text-dark">Dra. Karina González</h6>
-                                    <small class="text-purple fw-semibold d-block" style="color: #7c3aed;">Odontología General</small>
-                                    <small class="text-muted">⭐ 5.0 • Consultorio 3</small>
-                                </div>
-                                <i class="bi bi-circle text-muted fs-5 check-icon"></i>
-                            </div>
-
-                            <!-- Resumen Selección Rápida -->
-                            <div class="bg-light rounded-4 p-3 mt-4 border">
-                                <small class="text-uppercase fw-bold text-muted d-block mb-1">Cita Seleccionada</small>
-                                <strong class="text-dark d-block fs-6" id="summaryCitaTexto">12 Noviembre, 2026 - 09:30 AM</strong>
-                                <small class="text-primary fw-semibold" id="summaryDoctorTexto">Dra. Elena Silva (Ortodoncia)</small>
-                            </div>
-
-                            <button type="button" class="btn btn-primary w-100 rounded-pill py-3 fw-bold mt-4 shadow-sm" id="btnIrAPaso2">
-                                Continuar a Confirmación <i class="bi bi-arrow-right ms-2"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==========================================
-                 PASO 2: CONFIRMAR TURNO Y COBERTURA (BSQ Pág 6)
-                 ========================================== -->
-            <div id="seccionPaso2" style="display: none;">
-                <div class="mb-4">
-                    <button type="button" class="btn btn-link text-decoration-none p-0 text-muted fw-semibold mb-2" id="btnVolverAPaso1">
-                        <i class="bi bi-arrow-left me-1"></i> Volver al calendario
-                    </button>
-                    <h3 class="fw-extrabold text-dark mb-1">Confirmar Turno</h3>
-                    <p class="text-muted small">Paso 2 de 3: Revisa los datos de la cita y selecciona el medio de cobertura.</p>
-                </div>
-
-                <div class="row g-4">
-                    <!-- Columna Izquierda: Datos del Turno y Paciente -->
-                    <div class="col-lg-7">
-                        <!-- Card Resumen Turno -->
-                        <div class="summary-card mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="info-pill-badge text-uppercase">Especialidad</span>
-                                <span class="badge bg-primary px-3 py-1 rounded-pill">Sede Centro</span>
-                            </div>
-
-                            <h4 class="fw-bold text-dark mb-3" id="confirmEspecialidad">Ortodoncia y Endodoncia</h4>
-
-                            <div class="row g-3">
-                                <div class="col-sm-6">
-                                    <small class="text-muted d-block">Profesional Asignado</small>
-                                    <strong class="text-dark d-flex align-items-center gap-2 mt-1">
-                                        <i class="bi bi-person-badge text-primary"></i> <span id="confirmDoctor">Dra. Elena Silva</span>
-                                    </strong>
-                                </div>
-                                <div class="col-sm-6">
-                                    <small class="text-muted d-block">Fecha y Hora</small>
-                                    <strong class="text-dark d-flex align-items-center gap-2 mt-1">
-                                        <i class="bi bi-calendar-event text-primary"></i> <span id="confirmFechaHora">12 Nov, 2026 • 09:30 AM</span>
-                                    </strong>
-                                </div>
-                                <div class="col-12 mt-3 pt-3 border-top">
-                                    <small class="text-muted d-block">Ubicación</small>
-                                    <span class="text-dark fw-semibold"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Av. Corrientes 1234, Piso 1, Consultorio 2 - Rosario</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Card Datos del Paciente -->
-                        <div class="summary-card">
-                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-person-fill text-primary me-2"></i>Datos del Paciente</h5>
-                            <div class="row g-3">
-                                <div class="col-sm-6">
-                                    <small class="text-muted d-block">Nombre Completo</small>
-                                    <strong class="text-dark">@nombrePaciente</strong>
-                                </div>
-                                <div class="col-sm-6">
-                                    <small class="text-muted d-block">Documento (DNI)</small>
-                                    <strong class="text-dark">34.567.890</strong>
-                                </div>
-                                <div class="col-sm-6">
-                                    <small class="text-muted d-block">Teléfono</small>
-                                    <strong class="text-dark">+54 341 555-1234</strong>
-                                </div>
-                                <div class="col-sm-6">
-                                    <small class="text-muted d-block">Email de Confirmación</small>
-                                    <strong class="text-dark">manuel.fernandez@email.com</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Columna Derecha: Cobertura Médica y Políticas -->
-                    <div class="col-lg-5">
-                        <div class="summary-card">
-                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-shield-check text-primary me-2"></i>Cobertura Médica</h5>
-                            <p class="text-muted small mb-3">Selecciona cómo deseas gestionar el pago de esta consulta.</p>
-
-                            <!-- Opción 1: Obra Social -->
-                            <div class="payment-box selected" id="optObraSocial">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <input class="form-check-input mt-0" type="radio" name="radioPago" id="radioOS" checked>
-                                        <strong class="text-dark">Obra Social / Prepaga</strong>
-                                    </div>
-                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold">OSDE - Plan 210</span>
-                                </div>
-                                <div class="d-flex justify-content-between text-muted small ps-4 mt-2">
-                                    <span>Costo Consulta: $18.000</span>
-                                    <strong class="text-success">Copago a abonar: $0.00</strong>
-                                </div>
-                            </div>
-
-                            <!-- Opción 2: Particular -->
-                            <div class="payment-box" id="optParticular">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <input class="form-check-input mt-0" type="radio" name="radioPago" id="radioPart">
-                                        <strong class="text-dark">Particular</strong>
-                                    </div>
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold">Pago Privado</span>
-                                </div>
-                                <div class="d-flex justify-content-between text-muted small ps-4 mt-2">
-                                    <span>Abonar en clínica:</span>
-                                    <strong class="text-dark">$15.000 ARS</strong>
-                                </div>
-                            </div>
-
-                            <!-- Política de Cancelación (CUU01) -->
-                            <div class="cancel-policy-box my-3">
-                                <div class="d-flex gap-2">
-                                    <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
-                                    <div>
-                                        <strong class="d-block mb-1">Política de Cancelación (24 hs)</strong>
-                                        <span>En caso de no poder asistir, recuerda cancelar o reprogramar tu cita con al menos 24 hs de anticipación para evitar inhabilitaciones o cargos administrativos.</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-check mb-4">
-                                <input class="form-check-input" type="checkbox" id="checkPoliticas" checked required>
-                                <label class="form-check-label small fw-semibold text-dark" for="checkPoliticas">
-                                    Acepto las políticas de cancelación y asistencia de la clínica.
-                                </label>
-                            </div>
-
-                            <div class="d-flex flex-column gap-2">
-                                <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm" id="btnConfirmarTurnoFinal">
-                                    <i class="bi bi-check-circle-fill me-2"></i> Confirmar Turno
-                                </button>
-                                <a href="@Url.Action("Index", "Home")" class="btn btn-light w-100 rounded-pill py-2 text-muted fw-semibold">
-                                    Cancelar Operación
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </form>
-
-    </div>
-
+@if (!habilitado)
+{
     <!-- ==========================================
-         MODAL: PACIENTE INHABILITADO POR DEUDA (BSQ Pág 4)
+         CUU01 Alt 2.a: paciente Inhabilitado por deuda pendiente
          ========================================== -->
-    <div class="modal fade" id="modalInhabilitado" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-body p-5 text-center">
-                    <div class="mb-4">
-                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background-color: #fef2f2; color: #dc2626;">
-                            <i class="bi bi-exclamation-octagon-fill fs-1"></i>
+    <div class="card border-danger shadow-sm">
+        <div class="card-body p-4 text-center">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 72px; height: 72px; background-color: #fef2f2; color: #dc2626;">
+                <i class="bi bi-exclamation-octagon-fill fs-2"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Tu cuenta está Inhabilitada</h4>
+            <p class="text-muted mb-4">
+                Tenés una deuda pendiente de <strong>$@montoAdeudado.ToString("N0")</strong>.
+                Regularizá tu situación para poder agendar un nuevo turno.
+            </p>
+            <form asp-controller="Turno" asp-action="PagarDeuda" method="post" class="d-inline-block">
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                    <i class="bi bi-credit-card me-2"></i> Pagar Deuda Ahora
+                </button>
+            </form>
+        </div>
+    </div>
+}
+else if (tieneTurnoPendiente && turnoPendiente != null)
+{
+    <!-- ==========================================
+         CUU01 Alt 2.b: ya existe un turno reservado pendiente de atención (RN8)
+         ========================================== -->
+    <div class="card border-warning shadow-sm">
+        <div class="card-body p-4">
+            <h4 class="fw-bold text-dark mb-2"><i class="bi bi-calendar-check text-warning me-2"></i>Ya tenés un turno reservado</h4>
+            <p class="text-muted mb-3">
+                No podés agendar un nuevo turno mientras tengas uno pendiente de atención.
+            </p>
+            <div class="bg-light rounded-4 p-3 border mb-3">
+                <strong class="text-dark d-block">@turnoPendiente.NombreEspecialidad</strong>
+                <span class="text-muted small">@turnoPendiente.Fecha.ToString("dd/MM/yyyy") · @turnoPendiente.HorarioTurno.ToString("HH:mm") hs</span><br />
+                <span class="text-muted small">@turnoPendiente.NombreOdontologo</span>
+            </div>
+            <a href="@Url.Action("MisTurnos", "Home")" class="btn btn-primary rounded-pill px-4 fw-bold">Ver mis turnos</a>
+        </div>
+    </div>
+}
+else
+{
+    <!-- STEPPER WIZARD -->
+    <div class="stepper-container">
+        <div class="step-item active" id="stepperStep1">
+            <div class="step-number">1</div>
+            <span>Especialidad, Fecha y Hora</span>
+        </div>
+        <i class="bi bi-chevron-right text-muted opacity-50"></i>
+        <div class="step-item" id="stepperStep2">
+            <div class="step-number">2</div>
+            <span>Confirmación y Cobertura</span>
+        </div>
+        <i class="bi bi-chevron-right text-muted opacity-50"></i>
+        <div class="step-item" id="stepperStep3">
+            <div class="step-number">3</div>
+            <span>Comprobante Emitido</span>
+        </div>
+    </div>
+
+    <form asp-controller="Turno" asp-action="Reservar" method="post" id="formReservaTurno">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" name="IdEspecialidad" id="inputIdEspecialidad" value="@Model.IdEspecialidad" />
+        <input type="hidden" name="OdontologoTipoDocumento" id="inputOdontologoTipoDocumento" value="@Model.OdontologoTipoDocumento" />
+        <input type="hidden" name="OdontologoNroDocumento" id="inputOdontologoNroDocumento" value="" />
+        <input type="hidden" name="FechaHoraTurnoIso" id="inputFechaHoraTurnoIso" value="" />
+        <input type="hidden" name="ModalidadPago" id="inputModalidadPago" value="@Model.ModalidadPago" />
+
+        <!-- PASO 1 -->
+        <div id="seccionPaso1">
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-uppercase text-muted">Especialidad Requerida</label>
+                <select class="form-select form-select-lg rounded-4 shadow-sm fw-semibold" id="selectEspecialidad">
+                    @foreach (var esp in especialidades)
+                    {
+                        <option value="@esp.IdEspecialidad" selected="@(esp.IdEspecialidad == (int)ViewBag.EspecialidadSeleccionada)">@esp.Nombre</option>
+                    }
+                </select>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="calendar-card mb-4">
+                        <h6 class="fw-bold text-dark mb-3">Días con turnos disponibles</h6>
+                        <div class="d-flex flex-wrap gap-2" id="diasDisponiblesContainer">
+                            <span class="text-muted small">Cargando...</span>
                         </div>
                     </div>
-                    <h4 class="fw-bold text-dark mb-2">Estado: Inhabilitado</h4>
-                    <p class="text-muted small mb-4 px-3">
-                        Se ha detectado una deuda pendiente en su cuenta por <strong>$3.500 ARS</strong> (cargo por inasistencia previa sin aviso).
-                        Para continuar con la reserva de turnos, por favor regularice su situación.
-                    </p>
-                    <div class="d-flex flex-column gap-2">
-                        <a href="@Url.Action("MetodosDePago", "Home")" class="btn btn-primary rounded-pill py-2 fw-bold shadow-sm">
-                            <i class="bi bi-credit-card me-2"></i> Pagar Deuda Ahora
-                        </a>
-                        <a href="https://wa.me/5493411234567" target="_blank" class="btn btn-light rounded-pill py-2 text-muted fw-semibold border">
-                            <i class="bi bi-whatsapp text-success me-2"></i> Contactar con la Clínica
-                        </a>
-                        <a href="@Url.Action("Index", "Home")" class="btn btn-link text-muted small text-decoration-none mt-2">
-                            Volver al Inicio
-                        </a>
+
+                    <div class="calendar-card">
+                        <h6 class="fw-bold text-dark mb-3">
+                            Horarios disponibles <span class="text-primary" id="fechaDisplaySlot"></span>
+                        </h6>
+                        <div id="slotsManana" class="mb-3">
+                            <small class="text-uppercase fw-bold text-muted d-block mb-2"><i class="bi bi-sun-fill text-warning me-1"></i> Turno Mañana</small>
+                            <div class="d-flex flex-wrap gap-2" id="slotsMananaContainer"></div>
+                        </div>
+                        <div id="slotsTarde">
+                            <small class="text-uppercase fw-bold text-muted d-block mb-2"><i class="bi bi-cloud-sun-fill text-info me-1"></i> Turno Tarde</small>
+                            <div class="d-flex flex-wrap gap-2" id="slotsTardeContainer"></div>
+                        </div>
+                        <div id="sinHorariosMensaje" class="text-muted small" style="display:none;">
+                            No hay horarios disponibles para el día seleccionado.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="summary-card">
+                        <h5 class="fw-bold text-dark mb-3">Resumen de tu selección</h5>
+                        <div class="bg-light rounded-4 p-3 border">
+                            <small class="text-uppercase fw-bold text-muted d-block mb-1">Cita seleccionada</small>
+                            <strong class="text-dark d-block" id="summaryFechaHora">Elegí un día y un horario</strong>
+                            <small class="text-primary fw-semibold" id="summaryOdontologo"></small>
+                        </div>
+
+                        <button type="button" class="btn btn-primary w-100 rounded-pill py-3 fw-bold mt-4 shadow-sm" id="btnIrAPaso2" disabled>
+                            Continuar a Confirmación <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- PASO 2 -->
+        <div id="seccionPaso2" style="display: none;">
+            <button type="button" class="btn btn-link text-decoration-none p-0 text-muted fw-semibold mb-3" id="btnVolverAPaso1">
+                <i class="bi bi-arrow-left me-1"></i> Volver al calendario
+            </button>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="summary-card mb-4">
+                        <span class="info-pill-badge text-uppercase" id="confirmEspecialidad"></span>
+                        <div class="row g-3 mt-1">
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Profesional Asignado</small>
+                                <strong class="text-dark" id="confirmDoctor"></strong>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Fecha y Hora</small>
+                                <strong class="text-dark" id="confirmFechaHora"></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-person-fill text-primary me-2"></i>Datos del Paciente</h5>
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Nombre Completo</small>
+                                <strong class="text-dark">@nombrePaciente</strong>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Documento</small>
+                                <strong class="text-dark">@idPaciente</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="summary-card">
+                        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-shield-check text-primary me-2"></i>Cobertura Médica</h5>
+
+                        <div class="payment-box" id="optObraSocial">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input class="form-check-input mt-0" type="radio" name="radioPago" id="radioOS">
+                                    <strong class="text-dark">Obra Social / Prepaga</strong>
+                                </div>
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold" id="badgeObraSocial">@(nombreObraSocial ?? "Sin obra social")</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small ps-4 mt-2">
+                                <span id="textoArancelOS">-</span>
+                            </div>
+                        </div>
+
+                        <div class="payment-box selected" id="optParticular">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input class="form-check-input mt-0" type="radio" name="radioPago" id="radioPart" checked>
+                                    <strong class="text-dark">Particular</strong>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small ps-4 mt-2">
+                                <span>Abonar en clínica:</span>
+                                <strong class="text-dark" id="textoArancelParticular">-</strong>
+                            </div>
+                        </div>
+
+                        <div class="cancel-policy-box my-3">
+                            <div class="d-flex gap-2">
+                                <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+                                <div>
+                                    <strong class="d-block mb-1">Política de Cancelación</strong>
+                                    <span>@mensajePolitica</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" asp-for="AceptaPoliticas">
+                            <label class="form-check-label small fw-semibold text-dark" asp-for="AceptaPoliticas">
+                                Acepto las políticas de cancelación y asistencia de la clínica.
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm" id="btnConfirmarTurnoFinal">
+                            <i class="bi bi-check-circle-fill me-2"></i> Confirmar Turno
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+}
 
 @section Scripts {
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            // Verificar si el usuario está inhabilitado (BSQ Pág 4)
-            var estaInhabilitado = @(Model.EstaInhabilitado ? "true" : "false");
-            if (estaInhabilitado) {
-                var modal = new bootstrap.Modal(document.getElementById('modalInhabilitado'));
-                modal.show();
+            var seccionPaso1 = document.getElementById("seccionPaso1");
+            if (!seccionPaso1) return; // Paciente inhabilitado o con turno pendiente: no hay wizard.
+
+            var selectEspecialidad = document.getElementById("selectEspecialidad");
+            var diasContainer = document.getElementById("diasDisponiblesContainer");
+            var slotsMananaContainer = document.getElementById("slotsMananaContainer");
+            var slotsTardeContainer = document.getElementById("slotsTardeContainer");
+            var sinHorariosMensaje = document.getElementById("sinHorariosMensaje");
+            var fechaDisplaySlot = document.getElementById("fechaDisplaySlot");
+
+            var inputIdEspecialidad = document.getElementById("inputIdEspecialidad");
+            var inputOdontologoTipoDocumento = document.getElementById("inputOdontologoTipoDocumento");
+            var inputOdontologoNroDocumento = document.getElementById("inputOdontologoNroDocumento");
+            var inputFechaHoraTurnoIso = document.getElementById("inputFechaHoraTurnoIso");
+            var inputModalidadPago = document.getElementById("inputModalidadPago");
+
+            var btnIrAPaso2 = document.getElementById("btnIrAPaso2");
+            var datosEspecialidadActual = null;
+            var diaSeleccionado = null;
+            var horarioSeleccionado = null;
+
+            function formatearDia(iso) {
+                var partes = iso.split("-");
+                var fecha = new Date(partes[0], partes[1] - 1, partes[2]);
+                return fecha.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
             }
 
-            // Variables de Estado del Wizard
-            var fechaSeleccionada = "@(Model.FechaSeleccionada ?? "12 Noviembre, 2026")";
-            var horarioSeleccionado = "@(Model.HorarioSeleccionado ?? "09:30 AM")";
-            var doctorId = @(Model.OdontologoId ?? 1);
-            var doctorNombre = "@(Model.NombreOdontologo ?? "Dra. Elena Silva")";
-            var especialidad = "@(Model.Especialidad ?? "Ortodoncia y Endodoncia")";
-            var metodoPago = "ObraSocial";
+            function formatearHora(iso) {
+                return iso.substring(11, 16);
+            }
 
-            // 1. Selector de Días del Calendario
-            var dayButtons = document.querySelectorAll(".calendar-day-btn.dia-disponible");
-            dayButtons.forEach(function (btn) {
-                btn.addEventListener("click", function () {
-                    dayButtons.forEach(b => b.classList.remove("selected"));
-                    this.classList.add("selected");
-                    fechaSeleccionada = this.getAttribute("data-fecha");
-                    document.getElementById("inputFechaSeleccionada").value = fechaSeleccionada;
-                    document.getElementById("fechaDisplaySlot").innerText = fechaSeleccionada;
-                    actualizarResumen();
-                });
-            });
+            async function cargarDatosEspecialidad() {
+                var idEspecialidad = selectEspecialidad.value;
+                inputIdEspecialidad.value = idEspecialidad;
 
-            // 2. Selector de Horarios (Slots)
-            var slotButtons = document.querySelectorAll(".slot-btn");
-            slotButtons.forEach(function (btn) {
-                btn.addEventListener("click", function () {
-                    slotButtons.forEach(b => b.classList.remove("selected"));
-                    this.classList.add("selected");
-                    horarioSeleccionado = this.getAttribute("data-slot");
-                    document.getElementById("inputHorarioSeleccionado").value = horarioSeleccionado;
-                    actualizarResumen();
-                });
-            });
+                diasContainer.innerHTML = '<span class="text-muted small">Cargando...</span>';
+                slotsMananaContainer.innerHTML = "";
+                slotsTardeContainer.innerHTML = "";
+                sinHorariosMensaje.style.display = "none";
+                diaSeleccionado = null;
+                horarioSeleccionado = null;
+                actualizarResumen();
 
-            // 3. Selector de Odontólogos
-            var docCards = document.querySelectorAll(".doctor-select-card");
-            docCards.forEach(function (card) {
-                card.addEventListener("click", function () {
-                    docCards.forEach(c => {
-                        c.classList.remove("selected");
-                        c.querySelector(".check-icon").className = "bi bi-circle text-muted fs-5 check-icon";
+                var resp = await fetch("/Turno/DatosEspecialidad?idEspecialidad=" + idEspecialidad);
+                datosEspecialidadActual = await resp.json();
+
+                actualizarCoberturaUI();
+
+                diasContainer.innerHTML = "";
+                if (!datosEspecialidadActual.diasDisponibles.length) {
+                    diasContainer.innerHTML = '<span class="text-muted small">No hay días disponibles en los próximos 30 días para esta especialidad.</span>';
+                    return;
+                }
+
+                datosEspecialidadActual.diasDisponibles.forEach(function (diaIso) {
+                    var chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = "dia-chip";
+                    chip.textContent = formatearDia(diaIso);
+                    chip.dataset.dia = diaIso;
+                    chip.addEventListener("click", function () {
+                        document.querySelectorAll(".dia-chip").forEach(c => c.classList.remove("selected"));
+                        chip.classList.add("selected");
+                        seleccionarDia(diaIso);
                     });
-                    this.classList.add("selected");
-                    this.querySelector(".check-icon").className = "bi bi-check-circle-fill text-primary fs-5 check-icon";
-
-                    doctorId = this.getAttribute("data-id");
-                    doctorNombre = this.getAttribute("data-name");
-                    especialidad = this.getAttribute("data-esp");
-
-                    document.getElementById("inputOdontologoId").value = doctorId;
-                    document.getElementById("inputNombreOdontologo").value = doctorNombre;
-                    document.getElementById("inputEspecialidad").value = especialidad;
-                    document.getElementById("selectEspecialidad").value = especialidad;
-
-                    actualizarResumen();
+                    diasContainer.appendChild(chip);
                 });
-            });
 
-            // 4. Selector de Especialidad dropdown
-            var selectEsp = document.getElementById("selectEspecialidad");
-            if (selectEsp) {
-                selectEsp.addEventListener("change", function () {
-                    especialidad = this.value;
-                    document.getElementById("inputEspecialidad").value = especialidad;
-                    actualizarResumen();
+                // Selecciona automáticamente el primer día disponible.
+                diasContainer.querySelector(".dia-chip").click();
+            }
+
+            async function seleccionarDia(diaIso) {
+                diaSeleccionado = diaIso;
+                horarioSeleccionado = null;
+                fechaDisplaySlot.textContent = "para el " + formatearDia(diaIso);
+                slotsMananaContainer.innerHTML = '<span class="text-muted small">Cargando...</span>';
+                slotsTardeContainer.innerHTML = "";
+                actualizarResumen();
+
+                var resp = await fetch("/Turno/Horarios?idEspecialidad=" + inputIdEspecialidad.value + "&dia=" + diaIso);
+                var horarios = await resp.json();
+
+                slotsMananaContainer.innerHTML = "";
+                slotsTardeContainer.innerHTML = "";
+                sinHorariosMensaje.style.display = horarios.length ? "none" : "block";
+
+                horarios.forEach(function (h) {
+                    var hora = formatearHora(h.fechaHoraIso);
+                    var btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "slot-btn";
+                    btn.innerHTML = hora + "<br><small>" + h.nombreOdontologo + "</small>";
+                    btn.addEventListener("click", function () {
+                        document.querySelectorAll(".slot-btn").forEach(b => b.classList.remove("selected"));
+                        btn.classList.add("selected");
+                        horarioSeleccionado = h;
+                        inputOdontologoTipoDocumento.value = h.odontologoTipoDocumento;
+                        inputOdontologoNroDocumento.value = h.odontologoNroDocumento;
+                        inputFechaHoraTurnoIso.value = h.fechaHoraIso;
+                        actualizarResumen();
+                    });
+
+                    var esManana = parseInt(hora.substring(0, 2), 10) < 13;
+                    (esManana ? slotsMananaContainer : slotsTardeContainer).appendChild(btn);
                 });
             }
 
             function actualizarResumen() {
-                document.getElementById("summaryCitaTexto").innerText = fechaSeleccionada + " - " + horarioSeleccionado;
-                document.getElementById("summaryDoctorTexto").innerText = doctorNombre + " (" + especialidad + ")";
-                
-                // Actualizar Paso 2
-                document.getElementById("confirmEspecialidad").innerText = especialidad;
-                document.getElementById("confirmDoctor").innerText = doctorNombre;
-                document.getElementById("confirmFechaHora").innerText = fechaSeleccionada + " • " + horarioSeleccionado;
+                var texto = "Elegí un día y un horario";
+                var doctorTexto = "";
+                if (diaSeleccionado && horarioSeleccionado) {
+                    texto = formatearDia(diaSeleccionado) + " · " + formatearHora(horarioSeleccionado.fechaHoraIso) + " hs";
+                    doctorTexto = horarioSeleccionado.nombreOdontologo;
+                }
+                document.getElementById("summaryFechaHora").textContent = texto;
+                document.getElementById("summaryOdontologo").textContent = doctorTexto;
+
+                var confirmEsp = document.getElementById("confirmEspecialidad");
+                var confirmDoc = document.getElementById("confirmDoctor");
+                var confirmFecha = document.getElementById("confirmFechaHora");
+                if (confirmEsp) confirmEsp.textContent = datosEspecialidadActual ? datosEspecialidadActual.nombreEspecialidad : "";
+                if (confirmDoc) confirmDoc.textContent = doctorTexto;
+                if (confirmFecha) confirmFecha.textContent = texto;
+
+                btnIrAPaso2.disabled = !(diaSeleccionado && horarioSeleccionado);
             }
 
-            // 5. Navegación entre Paso 1 y Paso 2
-            var btnIrAPaso2 = document.getElementById("btnIrAPaso2");
-            var btnVolverAPaso1 = document.getElementById("btnVolverAPaso1");
+            function actualizarCoberturaUI() {
+                var optOS = document.getElementById("optObraSocial");
+                var optPart = document.getElementById("optParticular");
+                var radioOS = document.getElementById("radioOS");
+                var radioPart = document.getElementById("radioPart");
+                var textoArancelOS = document.getElementById("textoArancelOS");
+                var textoArancelParticular = document.getElementById("textoArancelParticular");
+                var badgeObraSocial = document.getElementById("badgeObraSocial");
+                if (!optOS || !datosEspecialidadActual) return;
+
+                textoArancelParticular.textContent = "$" + Number(datosEspecialidadActual.arancelParticular).toLocaleString("es-AR");
+
+                var puedeUsarOS = datosEspecialidadActual.tieneObraSocial && datosEspecialidadActual.obraSocialCubre;
+                if (puedeUsarOS) {
+                    optOS.classList.remove("disabled");
+                    radioOS.disabled = false;
+                    textoArancelOS.textContent = "Costo consulta (convenio): $" + Number(datosEspecialidadActual.arancelObraSocial).toLocaleString("es-AR");
+                    // La obra social cubre esta especialidad: se preselecciona por defecto.
+                    optOS.classList.add("selected");
+                    optPart.classList.remove("selected");
+                    radioOS.checked = true;
+                    inputModalidadPago.value = "OBRA_SOCIAL";
+                } else {
+                    optOS.classList.add("disabled");
+                    radioOS.disabled = true;
+                    textoArancelOS.textContent = datosEspecialidadActual.tieneObraSocial
+                        ? "Tu obra social no tiene convenio vigente para esta especialidad."
+                        : "No tenés una obra social registrada.";
+                    optOS.classList.remove("selected");
+                    optPart.classList.add("selected");
+                    radioPart.checked = true;
+                    inputModalidadPago.value = "PARTICULAR";
+                }
+            }
+
+            selectEspecialidad.addEventListener("change", cargarDatosEspecialidad);
+            cargarDatosEspecialidad();
+
+            document.getElementById("optObraSocial").addEventListener("click", function () {
+                if (this.classList.contains("disabled")) return;
+                this.classList.add("selected");
+                document.getElementById("optParticular").classList.remove("selected");
+                document.getElementById("radioOS").checked = true;
+                inputModalidadPago.value = "OBRA_SOCIAL";
+            });
+
+            document.getElementById("optParticular").addEventListener("click", function () {
+                this.classList.add("selected");
+                document.getElementById("optObraSocial").classList.remove("selected");
+                document.getElementById("radioPart").checked = true;
+                inputModalidadPago.value = "PARTICULAR";
+            });
 
             btnIrAPaso2.addEventListener("click", function () {
                 document.getElementById("seccionPaso1").style.display = "none";
                 document.getElementById("seccionPaso2").style.display = "block";
-
                 document.getElementById("stepperStep1").classList.remove("active");
                 document.getElementById("stepperStep1").classList.add("completed");
                 document.getElementById("stepperStep2").classList.add("active");
-
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: "smooth" });
             });
 
-            btnVolverAPaso1.addEventListener("click", function () {
+            document.getElementById("btnVolverAPaso1").addEventListener("click", function () {
                 document.getElementById("seccionPaso2").style.display = "none";
                 document.getElementById("seccionPaso1").style.display = "block";
-
                 document.getElementById("stepperStep2").classList.remove("active");
                 document.getElementById("stepperStep1").classList.remove("completed");
                 document.getElementById("stepperStep1").classList.add("active");
-
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-
-            // 6. Selector de Cobertura Médica
-            var optOS = document.getElementById("optObraSocial");
-            var optPart = document.getElementById("optParticular");
-            var radioOS = document.getElementById("radioOS");
-            var radioPart = document.getElementById("radioPart");
-
-            optOS.addEventListener("click", function () {
-                optOS.classList.add("selected");
-                optPart.classList.remove("selected");
-                radioOS.checked = true;
-                metodoPago = "ObraSocial";
-                document.getElementById("inputMetodoPago").value = "ObraSocial";
-            });
-
-            optPart.addEventListener("click", function () {
-                optPart.classList.add("selected");
-                optOS.classList.remove("selected");
-                radioPart.checked = true;
-                metodoPago = "Particular";
-                document.getElementById("inputMetodoPago").value = "Particular";
+                window.scrollTo({ top: 0, behavior: "smooth" });
             });
         });
     </script>
-}
+}

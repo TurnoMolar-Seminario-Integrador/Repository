@@ -26,6 +26,17 @@ builder.Services.AddDbContext<TurnoMolarDbContext>(options =>
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// CUU01 - Agendar Turno Odontológico: TurnoController consume esta misma lógica de
+// negocio (compartida en Application.Services) en vez de manipular el DbContext
+// directamente, con el mismo criterio ya aplicado al login (ver AuthService).
+builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
+builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
+builder.Services.AddScoped<IOdontologoRepository, OdontologoRepository>();
+builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
+builder.Services.AddScoped<IObraSocialRepository, ObraSocialRepository>();
+builder.Services.AddScoped<IComprobanteTurnoRepository, ComprobanteTurnoRepository>();
+builder.Services.AddScoped<IAgendaTurnoService, AgendaTurnoService>();
+
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

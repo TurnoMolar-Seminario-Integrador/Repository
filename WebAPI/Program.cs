@@ -42,10 +42,17 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IOdontologoRepository, OdontologoRepository>();
+builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
+builder.Services.AddScoped<IObraSocialRepository, ObraSocialRepository>();
+builder.Services.AddScoped<IComprobanteTurnoRepository, ComprobanteTurnoRepository>();
 
 builder.Services.AddScoped<IPacienteService, PacienteService>();
 builder.Services.AddScoped<ITurnoOdontologicoService, TurnoOdontologicoService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+// CUU01 - Agendar Turno Odontológico (y caminos alternativos: deuda, turno pendiente,
+// obra social sin convenio, alta manual por el Responsable de la Clínica).
+builder.Services.AddScoped<IAgendaTurnoService, AgendaTurnoService>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -104,4 +111,5 @@ app.MapControllers();
 app.MapAuthEndpoints();
 app.MapPacienteEndpoints();
 app.MapTurnoOdontologicoEndpoints();
+app.MapAgendaTurnoEndpoints();
 app.Run();

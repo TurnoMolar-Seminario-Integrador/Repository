@@ -37,6 +37,10 @@ builder.Services.AddScoped<IObraSocialRepository, ObraSocialRepository>();
 builder.Services.AddScoped<IComprobanteTurnoRepository, ComprobanteTurnoRepository>();
 builder.Services.AddScoped<IAgendaTurnoService, AgendaTurnoService>();
 
+// CUU02 - Gestionar Asistencia a Turno Odontológico: OdontologoController (pantalla Control
+// de Asistencias) consume esta lógica de negocio, con el mismo criterio que CUU01.
+builder.Services.AddScoped<IAsistenciaTurnoService, AsistenciaTurnoService>();
+
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

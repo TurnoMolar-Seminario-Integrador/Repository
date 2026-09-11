@@ -173,7 +173,8 @@ namespace Data
                         new DisponibilidadHoraria("DNI", "28456789", "Lunes", new TimeOnly(8, 0), new TimeOnly(13, 0), 1),
                         new DisponibilidadHoraria("DNI", "28456789", "Martes", new TimeOnly(8, 0), new TimeOnly(13, 0), 1),
                         new DisponibilidadHoraria("DNI", "30123456", "Miércoles", new TimeOnly(14, 0), new TimeOnly(19, 0), 2),
-                        new DisponibilidadHoraria("DNI", "26789012", "Jueves", new TimeOnly(9, 0), new TimeOnly(18, 0), 3)
+                        new DisponibilidadHoraria("DNI", "26789012", "Jueves", new TimeOnly(9, 0), new TimeOnly(18, 0), 3),
+                        new DisponibilidadHoraria("DNI", "28456789", "Viernes", new TimeOnly(9, 0), new TimeOnly(18, 0), 3)
                     );
                     await context.SaveChangesAsync();
                 }

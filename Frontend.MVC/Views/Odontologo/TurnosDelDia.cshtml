@@ -1,3 +1,4 @@
+@model IEnumerable<DTOs.TurnoAgendaDelDiaDTO>
 @{
     ViewData["Title"] = "Turnos del Día - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "TurnosDelDia";
@@ -18,6 +19,8 @@
             justify-content: space-between;
             box-shadow: 0 2px 5px rgba(0,0,0,0.02);
             transition: all 0.2s;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .turno-row:hover {
@@ -27,6 +30,7 @@
 
         .turno-espera  { border-left-color: #f59e0b; background: #fffdfa; }
         .turno-atendido { border-left-color: #10b981; opacity: 0.85; background: #fbfdfc; }
+        .turno-ausente { border-left-color: #ef4444; opacity: 0.85; background: #fffafa; }
 
         .turno-hora {
             font-size: 1.15rem;
@@ -40,14 +44,13 @@
 <div class="d-flex justify-content-between align-items-end mb-4">
     <div>
         <h2 class="fw-bold text-dark mb-1">Agenda de Hoy</h2>
-        <p class="text-muted mb-0">Listado de pacientes citados y estado de atención en tiempo real.</p>
+        <p class="text-muted mb-0">Listado de tus pacientes citados para hoy y su estado real de asistencia.</p>
     </div>
     <button class="btn btn-outline-primary rounded-pill fw-semibold shadow-sm" onclick="window.print();">
         <i class="bi bi-printer me-2"></i>Imprimir Agenda
     </button>
 </div>
 
-<!-- Alerta de Éxito -->
 @if (TempData["MensajeExito"] != null)
 {
     <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
@@ -55,69 +58,85 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-<!-- Paciente 1: En Espera -->
-<div class="turno-row turno-espera">
-    <div class="d-flex align-items-center gap-4">
-        <div class="turno-hora">09:30 AM</div>
-        <div>
-            <h6 class="fw-bold mb-1 text-dark">Manuel Fernández</h6>
-            <p class="text-muted small mb-0">
-                <i class="bi bi-card-text me-1 text-primary"></i> Control General • OSDE 310 (HC #10042)
-            </p>
+@if (!Model.Any())
+{
+    <div class="alert alert-secondary rounded-4 border-0 shadow-sm">
+        <i class="bi bi-calendar-x me-2"></i> No tenés turnos programados para hoy.
+    </div>
+}
+
+@foreach (var t in Model)
+{
+    var rowClass = t.EstadoTurno switch
+    {
+        "PRESENTE" => "turno-espera",
+        "ATENCION_REGISTRADA" or "FINALIZADO" => "turno-atendido",
+        "AUSENTE" => "turno-ausente",
+        _ => ""
+    };
+
+    <div class="turno-row @rowClass">
+        <div class="d-flex align-items-center gap-4">
+            <div class="turno-hora @(t.EstadoTurno == "RESERVADO" ? "text-secondary" : "")">@t.FechaHoraTurno.ToString("HH:mm")</div>
+            <div>
+                <h6 class="fw-bold mb-1 text-dark">@t.NombrePaciente @t.ApellidoPaciente</h6>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-card-text me-1 text-primary"></i> @t.NombreEspecialidad • @t.ModalidadPago
+                    @if (!string.IsNullOrWhiteSpace(t.DescripcionMaterial))
+                    {
+                        <text> • @t.DescripcionMaterial</text>
+                    }
+                </p>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            @switch (t.EstadoTurno)
+            {
+                case "PRESENTE":
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 rounded-pill">
+                        <i class="bi bi-person-check me-1"></i> En Sala de Espera
+                    </span>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm btn-iniciar-atencion"
+                            data-bs-toggle="modal" data-bs-target="#modalRegistrarAtencion"
+                            data-nro-turno="@t.NroTurno" data-nombre-paciente="@t.NombrePaciente @t.ApellidoPaciente">
+                        <i class="bi bi-journal-plus me-1"></i> Iniciar Atención
+                    </button>
+                    break;
+                case "RESERVADO":
+                    <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
+                        <i class="bi bi-clock me-1"></i> Pendiente Admisión
+                    </span>
+                    <button class="btn btn-outline-secondary rounded-pill px-4 fw-semibold" disabled>
+                        Esperando Llegada
+                    </button>
+                    break;
+                case "AUSENTE":
+                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger px-3 py-2 rounded-pill">
+                        <i class="bi bi-person-x me-1"></i> Ausente
+                    </span>
+                    break;
+                case "ATENCION_REGISTRADA":
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info px-3 py-2 rounded-pill">
+                        <i class="bi bi-hourglass-split me-1"></i> Atención Registrada • Pendiente Cobro
+                    </span>
+                    break;
+                case "FINALIZADO":
+                    <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">
+                        <i class="bi bi-check-circle-fill me-1"></i> Atención Finalizada
+                    </span>
+                    break;
+            }
         </div>
     </div>
-    <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 rounded-pill">
-            <i class="bi bi-person-check me-1"></i> En Sala de Espera
-        </span>
-        <button class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRegistrarAtencion" onclick="prepararAtencion('Manuel Fernández', '10042', 'Control General', 'OSDE 310');">
-            <i class="bi bi-journal-plus me-1"></i> Iniciar Atención
-        </button>
-    </div>
-</div>
-
-<!-- Paciente 2: Por llegar -->
-<div class="turno-row">
-    <div class="d-flex align-items-center gap-4">
-        <div class="turno-hora text-secondary">10:30 AM</div>
-        <div>
-            <h6 class="fw-bold mb-1 text-dark">Lucía Martínez</h6>
-            <p class="text-muted small mb-0">
-                <i class="bi bi-card-text me-1 text-primary"></i> Ortodoncia (Ajuste mensual) • Particular (HC #10058)
-            </p>
-        </div>
-    </div>
-    <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">
-            <i class="bi bi-clock me-1"></i> Pendiente Admisión
-        </span>
-        <button class="btn btn-outline-secondary rounded-pill px-4 fw-semibold" disabled>
-            Esperando Llegada
-        </button>
-    </div>
-</div>
-
-<!-- Paciente 3: Atendido -->
-<div class="turno-row turno-atendido">
-    <div class="d-flex align-items-center gap-4">
-        <div class="turno-hora text-muted">08:00 AM</div>
-        <div>
-            <h6 class="fw-bold mb-1 text-muted">Carlos Silva</h6>
-            <p class="text-muted small mb-0">
-                <i class="bi bi-check2-all me-1 text-success"></i> Extracción Simple • IAPOS (HC #09812)
-            </p>
-        </div>
-    </div>
-    <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">
-            <i class="bi bi-check-circle-fill me-1"></i> Atención Finalizada
-        </span>
-        <button class="btn btn-outline-primary rounded-pill px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalVerFichaMedica">
-            <i class="bi bi-file-earmark-medical me-1"></i> Ver Ficha Médica
-        </button>
-    </div>
-</div>
+}
 
 <!-- MODAL REGISTRAR ATENCIÓN ODONTOLÓGICA -->
 <div class="modal fade" id="modalRegistrarAtencion" tabindex="-1" aria-labelledby="modalRegistrarAtencionLabel" aria-hidden="true">
@@ -129,18 +148,16 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form asp-controller="Odontologo" asp-action="GuardarAtencion" method="post">
+            <form asp-controller="Odontologo" asp-action="RegistrarAtencionDelDia" method="post">
+                @Html.AntiForgeryToken()
                 <div class="modal-body p-4">
-                    <input type="hidden" id="atencionPacienteNombre" name="pacienteNombre" value="Manuel Fernández" />
-                    <input type="hidden" id="atencionNumeroHc" name="numeroHc" value="10042" />
+                    <input type="hidden" id="atencionNroTurno" name="nroTurno" value="" />
 
-                    <!-- Resumen del Paciente -->
                     <div class="bg-light p-3 rounded-3 mb-4 border d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="fw-bold text-dark mb-0" id="displayPacienteNombre">Manuel Fernández</h6>
-                            <small class="text-muted">Historia Clínica: <strong id="displayNumeroHc" class="text-primary">#10042</strong> | Cobertura: <span id="displayCobertura">OSDE 310</span></small>
+                            <h6 class="fw-bold text-dark mb-0" id="displayPacienteNombre">-</h6>
                         </div>
-                        <span class="badge bg-primary px-3 py-2 rounded-pill">Atención en Curso</span>
+                        <span class="badge bg-primary px-3 py-2 rounded-pill">Presente</span>
                     </div>
 
                     <div class="row g-3">
@@ -172,55 +189,18 @@
 
                         <div class="col-12">
                             <label class="form-label fw-semibold text-dark">Diagnóstico Odontológico</label>
-                            <textarea class="form-control" name="diagnostico" rows="2" placeholder="Describí el diagnóstico o estado dental del paciente..." required>Caries oclusal incipiente en pieza 1.6 sin afectación pulpar.</textarea>
+                            <textarea class="form-control" name="diagnostico" rows="2" placeholder="Describí el diagnóstico o estado dental del paciente..." required></textarea>
                         </div>
 
                         <div class="col-12">
                             <label class="form-label fw-semibold text-dark">Evolución Clínica y Observaciones</label>
-                            <textarea class="form-control" name="observaciones" rows="3" placeholder="Detallá los procedimientos aplicados, piezas tratadas e indicaciones..." required>Se realizó limpieza superficial y obturación estética con resina fotocurable 3M A2 en pieza 1.6. Se indican controles semestrales y correcto cepillado.</textarea>
+                            <textarea class="form-control" name="observaciones" rows="3" placeholder="Detallá los procedimientos aplicados, piezas tratadas e indicaciones..." required></textarea>
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label fw-semibold text-dark mb-2">Insumos Utilizados en la Sesión</label>
-                            <div class="p-3 border rounded-3 bg-light">
-                                <div class="row g-2">
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Anestesia Tubaria" id="ins1" checked>
-                                            <label class="form-check-label small" for="ins1">Anestesia Tubaria (1 tubo)</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Resina Fotocurable A2" id="ins2" checked>
-                                            <label class="form-check-label small" for="ins2">Resina Fotocurable A2</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Ácido Grabador + Adhesivo" id="ins3" checked>
-                                            <label class="form-check-label small" for="ins3">Ácido Grabador + Adhesivo</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Gasa Estéril" id="ins4">
-                                            <label class="form-check-label small" for="ins4">Gasa Estéril (Paquete)</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Dique de Goma Aislante" id="ins5">
-                                            <label class="form-check-label small" for="ins5">Dique de Goma Aislante</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Kit Profilaxis" id="ins6">
-                                            <label class="form-check-label small" for="ins6">Pasta Profiláctica + Cepillo</label>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="alert alert-warning small mb-0">
+                                <i class="bi bi-info-circle me-1"></i>
+                                El detalle de insumos, el cálculo del monto y el cobro se implementan en el próximo paso (CUU03). Por ahora esto deja el turno en estado <strong>"Atención Registrada"</strong>, pendiente de que el responsable de la clínica procese el cobro.
                             </div>
                         </div>
                     </div>
@@ -228,7 +208,7 @@
                 <div class="modal-footer bg-light border-0 justify-content-end gap-2 p-3">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
-                        <i class="bi bi-check-circle me-1"></i> Guardar en Historia Clínica y Finalizar Turno
+                        <i class="bi bi-check-circle me-1"></i> Guardar en Historia Clínica
                     </button>
                 </div>
             </form>
@@ -236,65 +216,13 @@
     </div>
 </div>
 
-<!-- MODAL VER FICHA MÉDICA / HISTORIA CLÍNICA -->
-<div class="modal fade" id="modalVerFichaMedica" tabindex="-1" aria-labelledby="modalVerFichaMedicaLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header bg-info text-white border-0 py-3">
-                <h5 class="modal-title fw-bold" id="modalVerFichaMedicaLabel">
-                    <i class="bi bi-file-earmark-medical me-2"></i>Historia Clínica del Paciente
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="bg-light p-3 rounded-3 mb-4 border d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="fw-bold text-dark mb-1">Carlos Silva</h5>
-                        <small class="text-muted">HC <strong class="text-info">#09812</strong> | DNI: 32.145.890 | Cobertura: <strong>IAPOS</strong></small>
-                    </div>
-                    <span class="badge bg-success px-3 py-2 rounded-pill">Historia Clínica Activa</span>
-                </div>
-
-                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
-                    <i class="bi bi-clock-history me-2 text-primary"></i>Historial de Atenciones Registradas
-                </h6>
-
-                <!-- Entrada 1 -->
-                <div class="p-3 border-start border-4 border-success bg-light rounded-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <strong class="text-dark">Extracción Simple (Pieza 3.8)</strong>
-                        <small class="text-muted"><i class="bi bi-calendar3 me-1"></i> Hoy, 08:00 AM</small>
-                    </div>
-                    <p class="small text-muted mb-1"><strong>Diagnóstico:</strong> Caries penetrante irreversible con indicación exodóncica.</p>
-                    <p class="small text-muted mb-1"><strong>Observaciones:</strong> Exodoncia completa sin complicaciones. Se indica analgésico y hielo local.</p>
-                    <div class="small text-primary"><strong>Insumos:</strong> Anestesia Tubaria (x2), Sutura 3-0, Gasa estéril.</div>
-                </div>
-
-                <!-- Entrada 2 -->
-                <div class="p-3 border-start border-4 border-primary bg-light rounded-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <strong class="text-dark">Limpieza Profiláctica Anual</strong>
-                        <small class="text-muted"><i class="bi bi-calendar3 me-1"></i> 15 de Enero 2025</small>
-                    </div>
-                    <p class="small text-muted mb-1"><strong>Diagnóstico:</strong> Acumulación leve de tártaro inferior.</p>
-                    <p class="small text-muted mb-0"><strong>Observaciones:</strong> Se realizó limpieza con ultrasonido sin imprevistos.</p>
-                </div>
-            </div>
-            <div class="modal-footer bg-light border-0 justify-content-end p-3">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar Ficha</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Scripts {
     <script>
-        function prepararAtencion(nombre, hc, tratamiento, cobertura) {
-            document.getElementById('atencionPacienteNombre').value = nombre;
-            document.getElementById('atencionNumeroHc').value = hc;
-            document.getElementById('displayPacienteNombre').innerText = nombre;
-            document.getElementById('displayNumeroHc').innerText = '#' + hc;
-            document.getElementById('displayCobertura').innerText = cobertura;
-        }
+        document.querySelectorAll('.btn-iniciar-atencion').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('atencionNroTurno').value = btn.dataset.nroTurno;
+                document.getElementById('displayPacienteNombre').innerText = btn.dataset.nombrePaciente;
+            });
+        });
     </script>
 }

@@ -112,9 +112,29 @@ namespace Domain.Model
             EstadoTurno = "CANCELADO";
         }
 
-        public void Confirmar() => EstadoTurno = "CONFIRMADO";
-        public void MarcarEnEspera() => EstadoTurno = "EN_ESPERA";
-        public void Atender() => EstadoTurno = "ATENDIDO";
+        // CUU02 - Gestionar Asistencia a Turno Odontológico.
+        // ME - Máquina de Estados (Turno): "Responsable de la Clínica evalúa la asistencia
+        // del Paciente" -> [Paciente asiste] RESERVADO -> PRESENTE.
+        // Camino básico, paso 2: el responsable confirma la llegada del paciente.
+        public void MarcarPresente() => EstadoTurno = "PRESENTE";
+
+        // ME - Máquina de Estados (Turno): [Paciente no asiste] RESERVADO -> AUSENTE.
+        // Alt 1.b.1: se registra la ausencia y la penalización correspondiente (RN11) en el
+        // mismo movimiento; el turno guarda el arancel aplicado igual que en una cancelación
+        // tardía (mismo campo, mismo motivo de negocio: falta de aviso oportuno).
+        public void MarcarAusente(decimal montoPenalizacion)
+        {
+            EstadoTurno = "AUSENTE";
+            ArancelPenalizacionAplicado = montoPenalizacion;
+        }
+
+        // CUU03 - Finalizar Atención Odontológica, camino básico, paso 4: "El odontólogo
+        // confirma el registro de la atención [...] cambia el estado del turno a 'Atención
+        // Registrada'". Nota de alcance: el paso 4 es responsabilidad del Odontólogo; el
+        // pasaje a "Finalizado" (pasos 5-6) requiere que el Responsable de la Clínica procese
+        // el cobro por separado, así que no se modela acá todavía.
+        public void RegistrarAtencion() => EstadoTurno = "ATENCION_REGISTRADA";
+
         public void SetEstado(string estado) => EstadoTurno = estado;
         public void SetDescripcionMaterial(string? mat) => DescripcionMaterial = mat;
     }

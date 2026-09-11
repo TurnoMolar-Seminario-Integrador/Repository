@@ -1,8 +1,7 @@
 @{
     var nombreDoctor = User.FindFirst("NombreCompleto")?.Value ?? "Dra. Karina González";
-    var rolDoctor = (User.IsInRole("ResponsableClinica") || User.IsInRole("Admin")) 
-                    ? "RESPONSABLE CLÍNICO" 
-                    : "ODONTÓLOGO";
+    var esResponsableOAdmin = User.IsInRole("ResponsableClinica") || User.IsInRole("Admin");
+    var rolDoctor = esResponsableOAdmin ? "RESPONSABLE CLÍNICO" : "ODONTÓLOGO";
     var especialidad = "Odontología General";
     var activeTab = ViewData["ActiveTab"]?.ToString() ?? "PanelPrincipal";
 }
@@ -74,11 +73,14 @@
                     <i class="bi bi-calendar3"></i> Gestión de Turnos
                 </a>
             </li>
-            <li class="nav-item">
-                <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="nav-link @(activeTab == "ControlAsistencias" ? "active" : "")">
-                    <i class="bi bi-clipboard2-check"></i> Control de Asistencias
-                </a>
-            </li>
+            @if (esResponsableOAdmin)
+            {
+                <li class="nav-item">
+                    <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="nav-link @(activeTab == "ControlAsistencias" ? "active" : "")">
+                        <i class="bi bi-clipboard2-check"></i> Control de Asistencias
+                    </a>
+                </li>
+            }
             <li class="nav-item">
                 <a href="@Url.Action("GestionAtenciones", "Odontologo")" class="nav-link @(activeTab == "GestionAtenciones" ? "active" : "")">
                     <i class="bi bi-file-earmark-medical"></i> Gestión Atenciones

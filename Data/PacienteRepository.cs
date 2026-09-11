@@ -78,6 +78,7 @@ namespace Data
             existing.SetDomicilio(paciente.Domicilio);
             existing.SetEstadoPaciente(paciente.EstadoPaciente);
             existing.SetIdentificadorOS(paciente.IdentificadorOS);
+            existing.SetMontoAdeudado(paciente.MontoAdeudado);
             existing.SetCredenciales(paciente.Clave, paciente.SaltClave, paciente.Rol);
 
             await _context.SaveChangesAsync();

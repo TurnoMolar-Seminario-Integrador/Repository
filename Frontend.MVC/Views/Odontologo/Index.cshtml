@@ -101,15 +101,18 @@
         </a>
     </div>
 
-    <!-- Módulo 3: Control Asistencias -->
-    <div class="col-md-6 col-lg-3">
-        <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="dashboard-card card-3">
-            <div class="card-icon"><i class="bi bi-clipboard2-check"></i></div>
-            <h6 class="fw-bold mb-1 text-dark">Control Asistencias</h6>
-            <p class="text-muted small mb-0 flex-grow-1">Registrá las llegadas y ausencias de los turnos programados.</p>
-            <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #d97706;"></i></div>
-        </a>
-    </div>
+    @if (User.IsInRole("ResponsableClinica") || User.IsInRole("Admin"))
+    {
+        <!-- Módulo 3: Control Asistencias -->
+        <div class="col-md-6 col-lg-3">
+            <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="dashboard-card card-3">
+                <div class="card-icon"><i class="bi bi-clipboard2-check"></i></div>
+                <h6 class="fw-bold mb-1 text-dark">Control Asistencias</h6>
+                <p class="text-muted small mb-0 flex-grow-1">Registrá las llegadas y ausencias de los turnos programados.</p>
+                <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #d97706;"></i></div>
+            </a>
+        </div>
+    }
 
     <!-- Módulo 4: Gestión Atenciones -->
     <div class="col-md-6 col-lg-3">

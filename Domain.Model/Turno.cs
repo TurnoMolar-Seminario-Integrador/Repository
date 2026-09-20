@@ -130,10 +130,27 @@ namespace Domain.Model
 
         // CUU03 - Finalizar Atención Odontológica, camino básico, paso 4: "El odontólogo
         // confirma el registro de la atención [...] cambia el estado del turno a 'Atención
-        // Registrada'". Nota de alcance: el paso 4 es responsabilidad del Odontólogo; el
-        // pasaje a "Finalizado" (pasos 5-6) requiere que el Responsable de la Clínica procese
-        // el cobro por separado, así que no se modela acá todavía.
+        // Registrada'". El paso 4 es responsabilidad del Odontólogo; el pasaje a "Finalizado"
+        // (pasos 5-6) es responsabilidad del Responsable de la Clínica y se procesa por
+        // separado, más abajo, en Finalizar().
         public void RegistrarAtencion() => EstadoTurno = "ATENCION_REGISTRADA";
+
+        // CUU03 - Finalizar Atención Odontológica, camino básico paso 6 / alt 6.a / alt 6.b:
+        // "el responsable de la clínica le cobra la atención al paciente" (ME - Turno) -> el
+        // turno pasa a "Finalizado".
+        //
+        // Nota de alcance: el texto de CUU03 dice explícitamente "cambia el estado del turno a
+        // Finalizado" en el camino básico y en 6.a (obra social); en 6.b (falta de pago) solo
+        // menciona el cambio de estado del Paciente a "Inhabilitado" y no dice nada del Turno.
+        // Se interpreta que el Turno pasa a "Finalizado" en los tres casos, porque (a) la
+        // Máquina de Estados dibuja una única transición ATENCIÓN REGISTRADA -> FINALIZADO sin
+        // bifurcar según si hubo cobro efectivo, y (b) la precondición de CUU04 exige
+        // Turno = "Finalizado" Y Paciente = "Habilitado" como dos condiciones independientes: si
+        // el turno nunca llegara a "Finalizado" en 6.b, esa atención jamás podría valorarse ni
+        // siquiera después de que el paciente pague la deuda (CUF10). Lo único que varía entre
+        // los tres caminos es si se creó o no un Pago (relación Turno-Pago 0..1) y el estado del
+        // Paciente. Confirmar con el equipo si esta lectura no es la buscada.
+        public void Finalizar() => EstadoTurno = "FINALIZADO";
 
         public void SetEstado(string estado) => EstadoTurno = estado;
         public void SetDescripcionMaterial(string? mat) => DescripcionMaterial = mat;

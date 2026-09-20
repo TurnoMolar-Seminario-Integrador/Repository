@@ -408,13 +408,16 @@
                         <i class="bi bi-eye-fill me-1"></i> Ver Detalle
                     </a>
 
-                    <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro de que deseas cancelar este turno?');">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="idTurno" value="@t.CodTurno" />
-                        <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2">
-                            Cancelar
-                        </button>
-                    </form>
+                    @if (t.PermiteCancelarOReprogramar)
+                    {
+                        <form asp-controller="Turno" asp-action="Cancelar" method="post" class="w-100" onsubmit="return confirm('¿Estás seguro de que deseas cancelar este turno?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="idTurno" value="@t.CodTurno" />
+                            <button type="submit" class="btn btn-outline-light w-100 fw-bold rounded-pill py-2">
+                                Cancelar
+                            </button>
+                        </form>
+                    }
                 </div>
             </div>
         }

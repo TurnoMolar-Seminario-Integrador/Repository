@@ -98,14 +98,27 @@ namespace Domain.Model
         {
         }
 
+        // ME - Máquina de Estados (Turno): el paciente solo puede cancelar o reprogramar un turno
+        // mientras está "Reservado" (RESERVADO -> CANCELADO | REPROGRAMADO). Desde que el
+        // responsable registra su asistencia (PRESENTE / AUSENTE), y en los estados posteriores
+        // (ATENCION_REGISTRADA, FINALIZADO), ya no puede modificarlo: solo consultar el comprobante.
+        // Propiedad calculada de solo lectura: EF Core no la mapea (igual que los alias de arriba).
+        public bool PermiteCancelarOReprogramar => EstadoTurno == "RESERVADO";
+
         public void Reprogramar(DateTime nuevaFechaHora, int? nuevoNroTurno = null)
         {
+            if (!PermiteCancelarOReprogramar)
+                throw new InvalidOperationException("Solo un turno en estado RESERVADO puede reprogramarse.");
+
             FechaHoraReprogramacion = DateTime.Now;
             EstadoTurno = "REPROGRAMADO";
         }
 
         public void Cancelar(string motivo, decimal? penalizacion = null)
         {
+            if (!PermiteCancelarOReprogramar)
+                throw new InvalidOperationException("Solo un turno en estado RESERVADO puede cancelarse.");
+
             FechaHoraCancelacion = DateTime.Now;
             MotivoCancelacion = motivo;
             ArancelPenalizacionAplicado = penalizacion;

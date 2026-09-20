@@ -396,6 +396,14 @@ namespace Frontend.MVC.Controllers
                 return RedirectToAction("MisTurnos", "Home");
             }
 
+            // Solo un turno "Reservado" puede cancelarse. Desde que el responsable registra la
+            // asistencia (Presente / Ausente) el paciente ya no puede modificarlo (ME - Turno).
+            if (!turno.PermiteCancelarOReprogramar)
+            {
+                TempData["MensajeError"] = "Este turno ya no admite cancelación: solo pueden cancelarse los turnos en estado Reservado.";
+                return RedirectToAction("MisTurnos", "Home");
+            }
+
             // Regla de negocio: Si cancela con menos de 24 hs de anticipación, se aplica penalización
             var horasRestantes = (turno.FechaHoraTurno - DateTime.Now).TotalHours;
             decimal? penalizacion = null;
@@ -438,6 +446,13 @@ namespace Frontend.MVC.Controllers
             if (turnoOriginal == null)
             {
                 TempData["MensajeError"] = "No se encontró el turno original para reprogramar.";
+                return RedirectToAction("MisTurnos", "Home");
+            }
+
+            // Solo un turno "Reservado" puede reprogramarse (ver comentario en Cancelar).
+            if (!turnoOriginal.PermiteCancelarOReprogramar)
+            {
+                TempData["MensajeError"] = "Este turno ya no admite reprogramación: solo pueden reprogramarse los turnos en estado Reservado.";
                 return RedirectToAction("MisTurnos", "Home");
             }
 

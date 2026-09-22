@@ -105,6 +105,18 @@ namespace Domain.Model
         // Propiedad calculada de solo lectura: EF Core no la mapea (igual que los alias de arriba).
         public bool PermiteCancelarOReprogramar => EstadoTurno == "RESERVADO";
 
+        // CUU04 - Valorar Atención Odontológica, precondiciones de sistema: "El turno del
+        // paciente está registrado como 'Finalizado'" y "El paciente está habilitado en el
+        // sistema para poder brindar una valoración" -- dos condiciones independientes, tal
+        // como las lista la Matriz CRUD (CUU04: Turno R, Pacientes R; no actualiza ninguna de
+        // las dos). RN14: una vez que la Atención ya tiene una Valoracion, deja de estar
+        // pendiente. Requiere Paciente y Atencion.Valoracion cargados para evaluarse bien.
+        public bool PendienteDeValoracion =>
+            EstadoTurno == "FINALIZADO" &&
+            Paciente?.EstadoPaciente == "HABILITADO" &&
+            Atencion != null &&
+            Atencion.Valoracion == null;
+
         public void Reprogramar(DateTime nuevaFechaHora, int? nuevoNroTurno = null)
         {
             if (!PermiteCancelarOReprogramar)
@@ -163,6 +175,10 @@ namespace Domain.Model
         // siquiera después de que el paciente pague la deuda (CUF10). Lo único que varía entre
         // los tres caminos es si se creó o no un Pago (relación Turno-Pago 0..1) y el estado del
         // Paciente. Confirmar con el equipo si esta lectura no es la buscada.
+        //
+        // Nota (CUU04): con esta lectura, PendienteDeValoracion (más abajo) puede evaluar el
+        // Turno y el Paciente por separado sin volver a mirar si hubo o no un Pago real para
+        // esta atención, tal como los lista la Matriz CRUD para CUU04.
         public void Finalizar() => EstadoTurno = "FINALIZADO";
 
         public void SetEstado(string estado) => EstadoTurno = estado;

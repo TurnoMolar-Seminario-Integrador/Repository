@@ -51,6 +51,13 @@ builder.Services.AddScoped<IAtencionOdontologicaRepository, AtencionOdontologica
 builder.Services.AddScoped<IPagoRepository, PagoRepository>();
 builder.Services.AddScoped<IFinalizarAtencionService, FinalizarAtencionService>();
 
+// CUU04 - Valorar Atención Odontológica: HomeController (pestaña "Para Valorar" en Mis
+// Turnos) y TurnoController (registrar la valoración) consumen esta lógica de negocio, con
+// el mismo criterio que CUU01, CUU02 y CUU03. No agrega repositorios nuevos: reutiliza
+// ITurnoRepository (ya registrado en CUU01) e IAtencionOdontologicaRepository (ya registrado
+// en CUU03).
+builder.Services.AddScoped<IValorarAtencionService, ValorarAtencionService>();
+
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

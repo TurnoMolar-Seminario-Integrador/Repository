@@ -1,4 +1,5 @@
 using Domain.Model;
+using DTOs;
 
 namespace Frontend.MVC.Models
 {
@@ -18,6 +19,10 @@ namespace Frontend.MVC.Models
         public List<Turno> Turnos { get; set; } = new();
         public List<Odontologo> Odontologos { get; set; } = new();
         public List<Especialidad> Especialidades { get; set; } = new();
+
+        // CUU04 - Valorar Atención Odontológica, camino básico paso 1: listado de atenciones
+        // finalizadas pendientes de valoración (pestaña "Para Valorar").
+        public List<AtencionPendienteValoracionDTO> PendientesDeValoracion { get; set; } = new();
     }
 
     public class MetodosPagoViewModel

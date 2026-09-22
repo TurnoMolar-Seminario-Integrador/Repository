@@ -20,6 +20,7 @@ namespace Frontend.MVC.Controllers
         private readonly IEspecialidadRepository _especialidadRepository;
         private readonly IOdontologoRepository _odontologoRepository;
         private readonly IObraSocialRepository _obraSocialRepository;
+        private readonly IValorarAtencionService _valorarAtencionService;
 
         public TurnoController(
             TurnoMolarDbContext context,
@@ -27,7 +28,8 @@ namespace Frontend.MVC.Controllers
             IAgendaTurnoService agendaTurnoService,
             IEspecialidadRepository especialidadRepository,
             IOdontologoRepository odontologoRepository,
-            IObraSocialRepository obraSocialRepository)
+            IObraSocialRepository obraSocialRepository,
+            IValorarAtencionService valorarAtencionService)
         {
             _context = context;
             _logger = logger;
@@ -35,6 +37,7 @@ namespace Frontend.MVC.Controllers
             _especialidadRepository = especialidadRepository;
             _odontologoRepository = odontologoRepository;
             _obraSocialRepository = obraSocialRepository;
+            _valorarAtencionService = valorarAtencionService;
         }
 
         private async Task<Paciente> ObtenerPacienteActualAsync()
@@ -506,63 +509,32 @@ namespace Frontend.MVC.Controllers
         }
 
         // =========================================================================
-        // VALORAR ATENCIÓN (CALIFICACIÓN Y RESEÑA)
+        // CUU04 - VALORAR ATENCIÓN ODONTOLÓGICA
         // =========================================================================
 
+        // Actor primario: Paciente de la clínica. Otros: <vacío> -- a diferencia de
+        // Cancelar/Reprogramar/etc., acá se restringe el rol a nivel de acción (además del
+        // [Authorize] de la clase) porque CUU04 no admite que Admin ni ResponsableClinica
+        // valoren en nombre de un paciente.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ValorarAtencion(int idTurno, int calificacion, string? comentarios)
+        [Authorize(Roles = "Paciente")]
+        public async Task<IActionResult> ValorarAtencion(int idTurno, int calificacion, string? observaciones)
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var turno = await _context.Turnos
-                .Include(t => t.Atencion)
-                .FirstOrDefaultAsync(t => t.NroTurno == idTurno && t.NroDocumentoPaciente == paciente.NroDocumento);
+            var resultado = await _valorarAtencionService.RegistrarValoracionAsync(
+                paciente.TipoDocumento, paciente.NroDocumento, idTurno, calificacion, observaciones);
 
-            if (turno == null)
+            if (resultado.Resultado == ResultadoRegistrarValoracion.Registrada)
             {
-                TempData["MensajeError"] = "No se encontró el turno para calificar.";
-                return RedirectToAction("MisTurnos", "Home");
-            }
-
-            // Si aún no tiene atención registrada, creamos la atención completada
-            if (turno.Atencion == null)
-            {
-                var hc = await _context.HistoriasClinicas.FirstOrDefaultAsync(h => h.NroDocumentoPaciente == paciente.NroDocumento);
-                var nroHc = hc?.NroHC ?? 1;
-
-                var atencion = new AtencionOdontologica(
-                    0,
-                    turno.FechaHoraTurno,
-                    turno.FechaHoraTurno.AddMinutes(30),
-                    "Control odontológico realizado.",
-                    15000m,
-                    turno.NroTurno,
-                    nroHc
-                );
-                _context.AtencionesOdontologicas.Add(atencion);
-                await _context.SaveChangesAsync();
-
-                turno.SetEstado("ATENDIDO");
-            }
-
-            var atencionId = turno.Atencion != null ? turno.Atencion.IdAtencion : (await _context.AtencionesOdontologicas.FirstAsync(a => a.NroTurno == turno.NroTurno)).IdAtencion;
-            var valoracionExistente = await _context.Valoraciones.FirstOrDefaultAsync(v => v.IdAtencion == atencionId);
-
-            if (valoracionExistente == null)
-            {
-                var valoracion = new Valoracion(0, calificacion, comentarios, atencionId);
-                _context.Valoraciones.Add(valoracion);
+                TempData["MensajeExito"] = resultado.Mensaje;
             }
             else
             {
-                valoracionExistente.SetCalificacion(calificacion);
-                valoracionExistente.Observaciones = comentarios;
+                TempData["MensajeError"] = resultado.Mensaje;
             }
 
-            await _context.SaveChangesAsync();
-
-            TempData["MensajeExito"] = "¡Muchas gracias por tu valoración! Tu opinión nos ayuda a brindar un mejor servicio.";
             return RedirectToAction("MisTurnos", "Home");
         }
     }

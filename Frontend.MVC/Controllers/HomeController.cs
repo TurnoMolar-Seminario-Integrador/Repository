@@ -16,12 +16,18 @@ namespace TurnoMolar.Controllers
     {
         private readonly TurnoMolarDbContext _context;
         private readonly IAuthService _authService;
+        private readonly IValorarAtencionService _valorarAtencionService;
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(TurnoMolarDbContext context, IAuthService authService, ILogger<HomeController> logger)
+        public HomeController(
+            TurnoMolarDbContext context,
+            IAuthService authService,
+            IValorarAtencionService valorarAtencionService,
+            ILogger<HomeController> logger)
         {
             _context = context;
             _authService = authService;
+            _valorarAtencionService = valorarAtencionService;
             _logger = logger;
         }
 
@@ -263,12 +269,18 @@ namespace TurnoMolar.Controllers
                 .ToListAsync();
             var especialidades = await _context.Especialidades.ToListAsync();
 
+            // CUU04 - Valorar Atención Odontológica, camino básico paso 1: listado de
+            // atenciones finalizadas pendientes de valoración (pestaña "Para Valorar").
+            var resultadoPendientes = await _valorarAtencionService.ObtenerPendientesDeValoracionAsync(
+                paciente.TipoDocumento, paciente.NroDocumento);
+
             var viewModel = new MisTurnosViewModel
             {
                 Paciente = paciente,
                 Turnos = turnos,
                 Odontologos = odontologos,
-                Especialidades = especialidades
+                Especialidades = especialidades,
+                PendientesDeValoracion = resultadoPendientes.Pendientes
             };
 
             return View(viewModel);

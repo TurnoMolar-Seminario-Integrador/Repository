@@ -20,6 +20,7 @@ namespace Data
                 .Include(t => t.Odontologo)
                 .Include(t => t.Comprobante)
                 .Include(t => t.Atencion)
+                    .ThenInclude(a => a!.Valoracion)
                 .Include(t => t.Pago);
         }
 

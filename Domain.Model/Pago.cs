@@ -20,7 +20,12 @@ namespace Domain.Model
         public DateTime FechaYHoraPago => FechaHoraPago;
         public string TipoMetodoPago => MetodoPago;
         public int? CodAtencion => Turno?.Atencion?.IdAtencion;
-        public string ResponsablePago => AporteObraSocial.HasValue && AporteObraSocial.Value > 0 ? "Obra Social" : "Particular";
+        // MD - Modelo del Dominio: "/responsablePago = modalidadPagoElegida del Turno que da
+        // origen a la atención pagada."
+        //
+        // Defecto corregido: esto se calculaba a partir de AporteObraSocial (>0 => "Obra
+        // Social"), que no siempre coincide con la modalidad realmente elegida en el turno.
+        public string ResponsablePago => Turno.ModalidadPagoElegida;
 
         protected Pago() { }
 

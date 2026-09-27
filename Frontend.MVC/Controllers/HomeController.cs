@@ -17,17 +17,20 @@ namespace TurnoMolar.Controllers
         private readonly TurnoMolarDbContext _context;
         private readonly IAuthService _authService;
         private readonly IValorarAtencionService _valorarAtencionService;
+        private readonly IAgendaTurnoService _agendaTurnoService;
         private readonly ILogger<HomeController> _logger;
 
         public HomeController(
             TurnoMolarDbContext context,
             IAuthService authService,
             IValorarAtencionService valorarAtencionService,
+            IAgendaTurnoService agendaTurnoService,
             ILogger<HomeController> logger)
         {
             _context = context;
             _authService = authService;
             _valorarAtencionService = valorarAtencionService;
+            _agendaTurnoService = agendaTurnoService;
             _logger = logger;
         }
 
@@ -145,6 +148,14 @@ namespace TurnoMolar.Controllers
         // MÉTODOS PRIVADOS DE APOYO
         // =========================================================================
 
+        // Defecto corregido: esta resolución caía silenciosamente en "el primer paciente de la
+        // base" para CUALQUIER sesión sin claims que matchearan un paciente real -- lo que
+        // permitía que una sesión inconsistente terminara operando sobre la cuenta de OTRO
+        // paciente -- y si la base estaba vacía, insertaba un paciente hardcodeado nuevo como
+        // efecto secundario de un simple GET. Se restringe ese fallback a una vista previa
+        // explícita del rol Admin (que a propósito no tiene fila propia en Pacientes, ver
+        // DbInitializer); para cualquier otro caso sin coincidencia real, se corta con una
+        // excepción en vez de mostrarle a alguien el portal de otro paciente o de fabricar datos.
         private async Task<Paciente> ObtenerPacienteActualAsync()
         {
             var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
@@ -159,8 +170,12 @@ namespace TurnoMolar.Controllers
                     .FirstOrDefaultAsync(p => p.TipoDocumento == tipoDocumento && p.NroDocumento == nroDocumento);
             }
 
-            if (paciente == null)
+            if (paciente == null && User.IsInRole("Admin"))
             {
+                // Vista previa de Admin: el rol "Admin" (ResponsablesClinica, ver DbInitializer)
+                // no tiene fila propia en Pacientes a propósito, así que se le muestra el portal
+                // con el primer paciente real de la base. Es el único caso en el que se admite
+                // este fallback.
                 paciente = await _context.Pacientes
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
@@ -169,25 +184,7 @@ namespace TurnoMolar.Controllers
 
             if (paciente == null)
             {
-                paciente = new Paciente(
-                    "DNI",
-                    "34567890",
-                    "Manuel",
-                    "Fernández",
-                    new DateTime(1989, 4, 15),
-                    "341-3334455",
-                    "manuel.fer@email.com",
-                    "Córdoba 1540, Rosario",
-                    "HABILITADO",
-                    "OSDE",
-                    0m,
-                    "paciente123",
-                    "",
-                    DateTime.Now,
-                    "Paciente"
-                );
-                _context.Pacientes.Add(paciente);
-                await _context.SaveChangesAsync();
+                throw new InvalidOperationException("No se pudo resolver un paciente para la sesión actual.");
             }
 
             ViewData["NombrePaciente"] = $"{paciente.Nombre} {paciente.Apellido}";
@@ -207,18 +204,29 @@ namespace TurnoMolar.Controllers
         {
             var paciente = await ObtenerPacienteActualAsync();
 
+            // Defecto corregido: "CONFIRMADO" y "PENDIENTE" no son estados reales de Turno (ver
+            // Turno.EstadoTurno / ME - Máquina de Estados); el único estado vigente antes de la
+            // fecha del turno es "RESERVADO". Esas dos comparaciones nunca eran verdaderas.
             var proximoTurno = await _context.Turnos
                 .Include(t => t.Odontologo)
                 .Include(t => t.Especialidad)
                 .Include(t => t.Comprobante)
                 .Where(t => t.NroDocumentoPaciente == paciente.NroDocumento &&
-                            (t.EstadoTurno == "CONFIRMADO" || t.EstadoTurno == "RESERVADO" || t.EstadoTurno == "PENDIENTE") &&
+                            t.EstadoTurno == "RESERVADO" &&
                             t.FechaHoraTurno >= DateTime.Today)
                 .OrderBy(t => t.FechaHoraTurno)
                 .FirstOrDefaultAsync();
 
+            // Defecto corregido: excluía "ATENDIDO", que tampoco es un estado real -- el estado
+            // terminal real es "FINALIZADO" (ver Turno.Finalizar()), así que los turnos ya
+            // finalizados se seguían contando como pendientes. También se excluye
+            // "REPROGRAMADO": ese turno quedó reemplazado por uno nuevo (NroTurnoOriginal) y
+            // contarlo además del turno nuevo duplica el conteo.
             var turnosPendientesCount = await _context.Turnos
-                .CountAsync(t => t.NroDocumentoPaciente == paciente.NroDocumento && t.EstadoTurno != "CANCELADO" && t.EstadoTurno != "ATENDIDO");
+                .CountAsync(t => t.NroDocumentoPaciente == paciente.NroDocumento &&
+                                 t.EstadoTurno != "CANCELADO" &&
+                                 t.EstadoTurno != "FINALIZADO" &&
+                                 t.EstadoTurno != "REPROGRAMADO");
 
             var atencionesRealizadasCount = await _context.Atenciones
                 .CountAsync(a => a.Turno != null && a.Turno.NroDocumentoPaciente == paciente.NroDocumento);
@@ -349,6 +357,13 @@ namespace TurnoMolar.Controllers
             return View(viewModel);
         }
 
+        // Defecto corregido: esta acción tenía su propia implementación de "pagar la deuda",
+        // duplicada e independiente de AgendaTurnoService.PagarDeudaAsync (la que usa
+        // TurnoController para la alt 2.a.1.a de CUU01). Si el paciente no tenía ningún turno,
+        // esta versión inventaba uno nuevo en un estado ("ATENDIDO") que ni siquiera existe en
+        // la máquina de estados de Turno, y ligaba el Pago a "el primer turno que aparezca" en
+        // vez de al turno que realmente originó la deuda. Se unifica en un solo lugar
+        // (AgendaTurnoService.PagarDeudaAsync) para que ambas pantallas se comporten igual.
         [HttpPost]
         [Authorize(Roles = "Paciente,Admin")]
         [ValidateAntiForgeryToken]
@@ -356,56 +371,15 @@ namespace TurnoMolar.Controllers
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            if (paciente.MontoAdeudado.HasValue && paciente.MontoAdeudado.Value > 0)
+            var resultado = await _agendaTurnoService.PagarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
+
+            if (resultado.Resultado == ResultadoPagarDeuda.Regularizada)
             {
-                var montoPagado = paciente.MontoAdeudado.Value;
-
-                var ultimoTurno = await _context.Turnos
-                    .FirstOrDefaultAsync(t => t.NroDocumentoPaciente == paciente.NroDocumento);
-
-                if (ultimoTurno == null)
-                {
-                    var especialidad = await _context.Especialidades.FirstOrDefaultAsync();
-                    var odontologo = await _context.Odontologos.FirstOrDefaultAsync();
-
-                    ultimoTurno = new Turno(
-                        0,
-                        DateTime.Now,
-                        "PARTICULAR",
-                        especialidad?.IdEspecialidad ?? 1,
-                        "DNI",
-                        odontologo?.NroDocumento ?? "28456789",
-                        "DNI",
-                        paciente.NroDocumento,
-                        "ATENDIDO"
-                    );
-                    _context.Turnos.Add(ultimoTurno);
-                    await _context.SaveChangesAsync();
-                }
-
-                var pago = new Pago(
-                    0,
-                    ultimoTurno.NroTurno,
-                    DateTime.Now,
-                    montoPagado,
-                    metodoPago,
-                    paciente.IdentificadorOS,
-                    montoPagado,
-                    0m
-                );
-
-                _context.Pagos.Add(pago);
-
-                paciente.SetMontoAdeudado(0m);
-                paciente.SetEstadoPaciente("HABILITADO");
-
-                await _context.SaveChangesAsync();
-
-                TempData["PagoExitoso"] = $"¡Pago de ${montoPagado:N0} procesado correctamente! Tu cuenta ha sido habilitada para reservar nuevos turnos.";
+                TempData["PagoExitoso"] = $"¡Pago de ${resultado.MontoPagado:N0} procesado correctamente! Tu cuenta ha sido habilitada para reservar nuevos turnos.";
             }
             else
             {
-                TempData["MensajeInfo"] = "No registrás saldo pendiente de pago.";
+                TempData["MensajeInfo"] = resultado.Mensaje;
             }
 
             return RedirectToAction("MetodosDePago");

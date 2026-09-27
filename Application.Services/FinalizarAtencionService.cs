@@ -369,9 +369,8 @@ namespace Application.Services
             var paciente = await _pacienteRepository.GetAsync(turno.TipoDocumentoPaciente, turno.NroDocumentoPaciente)
                 ?? throw new InvalidOperationException("No se encontró el paciente asociado al turno.");
 
-            // MD - nota sobre Paciente.montoAdeudado: "Si el Turno que originó la deuda dio
-            // lugar a una Atención Odontológica (motivo 'Falta de pago de la atención'),
-            // entonces /montoAdeudado = /montoTotal de esa Atención Odontológica."
+            // MD - nota sobre Paciente.montoAdeudado (atributo derivado): "/montoAdeudado =
+            // /montoTotal de esa Atención Odontológica" -- asignación directa, no acumulada.
             paciente.SetMontoAdeudado(atencion.MontoTotal);
             paciente.SetEstadoPaciente("INHABILITADO");
             await _pacienteRepository.UpdateAsync(paciente);

@@ -44,6 +44,14 @@ namespace Domain.Model
         public string OdontologoNroDoc => NroDocumentoOdontologo;
         public int? TurnoOriginalCod => NroTurnoOriginal;
 
+        // Defecto corregido: MisTurnos.cshtml (vista del paciente) mostraba el código interno
+        // de EstadoTurno tal cual -- con el resto de los estados no se notaba porque son una
+        // sola palabra sin tilde ("RESERVADO", "PRESENTE", etc.), pero "ATENCION_REGISTRADA"
+        // se veía literal, con guión bajo y sin la tilde de "Atención". Esta propiedad es solo
+        // para texto mostrado al usuario; las comparaciones de estado deben seguir usando
+        // EstadoTurno/Estado, no esta.
+        public string EstadoLegible => EstadoTurno == "ATENCION_REGISTRADA" ? "ATENCIÓN REGISTRADA" : EstadoTurno;
+
         protected Turno() { }
 
         public Turno(

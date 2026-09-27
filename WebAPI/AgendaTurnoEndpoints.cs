@@ -87,12 +87,15 @@ namespace WebAPI
             .Produces(StatusCodes.Status400BadRequest)
             .WithOpenApi();
 
+            // Antes devolvía 204 sin cuerpo. PagarDeudaAsync ahora informa si había o no deuda y
+            // el monto regularizado (antes no devolvía nada, ni siquiera un Pago quedaba
+            // registrado -- ver el comentario en AgendaTurnoService.PagarDeudaAsync).
             app.MapPost("/agenda/pagar-deuda", async (string tipoDocumento, string nroDocumento, IAgendaTurnoService agendaService) =>
             {
                 try
                 {
-                    await agendaService.PagarDeudaAsync(tipoDocumento, nroDocumento);
-                    return Results.NoContent();
+                    var resultado = await agendaService.PagarDeudaAsync(tipoDocumento, nroDocumento);
+                    return Results.Ok(resultado);
                 }
                 catch (ArgumentException ex)
                 {
@@ -100,7 +103,7 @@ namespace WebAPI
                 }
             })
             .WithName("PagarDeuda")
-            .Produces(StatusCodes.Status204NoContent)
+            .Produces<PagarDeudaResultDTO>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound)
             .WithOpenApi();
         }

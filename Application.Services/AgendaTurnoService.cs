@@ -30,7 +30,7 @@ namespace Application.Services
         Task<AgendarTurnoResultDTO> AgendarTurnoManualAsync(AgendarTurnoRequestDTO request);
 
         // Alt 2.a.1.a: el paciente abona la deuda y vuelve a quedar Habilitado.
-        Task PagarDeudaAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente);
+        Task<PagarDeudaResultDTO> PagarDeudaAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente);
     }
 
     public class AgendaTurnoService : IAgendaTurnoService
@@ -42,7 +42,9 @@ namespace Application.Services
 
         // Debe coincidir exactamente con los valores de DisponibilidadHoraria.DiaSemana
         // sembrados en DbInitializer ("Lunes", "Martes", "Miércoles", "Jueves", "Viernes").
-        private static readonly string[] DiasSemanaEs =
+        // internal (antes private): GestionTurnoService (CUF08 - Reprogramar) reutiliza este
+        // arreglo a través de TieneDisponibilidadValida en vez de duplicarlo.
+        internal static readonly string[] DiasSemanaEs =
             { "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" };
 
         private readonly IPacienteRepository _pacienteRepository;
@@ -51,6 +53,7 @@ namespace Application.Services
         private readonly IObraSocialRepository _obraSocialRepository;
         private readonly ITurnoRepository _turnoRepository;
         private readonly IComprobanteTurnoRepository _comprobanteRepository;
+        private readonly IPagoRepository _pagoRepository;
 
         public AgendaTurnoService(
             IPacienteRepository pacienteRepository,
@@ -58,7 +61,8 @@ namespace Application.Services
             IEspecialidadRepository especialidadRepository,
             IObraSocialRepository obraSocialRepository,
             ITurnoRepository turnoRepository,
-            IComprobanteTurnoRepository comprobanteRepository)
+            IComprobanteTurnoRepository comprobanteRepository,
+            IPagoRepository pagoRepository)
         {
             _pacienteRepository = pacienteRepository;
             _odontologoRepository = odontologoRepository;
@@ -66,6 +70,7 @@ namespace Application.Services
             _obraSocialRepository = obraSocialRepository;
             _turnoRepository = turnoRepository;
             _comprobanteRepository = comprobanteRepository;
+            _pagoRepository = pagoRepository;
         }
 
         public string ObtenerMensajePoliticaCancelacion() =>
@@ -283,18 +288,57 @@ namespace Application.Services
             return await RegistrarTurnoAsync(request, paciente, odontologo, modalidad, "Turno registrado manualmente por el responsable de la clínica.");
         }
 
-        public async Task PagarDeudaAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente)
+        public async Task<PagarDeudaResultDTO> PagarDeudaAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente)
         {
             // Alt 2.a.1.a: "El paciente abona la deuda. El sistema registra el pago y cambia el
-            // estado del paciente a Habilitado." Implementación mínima acotada al alcance del
-            // CUU01 (salda el total adeudado y rehabilita al paciente); el circuito completo de
-            // medios de pago corresponde a la Gestión de Estado de Cuenta del paciente.
+            // estado del paciente a Habilitado."
+            //
+            // Defecto corregido: esta implementación no dejaba ningún registro de Pago -- solo
+            // ponía MontoAdeudado en 0. Existía además una segunda implementación, duplicada e
+            // independiente, en HomeController.PagarDeuda que sí creaba un Pago pero, si no
+            // encontraba ningún turno del paciente, inventaba uno nuevo en un estado
+            // ("ATENDIDO") que ni siquiera existe en la máquina de estados de Turno. Se unifican
+            // ambos caminos acá: se busca el turno más reciente que haya generado la deuda
+            // (Ausente, o Finalizado sin Pago asociado) y se registra el Pago sobre ese turno
+            // real. Si por alguna inconsistencia no se encuentra ninguno, igual se rehabilita al
+            // paciente (no corresponde bloquearlo por un problema de trazabilidad), pero sin
+            // fabricar un turno que no existió.
             var paciente = await _pacienteRepository.GetAsync(tipoDocumentoPaciente, nroDocumentoPaciente)
                 ?? throw new ArgumentException("No se encontró el paciente indicado.");
+
+            var montoAdeudado = paciente.MontoAdeudado ?? 0m;
+            if (montoAdeudado <= 0m)
+            {
+                return new PagarDeudaResultDTO
+                {
+                    Resultado = ResultadoPagarDeuda.SinDeuda,
+                    Mensaje = "No registrás saldo pendiente de pago.",
+                    MontoPagado = 0m
+                };
+            }
+
+            var turnos = await _turnoRepository.GetByPacienteAsync(tipoDocumentoPaciente, nroDocumentoPaciente);
+            var turnoConDeuda = turnos
+                .Where(t => t.Pago == null && (t.EstadoTurno == "AUSENTE" || t.EstadoTurno == "FINALIZADO"))
+                .OrderByDescending(t => t.FechaHoraTurno)
+                .FirstOrDefault();
+
+            if (turnoConDeuda != null)
+            {
+                var pago = new Pago(0, turnoConDeuda.NroTurno, DateTime.Now, montoAdeudado, "REGULARIZACION_DEUDA");
+                await _pagoRepository.AddAsync(pago);
+            }
 
             paciente.SetMontoAdeudado(0m);
             paciente.SetEstadoPaciente("HABILITADO");
             await _pacienteRepository.UpdateAsync(paciente);
+
+            return new PagarDeudaResultDTO
+            {
+                Resultado = ResultadoPagarDeuda.Regularizada,
+                Mensaje = $"¡Deuda de ${montoAdeudado:N0} regularizada! Ya podés agendar un nuevo turno.",
+                MontoPagado = montoAdeudado
+            };
         }
 
         private async Task<AgendarTurnoResultDTO> RegistrarTurnoAsync(
@@ -340,7 +384,9 @@ namespace Application.Services
             };
         }
 
-        private static bool TieneDisponibilidadValida(Odontologo odontologo, int idEspecialidad, DateTime fechaHoraTurno)
+        // internal (antes private): GestionTurnoService (CUF08 - Reprogramar) reutiliza esta
+        // validación en vez de duplicarla -- antes Reprogramar no validaba disponibilidad.
+        internal static bool TieneDisponibilidadValida(Odontologo odontologo, int idEspecialidad, DateTime fechaHoraTurno)
         {
             var nombreDia = DiasSemanaEs[(int)fechaHoraTurno.DayOfWeek];
             var horaTurno = TimeOnly.FromDateTime(fechaHoraTurno);

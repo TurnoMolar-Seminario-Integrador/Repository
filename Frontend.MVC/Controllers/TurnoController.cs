@@ -21,6 +21,7 @@ namespace Frontend.MVC.Controllers
         private readonly IOdontologoRepository _odontologoRepository;
         private readonly IObraSocialRepository _obraSocialRepository;
         private readonly IValorarAtencionService _valorarAtencionService;
+        private readonly IGestionTurnoService _gestionTurnoService;
 
         public TurnoController(
             TurnoMolarDbContext context,
@@ -29,7 +30,8 @@ namespace Frontend.MVC.Controllers
             IEspecialidadRepository especialidadRepository,
             IOdontologoRepository odontologoRepository,
             IObraSocialRepository obraSocialRepository,
-            IValorarAtencionService valorarAtencionService)
+            IValorarAtencionService valorarAtencionService,
+            IGestionTurnoService gestionTurnoService)
         {
             _context = context;
             _logger = logger;
@@ -38,8 +40,17 @@ namespace Frontend.MVC.Controllers
             _odontologoRepository = odontologoRepository;
             _obraSocialRepository = obraSocialRepository;
             _valorarAtencionService = valorarAtencionService;
+            _gestionTurnoService = gestionTurnoService;
         }
 
+        // Defecto corregido: esta resolución caía silenciosamente en "el primer paciente de la
+        // base" para CUALQUIER sesión sin claims que matchearan un paciente real -- lo que
+        // permitía que una sesión inconsistente terminara operando sobre la cuenta de OTRO
+        // paciente -- y si la base estaba vacía, insertaba un paciente hardcodeado nuevo como
+        // efecto secundario de un simple GET. Se restringe ese fallback a una vista previa
+        // explícita del rol Admin (que a propósito no tiene fila propia en Pacientes, ver
+        // DbInitializer); para cualquier otro caso sin coincidencia real, se corta con una
+        // excepción en vez de mostrarle a alguien el portal de otro paciente o de fabricar datos.
         private async Task<Paciente> ObtenerPacienteActualAsync()
         {
             var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
@@ -54,8 +65,12 @@ namespace Frontend.MVC.Controllers
                     .FirstOrDefaultAsync(p => p.TipoDocumento == tipoDocumento && p.NroDocumento == nroDocumento);
             }
 
-            if (paciente == null)
+            if (paciente == null && User.IsInRole("Admin"))
             {
+                // Vista previa de Admin: el rol "Admin" (ResponsablesClinica, ver DbInitializer)
+                // no tiene fila propia en Pacientes a propósito, así que se le muestra el portal
+                // con el primer paciente real de la base. Es el único caso en el que se admite
+                // este fallback.
                 paciente = await _context.Pacientes
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
@@ -64,25 +79,7 @@ namespace Frontend.MVC.Controllers
 
             if (paciente == null)
             {
-                paciente = new Paciente(
-                    "DNI",
-                    "34567890",
-                    "Manuel",
-                    "Fernández",
-                    new DateTime(1989, 4, 15),
-                    "341-3334455",
-                    "manuel.fer@email.com",
-                    "Córdoba 1540, Rosario",
-                    "HABILITADO",
-                    "OSDE",
-                    0m,
-                    "paciente123",
-                    "",
-                    DateTime.Now,
-                    "Paciente"
-                );
-                _context.Pacientes.Add(paciente);
-                await _context.SaveChangesAsync();
+                throw new InvalidOperationException("No se pudo resolver un paciente para la sesión actual.");
             }
 
             ViewData["NombrePaciente"] = $"{paciente.Nombre} {paciente.Apellido}";
@@ -291,9 +288,9 @@ namespace Frontend.MVC.Controllers
         public async Task<IActionResult> PagarDeuda()
         {
             var paciente = await ObtenerPacienteActualAsync();
-            await _agendaTurnoService.PagarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
+            var resultado = await _agendaTurnoService.PagarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
 
-            TempData["MensajeExito"] = "¡Deuda regularizada! Ya podés agendar un nuevo turno.";
+            TempData["MensajeExito"] = resultado.Mensaje;
             return RedirectToAction("Reservar");
         }
 
@@ -386,50 +383,32 @@ namespace Frontend.MVC.Controllers
         // CANCELAR TURNO
         // =========================================================================
 
+        // Defecto corregido (ver GestionTurnoService): esta acción manipulaba el DbContext
+        // directo con una penalización de $5000 fija, sin relación con la especialidad del
+        // turno -- el único lugar del proyecto que no seguía el criterio arquitectónico ya
+        // aplicado a CUU01-04 (lógica de negocio en Application.Services, no en el controlador).
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancelar(int idTurno, string motivoCancelacion)
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var turno = await _context.Turnos.FirstOrDefaultAsync(t => t.NroTurno == idTurno && t.NroDocumentoPaciente == paciente.NroDocumento);
-            if (turno == null)
+            var resultado = await _gestionTurnoService.CancelarTurnoAsync(
+                idTurno, paciente.TipoDocumento, paciente.NroDocumento, motivoCancelacion);
+
+            if (resultado.Resultado != ResultadoCancelarTurno.Cancelado)
             {
-                TempData["MensajeError"] = "No se encontró el turno a cancelar.";
+                TempData["MensajeError"] = resultado.Mensaje;
                 return RedirectToAction("MisTurnos", "Home");
             }
 
-            // Solo un turno "Reservado" puede cancelarse. Desde que el responsable registra la
-            // asistencia (Presente / Ausente) el paciente ya no puede modificarlo (ME - Turno).
-            if (!turno.PermiteCancelarOReprogramar)
+            if (resultado.Penalizacion.HasValue)
             {
-                TempData["MensajeError"] = "Este turno ya no admite cancelación: solo pueden cancelarse los turnos en estado Reservado.";
-                return RedirectToAction("MisTurnos", "Home");
-            }
-
-            // Regla de negocio: Si cancela con menos de 24 hs de anticipación, se aplica penalización
-            var horasRestantes = (turno.FechaHoraTurno - DateTime.Now).TotalHours;
-            decimal? penalizacion = null;
-
-            if (horasRestantes < 24 && horasRestantes > 0)
-            {
-                penalizacion = 5000m;
-                var montoActual = paciente.MontoAdeudado ?? 0m;
-                paciente.SetMontoAdeudado(montoActual + penalizacion.Value);
-                paciente.SetEstadoPaciente("INHABILITADO");
-            }
-
-            turno.Cancelar(motivoCancelacion ?? "Cancelado por el paciente", penalizacion);
-
-            await _context.SaveChangesAsync();
-
-            if (penalizacion.HasValue)
-            {
-                TempData["MensajeAdvertencia"] = $"El turno fue cancelado con menos de 24 hs de anticipación. Se registró un cargo por penalización de ${penalizacion.Value:N0} en tu cuenta.";
+                TempData["MensajeAdvertencia"] = resultado.Mensaje;
             }
             else
             {
-                TempData["MensajeExito"] = "El turno fue cancelado correctamente sin penalizaciones.";
+                TempData["MensajeExito"] = resultado.Mensaje;
             }
 
             return RedirectToAction("MisTurnos", "Home");
@@ -439,27 +418,29 @@ namespace Frontend.MVC.Controllers
         // REPROGRAMAR TURNO
         // =========================================================================
 
+        // Defecto corregido (ver GestionTurnoService): esta acción manipulaba el DbContext
+        // directo y creaba el turno nuevo sin validar que el horario elegido estuviera dentro
+        // de la disponibilidad real del odontólogo ni que no chocara con otro turno ya
+        // existente (a diferencia de AgendarTurnoAsync, que sí valida ambas cosas).
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reprogramar(int idTurnoOriginal, string nuevaFecha, string nuevoHorario)
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var turnoOriginal = await _context.Turnos.FirstOrDefaultAsync(t => t.NroTurno == idTurnoOriginal && t.NroDocumentoPaciente == paciente.NroDocumento);
-            if (turnoOriginal == null)
+            // La fecha/hora default (+7 días desde el turno original) y el parseo del horario
+            // elegido se resuelven acá porque son datos de entrada del formulario, no lógica de
+            // negocio del caso de uso; la validación de disponibilidad y choque de agenda sí es
+            // responsabilidad de GestionTurnoService.
+            var turnoOriginalActual = await _context.Turnos.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.NroTurno == idTurnoOriginal && t.NroDocumentoPaciente == paciente.NroDocumento);
+            if (turnoOriginalActual == null)
             {
                 TempData["MensajeError"] = "No se encontró el turno original para reprogramar.";
                 return RedirectToAction("MisTurnos", "Home");
             }
 
-            // Solo un turno "Reservado" puede reprogramarse (ver comentario en Cancelar).
-            if (!turnoOriginal.PermiteCancelarOReprogramar)
-            {
-                TempData["MensajeError"] = "Este turno ya no admite reprogramación: solo pueden reprogramarse los turnos en estado Reservado.";
-                return RedirectToAction("MisTurnos", "Home");
-            }
-
-            DateTime nuevaFechaHora = turnoOriginal.FechaHoraTurno.AddDays(7);
+            DateTime nuevaFechaHora = turnoOriginalActual.FechaHoraTurno.AddDays(7);
             if (!string.IsNullOrEmpty(nuevaFecha) && DateTime.TryParse(nuevaFecha, out DateTime parsedDate))
             {
                 nuevaFechaHora = parsedDate;
@@ -473,39 +454,17 @@ namespace Frontend.MVC.Controllers
                 }
             }
 
-            // Marcar turno original como REPROGRAMADO
-            turnoOriginal.Reprogramar(nuevaFechaHora);
+            var resultado = await _gestionTurnoService.ReprogramarTurnoAsync(
+                idTurnoOriginal, paciente.TipoDocumento, paciente.NroDocumento, nuevaFechaHora);
 
-            // Crear nuevo turno vinculado al original
-            var nuevoTurno = new Turno(
-                0,
-                nuevaFechaHora,
-                turnoOriginal.ModalidadPagoElegida,
-                turnoOriginal.IdEspecialidad,
-                turnoOriginal.TipoDocumentoOdontologo,
-                turnoOriginal.NroDocumentoOdontologo,
-                turnoOriginal.TipoDocumentoPaciente,
-                turnoOriginal.NroDocumentoPaciente,
-                "RESERVADO",
-                null,
-                null,
-                turnoOriginal.NroTurno
-            );
+            if (resultado.Resultado != ResultadoReprogramarTurno.Reprogramado)
+            {
+                TempData["MensajeError"] = resultado.Mensaje;
+                return RedirectToAction("MisTurnos", "Home");
+            }
 
-            _context.Turnos.Add(nuevoTurno);
-            await _context.SaveChangesAsync();
-
-            // Emitir comprobante para el nuevo turno
-            var comprobante = new ComprobanteDeTurno(
-                0,
-                nuevoTurno.NroTurno,
-                DateTime.Now
-            );
-            _context.ComprobantesTurnos.Add(comprobante);
-            await _context.SaveChangesAsync();
-
-            TempData["MensajeExito"] = $"¡Turno reprogramado exitosamente para el {nuevaFechaHora:dd/MM/yyyy HH:mm} hs!";
-            return RedirectToAction("Comprobante", new { idTurno = nuevoTurno.NroTurno });
+            TempData["MensajeExito"] = resultado.Mensaje;
+            return RedirectToAction("Comprobante", new { idTurno = resultado.NroTurnoNuevo });
         }
 
         // =========================================================================

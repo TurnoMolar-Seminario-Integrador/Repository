@@ -58,6 +58,12 @@ builder.Services.AddScoped<IFinalizarAtencionService, FinalizarAtencionService>(
 // en CUU03).
 builder.Services.AddScoped<IValorarAtencionService, ValorarAtencionService>();
 
+// CUF07 - Cancelar Turno / CUF08 - Reprogramar Turno: antes esta lógica vivía inline en
+// TurnoController; se corrige con el mismo criterio arquitectónico que CUU01-04. No agrega
+// repositorios nuevos: reutiliza ITurnoRepository, IPacienteRepository, IOdontologoRepository
+// e IComprobanteTurnoRepository (ya registrados más arriba).
+builder.Services.AddScoped<IGestionTurnoService, GestionTurnoService>();
+
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

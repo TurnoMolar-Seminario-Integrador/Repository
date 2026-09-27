@@ -23,13 +23,16 @@ namespace Application.Services
     {
         private readonly ITurnoRepository _turnoRepository;
         private readonly IPacienteRepository _pacienteRepository;
+        private readonly IObraSocialRepository _obraSocialRepository;
 
         public AsistenciaTurnoService(
             ITurnoRepository turnoRepository,
-            IPacienteRepository pacienteRepository)
+            IPacienteRepository pacienteRepository,
+            IObraSocialRepository obraSocialRepository)
         {
             _turnoRepository = turnoRepository;
             _pacienteRepository = pacienteRepository;
+            _obraSocialRepository = obraSocialRepository;
         }
 
         public async Task<BuscarTurnoAsistenciaResultDTO> BuscarTurnoDelDiaAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente)
@@ -113,30 +116,41 @@ namespace Application.Services
             var paciente = await _pacienteRepository.GetAsync(turno.TipoDocumentoPaciente, turno.NroDocumentoPaciente)
                 ?? throw new InvalidOperationException("No se encontró el paciente asociado al turno.");
 
-            // RN11: "[...] habilitan el cobro del arancel de consulta correspondiente a la
-            // especialidad [...] Este monto no incluye insumos ni materiales, dado que la
-            // atención no llegó a realizarse."
+            // RN11 / MD - nota sobre Turno.montoPenalizacion (atributo derivado): depende de la
+            // modalidadPagoElegida del turno -- arancelConvenio para Obra Social, arancelParticular
+            // para Particular. Mismo criterio que FinalizarAtencionService.RegistrarAtencionAsync
+            // usa para /montoTotal.
             //
-            // Es siempre Especialidad.arancelParticular, sin mirar la modalidad de pago ni el
-            // Convenio de obra social: la Matriz CRUD (CRUD-1) no lista "Convenio" ni "Obra
-            // Social" como leídos en CUU02 (sí en CUU01/CUU03, donde se calcula el monto de una
-            // atención real), y sus Consideraciones aclaran que Obra Social solo se lee "para
-            // calcular el monto a abonar" en esos dos casos de uso. Tiene sentido de negocio
-            // además: una obra social no reembolsa una consulta que nunca se realizó, así que
-            // la penalización por inasistencia se cobra siempre al paciente, al arancel
-            // particular de la especialidad.
-            var montoPenalizacion = turno.Especialidad.ArancelParticular;
+            // Defecto corregido: esta implementación usaba siempre Especialidad.ArancelParticular,
+            // sin mirar la modalidad de pago ni el Convenio de la obra social.
+            decimal montoPenalizacion;
+            if (turno.ModalidadPagoElegida == "OBRA_SOCIAL")
+            {
+                var obraSocial = turno.Paciente.IdentificadorOS != null
+                    ? await _obraSocialRepository.GetAsync(turno.Paciente.IdentificadorOS)
+                    : null;
+                var convenio = obraSocial?.Convenios.FirstOrDefault(c => c.IdEspecialidad == turno.IdEspecialidad);
+                if (convenio == null)
+                {
+                    return new RegistrarAsistenciaResultDTO
+                    {
+                        Resultado = ResultadoRegistrarAsistencia.TurnoInvalido,
+                        Mensaje = "El paciente no tiene un convenio vigente con su obra social para esta especialidad. No se puede calcular la penalización.",
+                        EstadoTurno = turno.EstadoTurno
+                    };
+                }
+                montoPenalizacion = convenio.ArancelConvenio;
+            }
+            else
+            {
+                montoPenalizacion = turno.Especialidad.ArancelParticular;
+            }
 
             turno.MarcarAusente(montoPenalizacion);
             await _turnoRepository.UpdateAsync(turno);
 
-            // MD - Modelo del Dominio, nota sobre Paciente.montoAdeudado (atributo derivado):
-            // "Si el Turno que originó la deuda no dio lugar a una Atención Odontológica
-            // (motivo 'Inasistencia' o 'Cancelación fuera de término'), entonces
-            // /montoAdeudado = /montoPenalizacion de ese Turno." No es un acumulador: se fija
-            // en el monto de ESTE turno. En la práctica un paciente no puede llegar acá con una
-            // deuda previa sin saldar, porque CUU01 ya le impide reservar un nuevo turno
-            // mientras esté "Inhabilitado".
+            // MD - nota sobre Paciente.montoAdeudado (atributo derivado): "/montoAdeudado =
+            // /montoPenalizacion de ese Turno" -- asignación directa, no acumulada.
             //
             // RN9: el paciente pasa a "Inhabilitado" hasta que pague la deuda o regularice su
             // situación con el odontólogo/responsable de la clínica.

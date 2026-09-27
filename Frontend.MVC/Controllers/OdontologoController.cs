@@ -14,31 +14,49 @@ namespace TurnoMolar.Controllers
         private readonly ITurnoRepository _turnoRepository;
         private readonly IFinalizarAtencionService _finalizarAtencionService;
         private readonly IInsumoRepository _insumoRepository;
+        private readonly IOdontologoRepository _odontologoRepository;
 
         public OdontologoController(
             IAsistenciaTurnoService asistenciaTurnoService,
             ITurnoRepository turnoRepository,
             IFinalizarAtencionService finalizarAtencionService,
-            IInsumoRepository insumoRepository)
+            IInsumoRepository insumoRepository,
+            IOdontologoRepository odontologoRepository)
         {
             _asistenciaTurnoService = asistenciaTurnoService;
             _turnoRepository = turnoRepository;
             _finalizarAtencionService = finalizarAtencionService;
             _insumoRepository = insumoRepository;
+            _odontologoRepository = odontologoRepository;
         }
 
-        private void CargarDatosOdontologoViewData()
+        // Defecto corregido: la matrícula quedaba hardcodeada en "MP 3840" (la de Karina
+        // González) sin importar qué profesional estuviera logueado. Ahora se busca la del
+        // odontólogo real; si quien inició sesión es un ResponsableClinica/Admin sin fila propia
+        // en Odontologos, se deja en blanco en vez de mostrar una matrícula ajena.
+        private async Task CargarDatosOdontologoViewDataAsync()
         {
-            ViewData["NombreDoctor"] = User.FindFirst("NombreCompleto")?.Value ?? "Dra. Karina González";
+            ViewData["NombreDoctor"] = User.FindFirst("NombreCompleto")?.Value ?? "Profesional";
             ViewData["RolDoctor"] = User.IsInRole("ResponsableClinica") ? "RESPONSABLE CLÍNICO" : "ODONTÓLOGO";
-            ViewData["Matricula"] = "MP 3840";
+
+            var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
+            var nroDocumento = User.FindFirst("NroDocumento")?.Value;
+
+            string? matricula = null;
+            if (!string.IsNullOrWhiteSpace(tipoDocumento) && !string.IsNullOrWhiteSpace(nroDocumento))
+            {
+                var odontologo = await _odontologoRepository.GetAsync(tipoDocumento, nroDocumento);
+                matricula = odontologo?.Matricula;
+            }
+
+            ViewData["Matricula"] = matricula ?? string.Empty;
         }
 
         // GET: /Odontologo/Index -> Panel Principal del Odontólogo / Responsable de la Clínica
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            CargarDatosOdontologoViewData();
+            await CargarDatosOdontologoViewDataAsync();
             return View();
         }
 
@@ -47,7 +65,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public async Task<IActionResult> TurnosDelDia()
         {
-            CargarDatosOdontologoViewData();
+            await CargarDatosOdontologoViewDataAsync();
 
             var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
             var nroDocumento = User.FindFirst("NroDocumento")?.Value;
@@ -92,9 +110,9 @@ namespace TurnoMolar.Controllers
 
         // GET: /Odontologo/GestionTurnos -> Calendario completo, cancelaciones y reprogramaciones
         [HttpGet]
-        public IActionResult GestionTurnos()
+        public async Task<IActionResult> GestionTurnos()
         {
-            CargarDatosOdontologoViewData();
+            await CargarDatosOdontologoViewDataAsync();
             return View();
         }
 
@@ -107,7 +125,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public async Task<IActionResult> ControlAsistencias(string? tipoDocumento, string? nroDocumento)
         {
-            CargarDatosOdontologoViewData();
+            await CargarDatosOdontologoViewDataAsync();
 
             if (!string.IsNullOrWhiteSpace(tipoDocumento) && !string.IsNullOrWhiteSpace(nroDocumento))
             {
@@ -161,9 +179,9 @@ namespace TurnoMolar.Controllers
 
         // GET: /Odontologo/GestionAtenciones -> Registro de fichas médicas e historias clínicas
         [HttpGet]
-        public IActionResult GestionAtenciones()
+        public async Task<IActionResult> GestionAtenciones()
         {
-            CargarDatosOdontologoViewData();
+            await CargarDatosOdontologoViewDataAsync();
             return View();
         }
 

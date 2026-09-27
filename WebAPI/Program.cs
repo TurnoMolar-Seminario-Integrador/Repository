@@ -46,6 +46,10 @@ builder.Services.AddScoped<IOdontologoRepository, OdontologoRepository>();
 builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
 builder.Services.AddScoped<IObraSocialRepository, ObraSocialRepository>();
 builder.Services.AddScoped<IComprobanteTurnoRepository, ComprobanteTurnoRepository>();
+// IPagoRepository: AgendaTurnoService.PagarDeudaAsync ahora registra un Pago real al saldar la
+// deuda (antes no dejaba ningún registro); sin este registro, resolver IAgendaTurnoService acá
+// fallaría en tiempo de ejecución.
+builder.Services.AddScoped<IPagoRepository, PagoRepository>();
 
 builder.Services.AddScoped<IPacienteService, PacienteService>();
 builder.Services.AddScoped<ITurnoOdontologicoService, TurnoOdontologicoService>();

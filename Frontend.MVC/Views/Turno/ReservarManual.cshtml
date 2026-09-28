@@ -66,7 +66,8 @@
 
                 <div class="col-sm-6">
                     <label class="form-label fw-semibold small">Fecha y hora acordadas</label>
-                    <input asp-for="FechaHoraTurno" type="datetime-local" class="form-control" required />
+                    <input asp-for="FechaHoraTurno" type="datetime-local" class="form-control" required min="@DateTime.Now.AddHours(24).ToString("yyyy-MM-ddTHH:mm")" />
+                    <div class="form-text">RN19: mínimo 24 horas de antelación.</div>
                 </div>
                 <div class="col-sm-6">
                     <label class="form-label fw-semibold small">Forma de abonar</label>

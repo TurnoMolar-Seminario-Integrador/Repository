@@ -25,7 +25,8 @@ namespace DTOs
     {
         Reprogramado,
         TurnoInvalido,
-        HorarioNoDisponible
+        HorarioNoDisponible,
+        FueraDeTermino
     }
 
     public class ReprogramarTurnoResultDTO

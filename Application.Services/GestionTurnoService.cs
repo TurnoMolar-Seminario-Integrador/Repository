@@ -172,11 +172,42 @@ namespace Application.Services
                 };
             }
 
+            // CUF08 alt. 3.a: "El sistema informa que la reprogramación está fuera de término y
+            // no permite continuar con el cambio de fecha, sugiriendo la cancelación del turno
+            // con el arancel correspondiente." A diferencia de Cancelar (CUF07 alt. 3.a), que sí
+            // permite continuar cobrando la penalización, acá se bloquea directamente: no se
+            // llega a validar disponibilidad ni a crear el turno nuevo.
+            //
+            // Defecto corregido: esta validación no existía -- se detectó al citar el texto de
+            // CUF08 para el resumen de esta ronda, no en la revisión de código original.
+            var horasRestantes = (turnoOriginal.FechaHoraTurno - DateTime.Now).TotalHours;
+            if (horasRestantes < 24)
+            {
+                return new ReprogramarTurnoResultDTO
+                {
+                    Resultado = ResultadoReprogramarTurno.FueraDeTermino,
+                    Mensaje = "La reprogramación está fuera de término: no se puede reprogramar un turno con menos de 24 horas de anticipación. Podés cancelarlo en su lugar; se aplicará el arancel de penalización correspondiente."
+                };
+            }
+
             // Defecto corregido: antes se creaba el turno nuevo sin validar que el horario
             // elegido estuviera dentro de la disponibilidad real del odontólogo, ni que no
             // chocara con otro turno ya existente (a diferencia de AgendarTurnoAsync).
             var odontologo = await _odontologoRepository.GetAsync(turnoOriginal.TipoDocumentoOdontologo, turnoOriginal.NroDocumentoOdontologo)
                 ?? throw new InvalidOperationException("No se encontró el odontólogo asociado al turno original.");
+
+            // RN19: "Los turnos deberán ser solicitados con una antelación mínima de 24 horas."
+            // El chequeo de arriba (CUF08 alt. 3.a) mira cuánto falta para el turno ORIGINAL;
+            // este mira la fecha NUEVA que se está eligiendo -- reprogramar también "solicita"
+            // un turno, igual que AgendarTurnoAsync, así que le aplica la misma regla.
+            if (!ReglaAntelacion.CumpleAntelacionMinima(nuevaFechaHoraTurno, DateTime.Now))
+            {
+                return new ReprogramarTurnoResultDTO
+                {
+                    Resultado = ResultadoReprogramarTurno.FueraDeTermino,
+                    Mensaje = $"Los turnos deben solicitarse con una antelación mínima de {ReglaAntelacion.HorasMinimas} horas. Elegí un horario que cumpla ese plazo."
+                };
+            }
 
             if (!AgendaTurnoService.TieneDisponibilidadValida(odontologo, turnoOriginal.IdEspecialidad, nuevaFechaHoraTurno))
             {

@@ -9,7 +9,8 @@ namespace DTOs
         Inhabilitado,               // Alt 2.a: paciente con deuda pendiente.
         TurnoPendienteExistente,    // Alt 2.b: ya tiene un turno reservado pendiente de atención (RN8).
         ObraSocialSinConvenio,      // Alt 3.a.2.a / 5.b: la obra social no cubre la especialidad.
-        HorarioNoDisponible         // El horario elegido ya no está libre (choque de agenda).
+        HorarioNoDisponible,        // El horario elegido ya no está libre (choque de agenda).
+        AntelacionInsuficiente      // RN19: el turno se solicita con menos de 24 horas de antelación.
     }
 
     // Resultado de la validación de estado del paciente al consultar turnos disponibles

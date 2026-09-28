@@ -47,6 +47,10 @@ namespace Application.Services
         internal static readonly string[] DiasSemanaEs =
             { "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" };
 
+        // RN19: mensaje cuando se intenta solicitar un turno sin la antelación mínima.
+        private static readonly string MensajeAntelacionInsuficiente =
+            $"Los turnos deben solicitarse con una antelación mínima de {ReglaAntelacion.HorasMinimas} horas. Elegí un horario que cumpla ese plazo.";
+
         private readonly IPacienteRepository _pacienteRepository;
         private readonly IOdontologoRepository _odontologoRepository;
         private readonly IEspecialidadRepository _especialidadRepository;
@@ -154,7 +158,13 @@ namespace Application.Services
                             t.TipoDocumentoOdontologo == odontologo.TipoDocumento &&
                             t.NroDocumentoOdontologo == odontologo.NroDocumento);
 
-                        if (!yaOcupado && fechaHoraTurno > DateTime.Now)
+                        // RN19: "Los turnos deberán ser solicitados con una antelación mínima de
+                        // 24 horas." Antes solo se descartaban los horarios ya pasados
+                        // (fechaHoraTurno > DateTime.Now), así que se podía reservar para
+                        // dentro de pocas horas. ObtenerDiasDisponiblesAsync arma el calendario
+                        // a partir de este listado, por lo que también deja de ofrecer los días
+                        // que no tengan ningún horario que cumpla la regla.
+                        if (!yaOcupado && ReglaAntelacion.CumpleAntelacionMinima(fechaHoraTurno, DateTime.Now))
                         {
                             resultado.Add(new HorarioDisponibleDTO
                             {
@@ -214,6 +224,19 @@ namespace Application.Services
                 };
             }
 
+            // RN19: el turno debe solicitarse con una antelación mínima de 24 horas. El listado de
+            // horarios ya no ofrece los que no la cumplen; esta validación cubre el caso de un
+            // horario que pasó a estar dentro del plazo mientras el paciente completaba el wizard
+            // (o una solicitud armada a mano contra el endpoint).
+            if (!ReglaAntelacion.CumpleAntelacionMinima(request.FechaHoraTurno, DateTime.Now))
+            {
+                return new AgendarTurnoResultDTO
+                {
+                    Resultado = ResultadoAgendarTurno.AntelacionInsuficiente,
+                    Mensaje = MensajeAntelacionInsuficiente
+                };
+            }
+
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
 
@@ -258,12 +281,25 @@ namespace Application.Services
             // fecha/hora acordadas y forma de pago "por fuera" del calendario de autoservicio: por
             // eso NO se valida acá habilitación del paciente, turno pendiente previo, ni la grilla
             // de disponibilidad horaria (son válidas solo para el circuito estándar de reservas).
-            // Sí se preserva la validación de convenio de obra social (3.a.2.a) y de choque de agenda.
+            // Sí se preserva la validación de convenio de obra social (3.a.2.a), de choque de agenda
+            // y la antelación mínima de RN19: la regla dice que "los turnos deberán ser solicitados
+            // con una antelación mínima de 24 horas" y ni las RN ni CUU01 exceptúan al Responsable
+            // (la coordinación fuera del circuito estándar es CUF11 / RN13, un caso de uso aparte).
             var paciente = await _pacienteRepository.GetAsync(request.TipoDocumentoPaciente, request.NroDocumentoPaciente)
                 ?? throw new ArgumentException("No se encontró el paciente indicado.");
 
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
+
+            // RN19 (ver comentario al inicio del método).
+            if (!ReglaAntelacion.CumpleAntelacionMinima(request.FechaHoraTurno, DateTime.Now))
+            {
+                return new AgendarTurnoResultDTO
+                {
+                    Resultado = ResultadoAgendarTurno.AntelacionInsuficiente,
+                    Mensaje = MensajeAntelacionInsuficiente
+                };
+            }
 
             var modalidad = (request.ModalidadPago ?? "PARTICULAR").ToUpper();
 

@@ -353,10 +353,11 @@ namespace Application.Services
 
         public async Task<RegistrarCobroResultDTO> RegistrarFaltaDePagoAsync(int nroTurno)
         {
-            // Alt 6.b <reemplaza> "El paciente no realiza el pago de la atención": "El
-            // responsable de la clínica registra la falta de pago [...] el sistema registra en
-            // la cuenta del paciente una deuda por el monto total ya calculado en el Paso 4
-            // [...] sin recalcularlo, cambia el estado del paciente a 'Inhabilitado'". FCU.
+            // Alt 6.b <reemplaza> "El paciente no realiza el pago": "El responsable de la
+            // clínica registra la falta de pago [...] el sistema registra en la cuenta del
+            // paciente una deuda por el monto total ya calculado en el Paso 4 [...] sin
+            // recalcularlo, cambia el estado del paciente a 'Inhabilitado' y el estado del
+            // turno a 'Finalizado'" (CUU03 v1.05). FCU.
             var turno = await ObtenerTurnoParaCobroAsync(nroTurno);
             if (turno == null)
             {
@@ -377,16 +378,18 @@ namespace Application.Services
 
             // No se crea ningún Pago: la relación Turno-Pago es 0..1 y en este camino no hubo
             // cobro efectivo; si el paciente salda la deuda más adelante, eso es CUF10 (fuera de
-            // alcance de CUU03), y ahí sí se crearía el único Pago de este turno.
+            // alcance de CUU03), y ahí sí se crearía el único Pago de este turno -- que es lo
+            // que vuelve valorable la atención (CUU04 v1.03).
             //
-            // El turno igual pasa a "Finalizado": ver el comentario en Turno.Finalizar().
+            // El turno pasa a "Finalizado" (CUU03 v1.05, alt 6.b; ME: "gestiona el cobro de la
+            // atención"): ver el comentario en Turno.Finalizar().
             turno.Finalizar();
             await _turnoRepository.UpdateAsync(turno);
 
             return new RegistrarCobroResultDTO
             {
                 Resultado = ResultadoRegistrarCobro.FaltaDePago,
-                Mensaje = $"Se registró la falta de pago. Queda una deuda de ${atencion.MontoTotal:N0} y el paciente {paciente.Nombre} {paciente.Apellido} fue inhabilitado hasta regularizar su situación.",
+                Mensaje = $"Se registró la falta de pago. Queda una deuda de ${atencion.MontoTotal:N0} y el paciente {paciente.Nombre} {paciente.Apellido} fue inhabilitado hasta regularizar su situación. El turno quedó Finalizado.",
                 EstadoTurno = turno.EstadoTurno,
                 MontoAdeudado = atencion.MontoTotal,
                 EstadoPaciente = paciente.EstadoPaciente

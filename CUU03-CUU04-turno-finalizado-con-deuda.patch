@@ -1,0 +1,235 @@
+diff --git a/Application.Services/FinalizarAtencionService.cs b/Application.Services/FinalizarAtencionService.cs
+index 1de42f5..6993775 100644
+--- a/Application.Services/FinalizarAtencionService.cs
++++ b/Application.Services/FinalizarAtencionService.cs
+@@ -353,10 +353,11 @@ namespace Application.Services
+ 
+         public async Task<RegistrarCobroResultDTO> RegistrarFaltaDePagoAsync(int nroTurno)
+         {
+-            // Alt 6.b <reemplaza> "El paciente no realiza el pago de la atención": "El
+-            // responsable de la clínica registra la falta de pago [...] el sistema registra en
+-            // la cuenta del paciente una deuda por el monto total ya calculado en el Paso 4
+-            // [...] sin recalcularlo, cambia el estado del paciente a 'Inhabilitado'". FCU.
++            // Alt 6.b <reemplaza> "El paciente no realiza el pago": "El responsable de la
++            // clínica registra la falta de pago [...] el sistema registra en la cuenta del
++            // paciente una deuda por el monto total ya calculado en el Paso 4 [...] sin
++            // recalcularlo, cambia el estado del paciente a 'Inhabilitado' y el estado del
++            // turno a 'Finalizado'" (CUU03 v1.05). FCU.
+             var turno = await ObtenerTurnoParaCobroAsync(nroTurno);
+             if (turno == null)
+             {
+@@ -377,16 +378,18 @@ namespace Application.Services
+ 
+             // No se crea ningún Pago: la relación Turno-Pago es 0..1 y en este camino no hubo
+             // cobro efectivo; si el paciente salda la deuda más adelante, eso es CUF10 (fuera de
+-            // alcance de CUU03), y ahí sí se crearía el único Pago de este turno.
++            // alcance de CUU03), y ahí sí se crearía el único Pago de este turno -- que es lo
++            // que vuelve valorable la atención (CUU04 v1.03).
+             //
+-            // El turno igual pasa a "Finalizado": ver el comentario en Turno.Finalizar().
++            // El turno pasa a "Finalizado" (CUU03 v1.05, alt 6.b; ME: "gestiona el cobro de la
++            // atención"): ver el comentario en Turno.Finalizar().
+             turno.Finalizar();
+             await _turnoRepository.UpdateAsync(turno);
+ 
+             return new RegistrarCobroResultDTO
+             {
+                 Resultado = ResultadoRegistrarCobro.FaltaDePago,
+-                Mensaje = $"Se registró la falta de pago. Queda una deuda de ${atencion.MontoTotal:N0} y el paciente {paciente.Nombre} {paciente.Apellido} fue inhabilitado hasta regularizar su situación.",
++                Mensaje = $"Se registró la falta de pago. Queda una deuda de ${atencion.MontoTotal:N0} y el paciente {paciente.Nombre} {paciente.Apellido} fue inhabilitado hasta regularizar su situación. El turno quedó Finalizado.",
+                 EstadoTurno = turno.EstadoTurno,
+                 MontoAdeudado = atencion.MontoTotal,
+                 EstadoPaciente = paciente.EstadoPaciente
+diff --git a/Application.Services/ValorarAtencionService.cs b/Application.Services/ValorarAtencionService.cs
+index 4c3af9b..30e4217 100644
+--- a/Application.Services/ValorarAtencionService.cs
++++ b/Application.Services/ValorarAtencionService.cs
+@@ -17,16 +17,17 @@ namespace Application.Services
+     }
+ 
+     // =========================================================================
+-    // CUU04 - VALORAR ATENCIÓN ODONTOLÓGICA (v1.02)
++    // CUU04 - VALORAR ATENCIÓN ODONTOLÓGICA (v1.03)
+     // Actor primario: Paciente de la clínica. Otros: <vacío> -- a diferencia de CUU02/CUU03,
+     // acá no interviene el Responsable de la Clínica ni el Odontólogo.
+     //
+     // Precondiciones de sistema: el paciente inició sesión; el turno está registrado como
+-    // "Finalizado"; el paciente está "Habilitado". Estas dos últimas son condiciones
+-    // independientes (ver Turno.PendienteDeValoracion y el comentario de alcance en
+-    // Turno.Finalizar()); no se vuelve a validar acá si la atención fue efectivamente cobrada
+-    // -- eso ya es responsabilidad de CUU03 al llevar el turno a "Finalizado", y la Matriz
+-    // CRUD solo lista a CUU04 leyendo Turno y Pacientes, sin actualizar ninguno de los dos.
++    // "Finalizado"; el paciente está "habilitado" para valorar la atención, es decir, el
++    // turno tiene registrado el pago de la atención y la atención aún no cuenta con una
++    // valoración registrada. Esa regla vive en Turno.PendienteDeValoracion. Desde CUU03 v1.05
++    // un turno "Finalizado" puede no estar cobrado (alt 6.b, falta de pago), por eso acá sí
++    // se exige el Pago de esa atención (la Matriz CRUD pasa a listar Pago (R) en CUU04); el
++    // estado general del Paciente (Habilitado/Inhabilitado) ya no interviene.
+     //
+     // RN14: una vez registrada la valoración, el sistema deshabilita al paciente para volver
+     // a valorar la misma atención (relación 1:1 Atención-Valoración).
+@@ -45,7 +46,7 @@ namespace Application.Services
+         }
+ 
+         // Camino básico, paso 1: "El paciente consulta las atenciones odontológicas
+-        // finalizadas pendientes de valoración. El sistema muestra el listado
++        // finalizadas y cobradas pendientes de valoración. El sistema muestra el listado
+         // correspondiente, indicando para cada atención el turno, la fecha y hora de inicio,
+         // la especialidad y el odontólogo que la realizó." Alt 1.a: si no hay ninguna, se
+         // informa con el mensaje literal del diccionario de datos.
+@@ -108,7 +109,7 @@ namespace Application.Services
+                 return new RegistrarValoracionResultDTO
+                 {
+                     Resultado = ResultadoRegistrarValoracion.NoDisponible,
+-                    Mensaje = "Esa atención ya no está disponible para valorar: puede que no te pertenezca, que la atención todavía no esté \"Finalizada\", o que ya tenga una valoración registrada."
++                    Mensaje = "Esa atención ya no está disponible para valorar: puede que no te pertenezca, que todavía no esté finalizada y cobrada, o que ya tenga una valoración registrada."
+                 };
+             }
+ 
+diff --git a/DTOs/FinalizarAtencionDTOs.cs b/DTOs/FinalizarAtencionDTOs.cs
+index 1124cba..5540467 100644
+--- a/DTOs/FinalizarAtencionDTOs.cs
++++ b/DTOs/FinalizarAtencionDTOs.cs
+@@ -94,7 +94,7 @@ namespace DTOs
+     }
+ 
+     // Diccionario de datos, paso 6 / 6.a: sConfirmacionPago = fechaYHoraPago + monto + estadoTurno(d).
+-    // Diccionario de datos, 6.b.1: sAvisoDeudaRegistrada = montoAdeudado + estadoPaciente(d).
++    // Diccionario de datos, 6.b.1: sAvisoDeudaRegistrada = montoAdeudado + estadoPaciente(d) + estadoTurno(d).
+     public class RegistrarCobroResultDTO
+     {
+         public ResultadoRegistrarCobro Resultado { get; set; }
+diff --git a/DTOs/ValorarAtencionDTOs.cs b/DTOs/ValorarAtencionDTOs.cs
+index 1dc5ce8..3982bdc 100644
+--- a/DTOs/ValorarAtencionDTOs.cs
++++ b/DTOs/ValorarAtencionDTOs.cs
+@@ -1,8 +1,8 @@
+ namespace DTOs
+ {
+     // CUU04 - Valorar Atención Odontológica.
+-    // Camino básico, paso 1 / Alt 1.a: resultado de consultar las atenciones finalizadas
+-    // pendientes de valoración.
++    // Camino básico, paso 1 / Alt 1.a: resultado de consultar las atenciones finalizadas y
++    // cobradas pendientes de valoración.
+     public enum ResultadoPendientesDeValoracion
+     {
+         Ok,             // Hay al menos una atención pendiente de valorar.
+@@ -32,8 +32,8 @@ namespace DTOs
+     {
+         Registrada,             // Éxito (con o sin observaciones -- Alt 2.a).
+         NoDisponible,           // El turno no existe, no es del paciente logueado, no está
+-                                // "Finalizado", el paciente no está "Habilitado", o la
+-                                // atención ya tiene una Valoracion registrada (RN14).
++                                // "Finalizado", no tiene el pago de la atención registrado, o
++                                // la atención ya tiene una Valoracion registrada (RN14).
+         CalificacionInvalida,   // La calificación no está entre 1 y 5 (Valoracion.SetCalificacion).
+         ObservacionesInvalidas  // Observaciones de más de 500 caracteres (límite del MDF).
+     }
+diff --git a/Domain.Model/Turno.cs b/Domain.Model/Turno.cs
+index 0634484..317fc71 100644
+--- a/Domain.Model/Turno.cs
++++ b/Domain.Model/Turno.cs
+@@ -113,15 +113,18 @@ namespace Domain.Model
+         // Propiedad calculada de solo lectura: EF Core no la mapea (igual que los alias de arriba).
+         public bool PermiteCancelarOReprogramar => EstadoTurno == "RESERVADO";
+ 
+-        // CUU04 - Valorar Atención Odontológica, precondiciones de sistema: "El turno del
+-        // paciente está registrado como 'Finalizado'" y "El paciente está habilitado en el
+-        // sistema para poder brindar una valoración" -- dos condiciones independientes, tal
+-        // como las lista la Matriz CRUD (CUU04: Turno R, Pacientes R; no actualiza ninguna de
+-        // las dos). RN14: una vez que la Atención ya tiene una Valoracion, deja de estar
+-        // pendiente. Requiere Paciente y Atencion.Valoracion cargados para evaluarse bien.
++        // CUU04 - Valorar Atención Odontológica (v1.03), precondiciones de sistema: "El turno
++        // del paciente está registrado como 'Finalizado'" y "El turno tiene registrado el pago
++        // de la atención y la atención aún no cuenta con una valoración registrada".
++        // "Habilitado para valorar" es una condición derivada de ESA atención (cobro registrado
++        // y sin valoración previa, RN14), no el estado general del Paciente: desde CUU03 v1.05
++        // un turno "Finalizado" puede no estar cobrado (alt 6.b, falta de pago) y recién tiene
++        // Pago cuando el paciente regulariza la deuda (CUF10). Que el paciente tenga una deuda
++        // por OTRO turno no le quita la posibilidad de valorar una atención que sí abonó.
++        // Requiere Pago y Atencion.Valoracion cargados para evaluarse bien.
+         public bool PendienteDeValoracion =>
+             EstadoTurno == "FINALIZADO" &&
+-            Paciente?.EstadoPaciente == "HABILITADO" &&
++            Pago != null &&
+             Atencion != null &&
+             Atencion.Valoracion == null;
+ 
+@@ -168,25 +171,19 @@ namespace Domain.Model
+         // separado, más abajo, en Finalizar().
+         public void RegistrarAtencion() => EstadoTurno = "ATENCION_REGISTRADA";
+ 
+-        // CUU03 - Finalizar Atención Odontológica, camino básico paso 6 / alt 6.a / alt 6.b:
+-        // "el responsable de la clínica le cobra la atención al paciente" (ME - Turno) -> el
+-        // turno pasa a "Finalizado".
++        // CUU03 - Finalizar Atención Odontológica (v1.05), camino básico paso 6 / alt 6.a /
++        // alt 6.b: "el responsable de la clínica gestiona el cobro de la atención" (ME - Turno,
++        // transición ATENCIÓN REGISTRADA -> FINALIZADO) -> el turno pasa a "Finalizado".
+         //
+-        // Nota de alcance: el texto de CUU03 dice explícitamente "cambia el estado del turno a
+-        // Finalizado" en el camino básico y en 6.a (obra social); en 6.b (falta de pago) solo
+-        // menciona el cambio de estado del Paciente a "Inhabilitado" y no dice nada del Turno.
+-        // Se interpreta que el Turno pasa a "Finalizado" en los tres casos, porque (a) la
+-        // Máquina de Estados dibuja una única transición ATENCIÓN REGISTRADA -> FINALIZADO sin
+-        // bifurcar según si hubo cobro efectivo, y (b) la precondición de CUU04 exige
+-        // Turno = "Finalizado" Y Paciente = "Habilitado" como dos condiciones independientes: si
+-        // el turno nunca llegara a "Finalizado" en 6.b, esa atención jamás podría valorarse ni
+-        // siquiera después de que el paciente pague la deuda (CUF10). Lo único que varía entre
+-        // los tres caminos es si se creó o no un Pago (relación Turno-Pago 0..1) y el estado del
+-        // Paciente. Confirmar con el equipo si esta lectura no es la buscada.
++        // El turno queda "Finalizado" en los tres caminos: el texto de CUU03 lo dice
++        // explícitamente en el paso 6, en 6.a (obra social) y, desde v1.05, también en 6.b
++        // (falta de pago). Lo único que varía entre los tres caminos es si se creó o no un
++        // Pago (relación Turno-Pago 0..1) y el estado del Paciente: "Finalizado" no implica
++        // "cobrado".
+         //
+-        // Nota (CUU04): con esta lectura, PendienteDeValoracion (más abajo) puede evaluar el
+-        // Turno y el Paciente por separado sin volver a mirar si hubo o no un Pago real para
+-        // esta atención, tal como los lista la Matriz CRUD para CUU04.
++        // Nota (CUU04 v1.03): un turno "Finalizado" sin Pago (alt 6.b) todavía no se puede
++        // valorar; pasa a ser valorable cuando se registra su Pago al regularizar la deuda
++        // (ver PendienteDeValoracion).
+         public void Finalizar() => EstadoTurno = "FINALIZADO";
+ 
+         public void SetEstado(string estado) => EstadoTurno = estado;
+diff --git a/Frontend.MVC/Controllers/HomeController.cs b/Frontend.MVC/Controllers/HomeController.cs
+index ff1b77c..ef1609f 100644
+--- a/Frontend.MVC/Controllers/HomeController.cs
++++ b/Frontend.MVC/Controllers/HomeController.cs
+@@ -265,6 +265,8 @@ namespace TurnoMolar.Controllers
+                 .Include(t => t.Odontologo)
+                 .Include(t => t.Especialidad)
+                 .Include(t => t.Comprobante)
++                // CUU04 v1.03: Turno.PendienteDeValoracion exige el pago de la atención registrado.
++                .Include(t => t.Pago)
+                 .Include(t => t.Atencion)
+                     .ThenInclude(a => a!.Valoracion)
+                 .Where(t => t.NroDocumentoPaciente == paciente.NroDocumento)
+diff --git a/Frontend.MVC/Views/Home/MisTurnos.cshtml b/Frontend.MVC/Views/Home/MisTurnos.cshtml
+index 77ef69e..9e9186c 100644
+--- a/Frontend.MVC/Views/Home/MisTurnos.cshtml
++++ b/Frontend.MVC/Views/Home/MisTurnos.cshtml
+@@ -242,14 +242,21 @@
+                                                 <i class="bi bi-star-fill text-warning me-1"></i> Calificado: @valoracion.Calificacion / 5
+                                             </span>
+                                         }
+-                                        else
++                                        else if (t.PendienteDeValoracion)
+                                         {
+                                             @* CUU04, camino básico paso 1: la atención se valora desde su propio
+-                                               listado de pendientes, no acá; este acceso solo cambia de pestaña. *@
++                                               listado de pendientes, no acá; este acceso solo cambia de pestaña.
++                                               Solo se ofrece si la atención está cobrada (CUU04 v1.03). *@
+                                             <button type="button" class="btn btn-sm btn-link text-warning fw-bold text-decoration-none p-0" data-bs-toggle="tab" data-bs-target="#paravalorar">
+                                                 <i class="bi bi-star me-1"></i> Pendiente de valorar
+                                             </button>
+                                         }
++                                        else if (t.EstadoTurno == "FINALIZADO" && t.Pago == null)
++                                        {
++                                            @* CUU03 v1.05, alt 6.b: turno finalizado con deuda. Se puede valorar
++                                               recién cuando el paciente regulariza la deuda y queda su pago registrado. *@
++                                            <span class="text-muted small"><i class="bi bi-cash-coin me-1"></i>Pendiente de pago</span>
++                                        }
+                                     }
+                                     else
+                                     {

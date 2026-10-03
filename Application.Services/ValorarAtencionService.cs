@@ -17,16 +17,17 @@ namespace Application.Services
     }
 
     // =========================================================================
-    // CUU04 - VALORAR ATENCIÓN ODONTOLÓGICA (v1.02)
+    // CUU04 - VALORAR ATENCIÓN ODONTOLÓGICA (v1.03)
     // Actor primario: Paciente de la clínica. Otros: <vacío> -- a diferencia de CUU02/CUU03,
     // acá no interviene el Responsable de la Clínica ni el Odontólogo.
     //
     // Precondiciones de sistema: el paciente inició sesión; el turno está registrado como
-    // "Finalizado"; el paciente está "Habilitado". Estas dos últimas son condiciones
-    // independientes (ver Turno.PendienteDeValoracion y el comentario de alcance en
-    // Turno.Finalizar()); no se vuelve a validar acá si la atención fue efectivamente cobrada
-    // -- eso ya es responsabilidad de CUU03 al llevar el turno a "Finalizado", y la Matriz
-    // CRUD solo lista a CUU04 leyendo Turno y Pacientes, sin actualizar ninguno de los dos.
+    // "Finalizado"; el paciente está "habilitado" para valorar la atención, es decir, el
+    // turno tiene registrado el pago de la atención y la atención aún no cuenta con una
+    // valoración registrada. Esa regla vive en Turno.PendienteDeValoracion. Desde CUU03 v1.05
+    // un turno "Finalizado" puede no estar cobrado (alt 6.b, falta de pago), por eso acá sí
+    // se exige el Pago de esa atención (la Matriz CRUD pasa a listar Pago (R) en CUU04); el
+    // estado general del Paciente (Habilitado/Inhabilitado) ya no interviene.
     //
     // RN14: una vez registrada la valoración, el sistema deshabilita al paciente para volver
     // a valorar la misma atención (relación 1:1 Atención-Valoración).
@@ -45,7 +46,7 @@ namespace Application.Services
         }
 
         // Camino básico, paso 1: "El paciente consulta las atenciones odontológicas
-        // finalizadas pendientes de valoración. El sistema muestra el listado
+        // finalizadas y cobradas pendientes de valoración. El sistema muestra el listado
         // correspondiente, indicando para cada atención el turno, la fecha y hora de inicio,
         // la especialidad y el odontólogo que la realizó." Alt 1.a: si no hay ninguna, se
         // informa con el mensaje literal del diccionario de datos.
@@ -108,7 +109,7 @@ namespace Application.Services
                 return new RegistrarValoracionResultDTO
                 {
                     Resultado = ResultadoRegistrarValoracion.NoDisponible,
-                    Mensaje = "Esa atención ya no está disponible para valorar: puede que no te pertenezca, que la atención todavía no esté \"Finalizada\", o que ya tenga una valoración registrada."
+                    Mensaje = "Esa atención ya no está disponible para valorar: puede que no te pertenezca, que todavía no esté finalizada y cobrada, o que ya tenga una valoración registrada."
                 };
             }
 

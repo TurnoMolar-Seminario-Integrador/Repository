@@ -242,13 +242,20 @@
                                                 <i class="bi bi-star-fill text-warning me-1"></i> Calificado: @valoracion.Calificacion / 5
                                             </span>
                                         }
-                                        else
+                                        else if (t.PendienteDeValoracion)
                                         {
                                             @* CUU04, camino básico paso 1: la atención se valora desde su propio
-                                               listado de pendientes, no acá; este acceso solo cambia de pestaña. *@
+                                               listado de pendientes, no acá; este acceso solo cambia de pestaña.
+                                               Solo se ofrece si la atención está cobrada (CUU04 v1.03). *@
                                             <button type="button" class="btn btn-sm btn-link text-warning fw-bold text-decoration-none p-0" data-bs-toggle="tab" data-bs-target="#paravalorar">
                                                 <i class="bi bi-star me-1"></i> Pendiente de valorar
                                             </button>
+                                        }
+                                        else if (t.EstadoTurno == "FINALIZADO" && t.Pago == null)
+                                        {
+                                            @* CUU03 v1.05, alt 6.b: turno finalizado con deuda. Se puede valorar
+                                               recién cuando el paciente regulariza la deuda y queda su pago registrado. *@
+                                            <span class="text-muted small"><i class="bi bi-cash-coin me-1"></i>Pendiente de pago</span>
                                         }
                                     }
                                     else

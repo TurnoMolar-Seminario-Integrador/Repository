@@ -1,8 +1,8 @@
 namespace DTOs
 {
     // CUU04 - Valorar Atención Odontológica.
-    // Camino básico, paso 1 / Alt 1.a: resultado de consultar las atenciones finalizadas
-    // pendientes de valoración.
+    // Camino básico, paso 1 / Alt 1.a: resultado de consultar las atenciones finalizadas y
+    // cobradas pendientes de valoración.
     public enum ResultadoPendientesDeValoracion
     {
         Ok,             // Hay al menos una atención pendiente de valorar.
@@ -32,8 +32,8 @@ namespace DTOs
     {
         Registrada,             // Éxito (con o sin observaciones -- Alt 2.a).
         NoDisponible,           // El turno no existe, no es del paciente logueado, no está
-                                // "Finalizado", el paciente no está "Habilitado", o la
-                                // atención ya tiene una Valoracion registrada (RN14).
+                                // "Finalizado", no tiene el pago de la atención registrado, o
+                                // la atención ya tiene una Valoracion registrada (RN14).
         CalificacionInvalida,   // La calificación no está entre 1 y 5 (Valoracion.SetCalificacion).
         ObservacionesInvalidas  // Observaciones de más de 500 caracteres (límite del MDF).
     }

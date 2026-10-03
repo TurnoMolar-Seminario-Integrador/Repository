@@ -265,6 +265,8 @@ namespace TurnoMolar.Controllers
                 .Include(t => t.Odontologo)
                 .Include(t => t.Especialidad)
                 .Include(t => t.Comprobante)
+                // CUU04 v1.03: Turno.PendienteDeValoracion exige el pago de la atención registrado.
+                .Include(t => t.Pago)
                 .Include(t => t.Atencion)
                     .ThenInclude(a => a!.Valoracion)
                 .Where(t => t.NroDocumentoPaciente == paciente.NroDocumento)

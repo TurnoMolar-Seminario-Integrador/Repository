@@ -15,6 +15,7 @@ namespace Domain.Model
         {
             NumConsultorio = numConsultorio;
             SetDireccion(direccion);
+            Direccion = direccion;
         }
 
         public void SetDireccion(string direccion)

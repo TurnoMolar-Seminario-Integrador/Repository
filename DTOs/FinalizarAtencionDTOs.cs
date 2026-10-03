@@ -94,7 +94,7 @@ namespace DTOs
     }
 
     // Diccionario de datos, paso 6 / 6.a: sConfirmacionPago = fechaYHoraPago + monto + estadoTurno(d).
-    // Diccionario de datos, 6.b.1: sAvisoDeudaRegistrada = montoAdeudado + estadoPaciente(d).
+    // Diccionario de datos, 6.b.1: sAvisoDeudaRegistrada = montoAdeudado + estadoPaciente(d) + estadoTurno(d).
     public class RegistrarCobroResultDTO
     {
         public ResultadoRegistrarCobro Resultado { get; set; }

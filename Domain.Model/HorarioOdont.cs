@@ -2,9 +2,9 @@ namespace Domain.Model
 {
   public class HorarioOdont
   {
-    public string HoraDesde { get; private set; }
-    public string HoraHasta { get; private set; }
-    public string DiaSemana { get; private set; }
+    public string HoraDesde { get; private set; } = string.Empty;
+    public string HoraHasta { get; private set; } = string.Empty;
+    public string DiaSemana { get; private set; } = string.Empty;
 
 
     public HorarioOdont(string horadesde, string horahasta, string diasemana)

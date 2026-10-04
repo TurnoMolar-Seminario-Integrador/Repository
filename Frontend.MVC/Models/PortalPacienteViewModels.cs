@@ -23,6 +23,10 @@ namespace Frontend.MVC.Models
         // CUU04 - Valorar Atención Odontológica, camino básico paso 1: listado de atenciones
         // finalizadas pendientes de valoración (pestaña "Para Valorar").
         public List<AtencionPendienteValoracionDTO> PendientesDeValoracion { get; set; } = new();
+
+        // Atenciones finalizadas con el cobro pendiente (CUU03 alt 6.b): todavía no se pueden
+        // valorar, pero se informan en la pestaña "Para Valorar" junto con el acceso a pagar.
+        public List<AtencionPendienteValoracionDTO> PendientesPorDeuda { get; set; } = new();
     }
 
     public class MetodosPagoViewModel

@@ -5,8 +5,11 @@ namespace DTOs
     // cobradas pendientes de valoración.
     public enum ResultadoPendientesDeValoracion
     {
-        Ok,             // Hay al menos una atención pendiente de valorar.
-        SinPendientes   // Alt 1.a <durante>: no hay ninguna. FCU.
+        Ok,                 // Hay al menos una atención pendiente de valorar.
+        SinPendientes,      // Alt 1.a <durante>: no hay ninguna. FCU.
+        PendientesPorDeuda  // No hay ninguna valorable, pero sí atenciones finalizadas con el cobro
+                            // pendiente (CUU03 alt 6.b): se habilitan al regularizar la deuda
+                            // (CUF10). Agregado a CUU04 v1.03: pendiente de reflejar como alt 1.b.
     }
 
     // Diccionario de datos, paso 1: sListadoAtencionesPendientesValoracion =
@@ -17,6 +20,9 @@ namespace DTOs
         public ResultadoPendientesDeValoracion Resultado { get; set; }
         public string Mensaje { get; set; } = string.Empty;
         public List<AtencionPendienteValoracionDTO> Pendientes { get; set; } = new();
+        // Atenciones finalizadas y sin valoración cuyo cobro está pendiente. No se pueden
+        // valorar todavía; se informan para que el paciente sepa que las tiene pendientes.
+        public List<AtencionPendienteValoracionDTO> PendientesPorDeuda { get; set; } = new();
     }
 
     public class AtencionPendienteValoracionDTO

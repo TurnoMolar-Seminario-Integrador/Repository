@@ -128,8 +128,12 @@
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link rounded-pill px-4 fw-bold @(Model.PendientesDeValoracion.Any() ? "text-dark bg-warning border-0" : "text-muted bg-white border")" data-bs-toggle="tab" data-bs-target="#paravalorar" type="button">
-                    Para Valorar (@Model.PendientesDeValoracion.Count)
+                <button class="nav-link rounded-pill px-4 fw-bold @(Model.PendientesDeValoracion.Any() ? "text-dark bg-warning border-0" : (Model.PendientesPorDeuda.Any() ? "text-danger bg-white border border-danger" : "text-muted bg-white border"))" data-bs-toggle="tab" data-bs-target="#paravalorar" type="button">
+                    @if (Model.PendientesPorDeuda.Any() && !Model.PendientesDeValoracion.Any())
+                    {
+                        <i class="bi bi-lock-fill me-1"></i>
+                    }
+                    Para Valorar (@(Model.PendientesDeValoracion.Count + Model.PendientesPorDeuda.Count))
                 </button>
             </li>
         </ul>
@@ -255,7 +259,7 @@
                                         {
                                             @* CUU03 v1.05, alt 6.b: turno finalizado con deuda. Se puede valorar
                                                recién cuando el paciente regulariza la deuda y queda su pago registrado. *@
-                                            <span class="text-muted small"><i class="bi bi-cash-coin me-1"></i>Pendiente de pago</span>
+                                            <a href="@Url.Action("MetodosDePago", "Home")" class="text-danger small fw-bold text-decoration-none"><i class="bi bi-cash-coin me-1"></i>Pendiente de pago · Regularizar deuda</a>
                                         }
                                     }
                                     else
@@ -307,7 +311,50 @@
                         </div>
                     }
                 }
-                else
+
+                @if (Model.PendientesPorDeuda.Any())
+                {
+                    @* CUU04 (alt 1.b propuesta): atenciones finalizadas con el cobro pendiente (CUU03 alt 6.b).
+                       Todavía no se pueden valorar, pero el paciente tiene que enterarse de que las tiene
+                       pendientes y de cómo habilitarlas: regularizando la deuda en Métodos de Pago (CUF10). *@
+                    <div class="alert alert-warning border-0 shadow-sm rounded-4 d-flex flex-wrap justify-content-between align-items-center gap-3 @(Model.PendientesDeValoracion.Any() ? "mt-3" : "")" role="alert">
+                        <div class="d-flex align-items-start gap-3">
+                            <i class="bi bi-lock-fill fs-4"></i>
+                            <div>
+                                <strong>Tenés @Model.PendientesPorDeuda.Count atención(es) para valorar que todavía no se habilitaron.</strong>
+                                <div class="small">Vas a poder valorarlas cuando regularices tu deuda.</div>
+                            </div>
+                        </div>
+                        <a href="@Url.Action("MetodosDePago", "Home")" class="btn btn-warning rounded-pill px-4 fw-bold text-dark">
+                            <i class="bi bi-wallet2 me-1"></i> Regularizar deuda
+                        </a>
+                    </div>
+                    @foreach (var p in Model.PendientesPorDeuda)
+                    {
+                        <div class="turno-card opacity-75">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="turno-date bg-light text-muted">
+                                        <h3 class="mb-0 fw-extrabold">@p.FechaHoraAtencionInicio.Day</h3>
+                                        <small class="fw-bold text-uppercase">@p.FechaHoraAtencionInicio.ToString("MMM").ToUpper()</small>
+                                    </div>
+                                    <div>
+                                        <span class="turno-status status-completed mb-1 d-inline-block">Finalizado</span>
+                                        <h5 class="fw-bold mb-1 text-dark">@p.NombreEspecialidad</h5>
+                                        <p class="text-muted small mb-0">
+                                            <i class="bi bi-person-fill me-1 text-secondary"></i> @p.NombreOdontologo • @p.FechaHoraAtencionInicio.ToString("dd/MM/yyyy HH:mm") hs • Turno #@p.NroTurno
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2">
+                                    <i class="bi bi-lock-fill me-1"></i> Pendiente de pago
+                                </span>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (!Model.PendientesDeValoracion.Any() && !Model.PendientesPorDeuda.Any())
                 {
                     <div class="bg-white border rounded-4 p-5 text-center shadow-sm">
                         <i class="bi bi-star fs-1 text-muted mb-3 d-block"></i>

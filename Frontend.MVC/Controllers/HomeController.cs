@@ -190,6 +190,8 @@ namespace TurnoMolar.Controllers
             ViewData["NombrePaciente"] = $"{paciente.Nombre} {paciente.Apellido}";
             ViewData["IdPaciente"] = paciente.NroDocumento;
             ViewData["EstadoPaciente"] = paciente.EstadoPaciente;
+            // Lo usa el aviso de deuda del layout del paciente (_LayoutPaciente).
+            ViewData["MontoAdeudado"] = paciente.MontoAdeudado ?? 0m;
 
             return paciente;
         }
@@ -290,7 +292,8 @@ namespace TurnoMolar.Controllers
                 Turnos = turnos,
                 Odontologos = odontologos,
                 Especialidades = especialidades,
-                PendientesDeValoracion = resultadoPendientes.Pendientes
+                PendientesDeValoracion = resultadoPendientes.Pendientes,
+                PendientesPorDeuda = resultadoPendientes.PendientesPorDeuda
             };
 
             return View(viewModel);

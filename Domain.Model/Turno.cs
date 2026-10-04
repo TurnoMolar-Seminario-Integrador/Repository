@@ -128,6 +128,16 @@ namespace Domain.Model
             Atencion != null &&
             Atencion.Valoracion == null;
 
+        // Atención finalizada cuyo cobro quedó pendiente (CUU03 alt 6.b, falta de pago) y que
+        // todavía no tiene valoración. No es valorable (ver PendienteDeValoracion), pero el
+        // paciente tiene que poder enterarse de que la tiene pendiente: se habilita cuando
+        // regulariza la deuda y queda registrado el Pago del turno (CUF10).
+        public bool PendienteDeValoracionPorDeuda =>
+            EstadoTurno == "FINALIZADO" &&
+            Pago == null &&
+            Atencion != null &&
+            Atencion.Valoracion == null;
+
         public void Reprogramar(DateTime nuevaFechaHora, int? nuevoNroTurno = null)
         {
             if (!PermiteCancelarOReprogramar)

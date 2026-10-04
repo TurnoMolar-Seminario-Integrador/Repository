@@ -85,6 +85,8 @@ namespace Frontend.MVC.Controllers
             ViewData["NombrePaciente"] = $"{paciente.Nombre} {paciente.Apellido}";
             ViewData["IdPaciente"] = paciente.NroDocumento;
             ViewData["EstadoPaciente"] = paciente.EstadoPaciente;
+            // Lo usa el aviso de deuda del layout del paciente (_LayoutPaciente).
+            ViewData["MontoAdeudado"] = paciente.MontoAdeudado ?? 0m;
 
             return paciente;
         }

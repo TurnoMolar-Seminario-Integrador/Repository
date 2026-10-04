@@ -50,24 +50,21 @@ namespace Application.Services
         // correspondiente, indicando para cada atención el turno, la fecha y hora de inicio,
         // la especialidad y el odontólogo que la realizó." Alt 1.a: si no hay ninguna, se
         // informa con el mensaje literal del diccionario de datos.
+        //
+        // Además de las valorables, se informan las atenciones finalizadas cuyo cobro quedó
+        // pendiente (CUU03 alt 6.b, falta de pago): todavía no se pueden valorar, pero el
+        // paciente tiene que enterarse de que las tiene pendientes y de que se habilitan al
+        // regularizar la deuda (CUF10). Es un agregado a CUU04 v1.03 que hay que reflejar en
+        // el documento como alt 1.b.
         public async Task<PendientesDeValoracionResultDTO> ObtenerPendientesDeValoracionAsync(
             string tipoDocumentoPaciente, string nroDocumentoPaciente)
         {
-            var turnos = await _turnoRepository.GetByPacienteAsync(tipoDocumentoPaciente, nroDocumentoPaciente);
+            var turnos = (await _turnoRepository.GetByPacienteAsync(tipoDocumentoPaciente, nroDocumentoPaciente)).ToList();
 
-            var pendientes = turnos
-                .Where(t => t.PendienteDeValoracion)
-                .OrderByDescending(t => t.Atencion!.FechaHoraAtencionInicio)
-                .Select(t => new AtencionPendienteValoracionDTO
-                {
-                    NroTurno = t.NroTurno,
-                    FechaHoraAtencionInicio = t.Atencion!.FechaHoraAtencionInicio,
-                    NombreEspecialidad = t.Especialidad?.Nombre ?? string.Empty,
-                    NombreOdontologo = t.Odontologo != null ? $"{t.Odontologo.Nombre} {t.Odontologo.Apellido}" : string.Empty
-                })
-                .ToList();
+            var pendientes = AListadoDeAtenciones(turnos.Where(t => t.PendienteDeValoracion));
+            var pendientesPorDeuda = AListadoDeAtenciones(turnos.Where(t => t.PendienteDeValoracionPorDeuda));
 
-            if (pendientes.Count == 0)
+            if (pendientes.Count == 0 && pendientesPorDeuda.Count == 0)
             {
                 // Alt 1.a.1, diccionario: sMensajeSinAtencionesPendientes.
                 return new PendientesDeValoracionResultDTO
@@ -77,13 +74,37 @@ namespace Application.Services
                 };
             }
 
+            if (pendientes.Count == 0)
+            {
+                // Alt 1.b (propuesta): solo hay atenciones con el cobro pendiente.
+                return new PendientesDeValoracionResultDTO
+                {
+                    Resultado = ResultadoPendientesDeValoracion.PendientesPorDeuda,
+                    Mensaje = $"Tiene {pendientesPorDeuda.Count} atención(es) pendiente(s) de valoración que podrá valorar cuando regularice su deuda.",
+                    PendientesPorDeuda = pendientesPorDeuda
+                };
+            }
+
             return new PendientesDeValoracionResultDTO
             {
                 Resultado = ResultadoPendientesDeValoracion.Ok,
                 Mensaje = $"Tiene {pendientes.Count} atención(es) pendiente(s) de valoración.",
-                Pendientes = pendientes
+                Pendientes = pendientes,
+                PendientesPorDeuda = pendientesPorDeuda
             };
         }
+
+        private static List<AtencionPendienteValoracionDTO> AListadoDeAtenciones(IEnumerable<Turno> turnos) =>
+            turnos
+                .OrderByDescending(t => t.Atencion!.FechaHoraAtencionInicio)
+                .Select(t => new AtencionPendienteValoracionDTO
+                {
+                    NroTurno = t.NroTurno,
+                    FechaHoraAtencionInicio = t.Atencion!.FechaHoraAtencionInicio,
+                    NombreEspecialidad = t.Especialidad?.Nombre ?? string.Empty,
+                    NombreOdontologo = t.Odontologo != null ? $"{t.Odontologo.Nombre} {t.Odontologo.Apellido}" : string.Empty
+                })
+                .ToList();
 
         // Camino básico, paso 2 / Alt 2.a: "El paciente selecciona la atención que desea
         // valorar e indica la calificación correspondiente [...]. El sistema registra la

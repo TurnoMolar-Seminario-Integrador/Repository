@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Agendar Turno - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "MisTurnos";
+    ViewData["OcultarAvisoDeuda"] = true; // esta vista ya muestra su propio aviso (CUU01 alt 2.a).
     Layout = "_LayoutPaciente";
 
     var nombrePaciente = ViewData["NombrePaciente"] ?? "";

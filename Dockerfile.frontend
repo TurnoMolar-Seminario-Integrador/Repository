@@ -1,0 +1,29 @@
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project files for layer caching
+COPY ["Domain.Model/Domain.Model.csproj", "Domain.Model/"]
+COPY ["DTOs/DTOs.csproj", "DTOs/"]
+COPY ["Data/Data.csproj", "Data/"]
+COPY ["Application.Services/Application.Services.csproj", "Application.Services/"]
+COPY ["Frontend.MVC/WebApplication1.csproj", "Frontend.MVC/"]
+
+RUN dotnet restore "Frontend.MVC/WebApplication1.csproj"
+
+# Copy full solution source
+COPY . .
+
+# Publish Frontend.MVC
+WORKDIR "/src/Frontend.MVC"
+RUN dotnet publish "WebApplication1.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 2: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "WebApplication1.dll"]

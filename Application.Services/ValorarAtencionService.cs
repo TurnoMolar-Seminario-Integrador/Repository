@@ -80,7 +80,8 @@ namespace Application.Services
                 return new PendientesDeValoracionResultDTO
                 {
                     Resultado = ResultadoPendientesDeValoracion.PendientesPorDeuda,
-                    Mensaje = $"Tiene {pendientesPorDeuda.Count} atención(es) pendiente(s) de valoración que podrá valorar cuando regularice su deuda.",
+                    // Diccionario de datos, 1.b.1: mensajeCobroPendiente(d).
+                    Mensaje = "Tiene atenciones odontológicas pendientes de valoración que podrá valorar cuando regularice su deuda.",
                     PendientesPorDeuda = pendientesPorDeuda
                 };
             }

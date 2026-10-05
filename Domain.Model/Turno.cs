@@ -128,6 +128,18 @@ namespace Domain.Model
             Atencion != null &&
             Atencion.Valoracion == null;
 
+        // RN8: "Un paciente no puede reservar un nuevo turno teniendo ya un turno previo que esté
+        // pendiente de atención". Se considera pendiente de atención todo turno que todavía no
+        // concluyó, es decir, en estado "Reservado", "Presente" o "Atención Registrada" (ME - Turno).
+        // Un turno "Atención Registrada" todavía puede terminar en deuda (CUU03 alt 6.b), y el
+        // modelo admite una sola deuda a la vez (MD: /montoAdeudado, "el Turno que originó la
+        // deuda"): por eso el paciente no puede tener otro turno reservado mientras tanto.
+        // "Finalizado", "Ausente", "Cancelado" y "Reprogramado" ya no están pendientes.
+        public bool PendienteDeAtencion =>
+            EstadoTurno == "RESERVADO" ||
+            EstadoTurno == "PRESENTE" ||
+            EstadoTurno == "ATENCION_REGISTRADA";
+
         // Atención finalizada cuyo cobro quedó pendiente (CUU03 alt 6.b, falta de pago) y que
         // todavía no tiene valoración. No es valorable (ver PendienteDeValoracion), pero el
         // paciente tiene que poder enterarse de que la tiene pendiente: se habilita cuando

@@ -51,6 +51,12 @@ namespace Application.Services
         private static readonly string MensajeAntelacionInsuficiente =
             $"Los turnos deben solicitarse con una antelación mínima de {ReglaAntelacion.HorasMinimas} horas. Elegí un horario que cumpla ese plazo.";
 
+        // CUU01 alt 3.a.2.b.1 (diccionario: mensajeNoSeCumpleAntelacionMinima): mensaje cuando el
+        // Responsable registra una fecha y hora acordadas que no respetan la antelación mínima.
+        // CUU03 6.d.1.b.1 usa el mismo literal (agendado manual del turno de seguimiento).
+        private static readonly string MensajeNoSeCumpleAntelacionMinima =
+            $"La fecha y hora acordadas no respetan la antelación mínima de {ReglaAntelacion.HorasMinimas} horas. Seleccione otra fecha y hora.";
+
         private readonly IPacienteRepository _pacienteRepository;
         private readonly IOdontologoRepository _odontologoRepository;
         private readonly IEspecialidadRepository _especialidadRepository;
@@ -77,11 +83,13 @@ namespace Application.Services
             _pagoRepository = pagoRepository;
         }
 
+        // CUU01, diccionario de datos: mensajePoliticasCancelacion(d). Alineado con RN9 (inasistencia,
+        // cancelación fuera de término y falta de pago generan una deuda e inhabilitan al paciente).
         public string ObtenerMensajePoliticaCancelacion() =>
             "La cancelación o reprogramación del turno debe solicitarse con una antelación mínima de 24 horas. " +
-            "Si no se presenta ni cancela dentro de ese plazo, el turno se registrará como \"Ausente\", se le " +
-            "asignará la multa correspondiente y quedará inhabilitado para agendar nuevos turnos hasta " +
-            "regularizar su situación con el odontólogo o el responsable de la clínica.";
+            "Si cancela fuera de ese plazo o no se presenta (en cuyo caso el turno se registrará como \"Ausente\"), " +
+            "se le registrará una deuda por la penalización correspondiente y quedará inhabilitado para agendar " +
+            "nuevos turnos hasta que se regularice la deuda.";
 
         public async Task<EstadoPacienteTurnoDTO> ConsultarEstadoParaAgendarAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente)
         {
@@ -212,14 +220,15 @@ namespace Application.Services
                 };
             }
 
-            // Alt 2.b / RN8: no puede reservar si ya tiene un turno pendiente de atención.
+            // Alt 2.b / RN8: no puede reservar si ya tiene un turno pendiente de atención
+            // (Reservado, Presente o Atención Registrada).
             var turnoPendiente = await ObtenerTurnoPendienteAsync(request.TipoDocumentoPaciente, request.NroDocumentoPaciente);
             if (turnoPendiente != null)
             {
                 return new AgendarTurnoResultDTO
                 {
                     Resultado = ResultadoAgendarTurno.TurnoPendienteExistente,
-                    Mensaje = "Ya tenés un turno reservado pendiente de atención.",
+                    Mensaje = "Ya tenés un turno pendiente de atención.",
                     TurnoPendiente = MapTurno(turnoPendiente)
                 };
             }
@@ -279,25 +288,60 @@ namespace Application.Services
             // Alt 3.a: el paciente no encuentra turnos disponibles/convenientes y se comunica con
             // la clínica. El Responsable identifica al paciente, asigna especialidad, odontólogo,
             // fecha/hora acordadas y forma de pago "por fuera" del calendario de autoservicio: por
-            // eso NO se valida acá habilitación del paciente, turno pendiente previo, ni la grilla
-            // de disponibilidad horaria (son válidas solo para el circuito estándar de reservas).
-            // Sí se preserva la validación de convenio de obra social (3.a.2.a), de choque de agenda
-            // y la antelación mínima de RN19: la regla dice que "los turnos deberán ser solicitados
-            // con una antelación mínima de 24 horas" y ni las RN ni CUU01 exceptúan al Responsable
-            // (la coordinación fuera del circuito estándar es CUF11 / RN13, un caso de uso aparte).
+            // eso NO se valida la grilla de disponibilidad horaria (válida solo para el circuito
+            // estándar de reservas).
+            //
+            // Sí se validan las mismas condiciones que el paso 2 del camino básico: la alt 3.a ocurre
+            // <durante> el paso 3, o sea después de que el paso 2 comprobó que el paciente está
+            // habilitado y no tiene un turno previo pendiente de atención. Como el Responsable no
+            // pasa por ese paso 2, se revalidan acá: RN9 (el paciente con deuda queda "inhabilitado
+            // para agendar nuevos turnos") y RN8 ("no puede reservar un nuevo turno teniendo ya un
+            // turno previo pendiente de atención"). Ninguna de las dos exceptúa al Responsable, y el
+            // modelo admite una sola deuda a la vez: un turno nuevo mientras hay uno pendiente o una
+            // deuda abierta podría generar una segunda deuda (MD: /montoAdeudado).
+            //
+            // También se preservan la validación de convenio de obra social (3.a.2.a), el choque de
+            // agenda y la antelación mínima de RN19 (3.a.2.b): la regla dice que "los turnos deberán
+            // ser solicitados con una antelación mínima de 24 horas" y ni las RN ni CUU01 exceptúan al
+            // Responsable (la coordinación fuera del circuito estándar es CUF11 / RN13, un caso de uso
+            // aparte).
             var paciente = await _pacienteRepository.GetAsync(request.TipoDocumentoPaciente, request.NroDocumentoPaciente)
                 ?? throw new ArgumentException("No se encontró el paciente indicado.");
+
+            // Paso 2 (RN9): paciente "Inhabilitado" por deuda pendiente.
+            if (paciente.EstadoPaciente != "HABILITADO")
+            {
+                return new AgendarTurnoResultDTO
+                {
+                    Resultado = ResultadoAgendarTurno.Inhabilitado,
+                    Mensaje = "El paciente tiene una deuda pendiente. Debe regularizarla para poder agendar un nuevo turno.",
+                    MontoAdeudado = paciente.MontoAdeudado ?? 0m
+                };
+            }
+
+            // Paso 2 / alt 2.b (RN8): turno previo pendiente de atención (Reservado, Presente o
+            // Atención Registrada).
+            var turnoPendiente = await ObtenerTurnoPendienteAsync(request.TipoDocumentoPaciente, request.NroDocumentoPaciente);
+            if (turnoPendiente != null)
+            {
+                return new AgendarTurnoResultDTO
+                {
+                    Resultado = ResultadoAgendarTurno.TurnoPendienteExistente,
+                    Mensaje = "El paciente ya tiene un turno pendiente de atención.",
+                    TurnoPendiente = MapTurno(turnoPendiente)
+                };
+            }
 
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
 
-            // RN19 (ver comentario al inicio del método).
+            // Alt 3.a.2.b / RN19 (ver comentario al inicio del método).
             if (!ReglaAntelacion.CumpleAntelacionMinima(request.FechaHoraTurno, DateTime.Now))
             {
                 return new AgendarTurnoResultDTO
                 {
                     Resultado = ResultadoAgendarTurno.AntelacionInsuficiente,
-                    Mensaje = MensajeAntelacionInsuficiente
+                    Mensaje = MensajeNoSeCumpleAntelacionMinima
                 };
             }
 
@@ -438,8 +482,9 @@ namespace Application.Services
         private async Task<Turno?> ObtenerTurnoPendienteAsync(string tipoDocumentoPaciente, string nroDocumentoPaciente)
         {
             var turnosPaciente = await _turnoRepository.GetByPacienteAsync(tipoDocumentoPaciente, nroDocumentoPaciente);
-            // "Turno pendiente de atención" (RN8 / CUU01 alt 2.b) = turno vigente en estado "Reservado".
-            return turnosPaciente.FirstOrDefault(t => t.EstadoTurno == "RESERVADO");
+            // "Turno pendiente de atención" (RN8 / CUU01 alt 2.b) = turno que todavía no concluyó:
+            // "Reservado", "Presente" o "Atención Registrada" (ver Turno.PendienteDeAtencion).
+            return turnosPaciente.FirstOrDefault(t => t.PendienteDeAtencion);
         }
 
         private static TurnoOdontologicoDTO MapTurno(Turno turno)

@@ -227,16 +227,30 @@ Portal del Paciente disponible en: `http://localhost:5247` o `https://localhost:
 
 ---
 
+---
+
+## Despliegue en Producción (Render)
+
+Los servicios se encuentran desplegados y operativos en la nube en:
+- **Portal Web (Frontend MVC)**: [https://turnomolar-web.onrender.com](https://turnomolar-web.onrender.com)
+- **API REST (Swagger UI)**: [https://turnomolar-api.onrender.com/swagger](https://turnomolar-api.onrender.com/swagger)
+
+---
+
 ## Datos de Prueba (Seed Data)
 
-| Rol | Usuario | DNI | Especialidad / Cobertura |
-| :--- | :--- | :--- | :--- |
-| **Paciente** | Manuel Fernández (`manuel.fer@email.com`) | `34567890` | `HABILITADO`, con obra social OSDE |
-| **Odontóloga** | Dra. Karina González (MP 3840) | `28456789` | Odontología General — Lunes y Martes 8 a 13 hs |
-| **Odontóloga** | Dra. Elena Silva (MP 4512) | `30123456` | Endodoncia — Miércoles 14 a 19 hs |
-| **Odontólogo** | Dr. Martín López (MP 5120) | `26789012` | Ortodoncia — Jueves 9 a 18 hs |
+| Rol | Usuario | DNI | Contraseña | Especialidad / Cobertura |
+| :--- | :--- | :--- | :--- | :--- |
+| **Paciente** | Manuel Fernández | `40218735` | `paciente123` | `HABILITADO`, OSDE (sin deuda) |
+| **Paciente** | Laura Gómez | `42876051` | `paciente123` | `HABILITADO`, Swiss Medical |
+| **Paciente** | Carlos Rossi | `36152489` | `paciente123` | `HABILITADO`, IOMA |
+| **Odontóloga** | Dra. Karina González (MP 3840) | `27841563` | `doc123` | Odontología General — Lunes y Martes 8 a 13 hs |
+| **Odontóloga** | Dra. Elena Silva (MP 4512) | `33065918` | `doc123` | Endodoncia — Miércoles 14 a 19 hs |
+| **Odontólogo** | Dr. Martín López (MP 5120) | `25473690` | `doc123` | Ortodoncia — Jueves 9 a 18 hs |
+| **Admin** | Administrador General | `31597204` | `admin123` | Responsable de la Clínica / Auditoría |
 
 > Cirugía e Implantes y Odontopediatría todavía no tienen ningún odontólogo ni disponibilidad horaria cargados en el seed — al elegirlas en el wizard de turnos no va a haber nada para reservar hasta que se agregue esa disponibilidad.
+
 
 ---
 

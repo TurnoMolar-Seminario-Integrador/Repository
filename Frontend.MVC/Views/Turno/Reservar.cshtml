@@ -206,18 +206,19 @@
 else if (tieneTurnoPendiente && turnoPendiente != null)
 {
     <!-- ==========================================
-         CUU01 Alt 2.b: ya existe un turno reservado pendiente de atención (RN8)
+         CUU01 Alt 2.b: ya existe un turno pendiente de atención (RN8): Reservado, Presente o Atención Registrada
          ========================================== -->
     <div class="card border-warning shadow-sm">
         <div class="card-body p-4">
-            <h4 class="fw-bold text-dark mb-2"><i class="bi bi-calendar-check text-warning me-2"></i>Ya tenés un turno reservado</h4>
+            <h4 class="fw-bold text-dark mb-2"><i class="bi bi-calendar-check text-warning me-2"></i>Ya tenés un turno pendiente de atención</h4>
             <p class="text-muted mb-3">
                 No podés agendar un nuevo turno mientras tengas uno pendiente de atención.
             </p>
             <div class="bg-light rounded-4 p-3 border mb-3">
                 <strong class="text-dark d-block">@turnoPendiente.NombreEspecialidad</strong>
                 <span class="text-muted small">@turnoPendiente.Fecha.ToString("dd/MM/yyyy") · @turnoPendiente.HorarioTurno.ToString("HH:mm") hs</span><br />
-                <span class="text-muted small">@turnoPendiente.NombreOdontologo</span>
+                <span class="text-muted small">@turnoPendiente.NombreOdontologo</span><br />
+                <span class="badge bg-warning text-dark mt-2">@(turnoPendiente.EstadoTurno switch { "PRESENTE" => "Presente", "ATENCION_REGISTRADA" => "Atención Registrada", _ => "Reservado" })</span>
             </div>
             <a href="@Url.Action("MisTurnos", "Home")" class="btn btn-primary rounded-pill px-4 fw-bold">Ver mis turnos</a>
         </div>

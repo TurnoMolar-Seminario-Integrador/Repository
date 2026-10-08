@@ -1,0 +1,141 @@
+@model DTOs.AgendarTurnoRequestDTO
+@using Domain.Model
+@{
+    ViewData["Title"] = "Nuevo Turno - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "GestionTurnos";
+    Layout = "_LayoutOdontologo";
+
+    var especialidades = (IEnumerable<Especialidad>)ViewBag.Especialidades;
+    var odontologos = (IEnumerable<Odontologo>)ViewBag.Odontologos;
+    var especialidadesPorOdontologo = (Dictionary<string, List<int>>)ViewBag.EspecialidadesPorOdontologo;
+    var mensajeError = ViewData["MensajeError"] ?? TempData["MensajeError"];
+    var odontologoElegido = $"{Model.OdontologoTipoDocumento}|{Model.OdontologoNroDocumento}";
+}
+
+@* CUU01 alt 3.a: el responsable registra el turno acordado con el paciente que se comunicó con la
+   clínica. Forma parte de la consola del responsable (antes se mostraba con el menú del paciente). *@
+<div class="mb-4">
+    <a asp-controller="Odontologo" asp-action="GestionTurnos" class="small text-decoration-none">
+        <i class="bi bi-arrow-left me-1"></i> Volver a Gestión de Turnos
+    </a>
+    <h3 class="fw-bold text-dark mt-2 mb-1">Nuevo Turno</h3>
+@*     <p class="text-muted small mb-0">
+        CUU01 · Camino alternativo 3.a: usá este formulario cuando un paciente se comunicó
+        directamente con la clínica porque no encontró turnos disponibles o convenientes.
+    </p> *@
+</div>
+
+@if (mensajeError != null)
+{
+    <div class="alert alert-danger rounded-4 border-0 shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeError
+    </div>
+}
+
+<div class="card shadow-sm border-0 rounded-4" style="max-width: 640px;">
+    <div class="card-body p-4">
+        <form asp-controller="Odontologo" asp-action="NuevoTurno" method="post">
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <label class="form-label fw-semibold small">Tipo de Documento (paciente)</label>
+                    <select asp-for="TipoDocumentoPaciente" class="form-select">
+                        <option value="DNI">DNI</option>
+                        <option value="LC">LC</option>
+                        <option value="LE">LE</option>
+                        <option value="PAS">Pasaporte</option>
+                    </select>
+                </div>
+                <div class="col-sm-8">
+                    <label class="form-label fw-semibold small">N° de Documento (paciente)</label>
+                    <input asp-for="NroDocumentoPaciente" class="form-control" placeholder="Ej: 34567890" required />
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Especialidad</label>
+                    <select asp-for="IdEspecialidad" class="form-select">
+                        @foreach (var esp in especialidades)
+                        {
+                            <option value="@esp.IdEspecialidad">@esp.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Odontólogo</label>
+                    <select id="selectOdontologo" class="form-select">
+                        @foreach (var odont in odontologos)
+                        {
+                            var clave = $"{odont.TipoDocumento}|{odont.NroDocumento}";
+                            var idsEspecialidad = especialidadesPorOdontologo.TryGetValue(clave, out var ids) ? string.Join(",", ids) : "";
+                            <option value="@clave" data-especialidades="@idsEspecialidad" selected="@(clave == odontologoElegido ? "selected" : null)">@odont.Nombre @odont.Apellido (@odont.MatriculaVisible)</option>
+                        }
+                    </select>
+                    <input type="hidden" asp-for="OdontologoTipoDocumento" id="inputOdontologoTipoDocumento" />
+                    <input type="hidden" asp-for="OdontologoNroDocumento" id="inputOdontologoNroDocumento" />
+                    <div id="avisoSinOdontologos" class="form-text text-danger d-none">Ningún odontólogo atiende esta especialidad.</div>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Fecha y hora acordadas</label>
+                    <input type="datetime-local" name="FechaHoraTurno" id="FechaHoraTurno" class="form-control" required
+                        value="@(Model.FechaHoraTurno == default ? "" : Model.FechaHoraTurno.ToString("yyyy-MM-ddTHH:mm"))"
+                        min="@DateTime.Now.AddHours(24).ToString("yyyy-MM-ddTHH:mm")" />
+                    <div class="form-text text-nowrap">Reservar turno con un mínimo de 24 horas de antelación</div>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-semibold small">Forma de abonar</label>
+                    <select asp-for="ModalidadPago" class="form-select">
+                        <option value="PARTICULAR">Particular</option>
+                        <option value="OBRA_SOCIAL">Obra Social</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" id="btnRegistrar" class="btn btn-primary rounded-pill px-4 fw-bold mt-4">
+                <i class="bi bi-check-circle-fill me-2"></i>Registrar Turno
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var selectEspecialidad = document.getElementById("IdEspecialidad");
+            var selectOdontologo = document.getElementById("selectOdontologo");
+            var inputTipo = document.getElementById("inputOdontologoTipoDocumento");
+            var inputNro = document.getElementById("inputOdontologoNroDocumento");
+            var aviso = document.getElementById("avisoSinOdontologos");
+            var botonRegistrar = document.getElementById("btnRegistrar");
+
+            function sincronizarOdontologo() {
+                var partes = (selectOdontologo.value || "").split("|");
+                inputTipo.value = partes[0] || "";
+                inputNro.value = partes[1] || "";
+            }
+
+            // Solo se ofrecen los odontólogos que atienden la especialidad elegida.
+            function filtrarOdontologos() {
+                var especialidad = selectEspecialidad.value;
+                var primero = null;
+                var seleccionadoValido = false;
+
+                Array.prototype.forEach.call(selectOdontologo.options, function (opcion) {
+                    var ids = (opcion.getAttribute("data-especialidades") || "").split(",");
+                    var atiende = ids.indexOf(especialidad) !== -1;
+                    opcion.hidden = !atiende;
+                    opcion.disabled = !atiende;
+                    if (atiende && primero === null) { primero = opcion; }
+                    if (atiende && opcion.selected) { seleccionadoValido = true; }
+                });
+
+                if (primero !== null && !seleccionadoValido) { primero.selected = true; }
+                if (primero === null) { selectOdontologo.selectedIndex = -1; }
+
+                aviso.classList.toggle("d-none", primero !== null);
+                botonRegistrar.disabled = primero === null;
+                sincronizarOdontologo();
+            }
+
+            selectEspecialidad.addEventListener("change", filtrarOdontologos);
+            selectOdontologo.addEventListener("change", sincronizarOdontologo);
+            filtrarOdontologos();
+        });
+    </script>
+}

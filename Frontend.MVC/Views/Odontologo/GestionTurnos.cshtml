@@ -1,3 +1,4 @@
+@model Frontend.MVC.Models.GestionTurnosViewModel
 @{
     ViewData["Title"] = "Gestión de Turnos - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "GestionTurnos";
@@ -12,105 +13,233 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid #eef2f6;
         }
-
-        .search-box {
-            position: relative;
-            max-width: 250px;
-        }
-
-        .search-box input {
-            padding-left: 35px;
-            border-radius: 20px;
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6c757d;
-        }
     </style>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+@* Pantalla del Responsable de la Clínica: agenda (CUU01 alt 3.a), cancela (CUF07 alt 2.a) y
+   reprograma (CUF08 alt 2.a) en representación del paciente, sobre datos reales. *@
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div>
         <h2 class="fw-bold text-dark mb-1">Gestión de Turnos</h2>
-        <p class="text-muted mb-0">Administración de citas programadas, reprogramaciones y disponibilidad.</p>
+        <p class="text-muted mb-0">Consultá los turnos y registrá, en representación del paciente, nuevas reservas, cancelaciones y reprogramaciones.</p>
     </div>
-    <div class="d-flex gap-2">
-        <div class="search-box">
-            <i class="bi bi-search"></i>
-            <input type="text" class="form-control form-control-sm" placeholder="Buscar paciente o HC...">
+    <a asp-controller="Odontologo" asp-action="NuevoTurno" class="btn btn-primary rounded-pill px-4 fw-bold">
+        <i class="bi bi-plus-lg me-1"></i> Nuevo Turno
+    </a>
+</div>
+
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeAdvertencia"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeAdvertencia"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="table-card p-3 mb-3">
+    <form method="get" asp-controller="Odontologo" asp-action="GestionTurnos" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small text-muted mb-1">Paciente</label>
+            <input type="text" name="busqueda" value="@Model.Busqueda" class="form-control" placeholder="Nombre, apellido o documento" />
         </div>
-        <button class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
-            <i class="bi bi-plus-lg me-1"></i> Nuevo Turno
-        </button>
+        <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">Mostrar</label>
+            <select name="estado" class="form-select">
+                <option value="pendientes" selected="@(Model.Estado == "pendientes" ? "selected" : null)">Pendientes de atención</option>
+                <option value="todos" selected="@(Model.Estado == "todos" ? "selected" : null)">Todos los turnos</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary rounded-pill px-4"><i class="bi bi-search me-1"></i> Buscar</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-card overflow-hidden">
+    @if (!Model.Filas.Any())
+    {
+        <div class="p-5 text-center text-muted">
+            <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+            No se encontraron turnos con los filtros indicados.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Turno</th>
+                        <th>Fecha y hora</th>
+                        <th>Paciente</th>
+                        <th>Especialidad / Odontólogo</th>
+                        <th>Pago</th>
+                        <th>Estado</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        var claseEstado = f.EstadoTurno switch
+                        {
+                            "RESERVADO" => "bg-primary-subtle text-primary border",
+                            "PRESENTE" => "bg-info-subtle text-info border",
+                            "ATENCION_REGISTRADA" => "bg-warning-subtle text-warning border",
+                            "FINALIZADO" => "bg-success-subtle text-success border",
+                            "AUSENTE" or "CANCELADO" => "bg-danger-subtle text-danger border",
+                            _ => "bg-secondary-subtle text-secondary border"
+                        };
+                        <tr>
+                            <td class="ps-4 fw-bold text-primary">#@f.NroTurno</td>
+                            <td>@f.FechaHoraTurno.ToString("dd/MM/yyyy HH:mm") hs</td>
+                            <td>
+                                @f.NombrePaciente
+                                <div class="small text-muted">@f.TipoDocumentoPaciente @f.NroDocumentoPaciente</div>
+                            </td>
+                            <td>
+                                @f.NombreEspecialidad
+                                <div class="small text-muted">@f.NombreOdontologo</div>
+                            </td>
+                            <td>@f.ModalidadPagoLegible</td>
+                            <td><span class="badge @claseEstado px-3 py-2 rounded-pill">@f.EstadoLegible</span></td>
+                            <td class="text-end pe-4">
+                                @if (f.PuedeModificar)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 btn-reprogramar"
+                                            data-bs-toggle="modal" data-bs-target="#modalReprogramar"
+                                            data-nro-turno="@f.NroTurno" data-tipo-doc="@f.TipoDocumentoPaciente" data-nro-doc="@f.NroDocumentoPaciente"
+                                            data-paciente="@f.NombrePaciente">Reprogramar</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 btn-cancelar"
+                                            data-bs-toggle="modal" data-bs-target="#modalCancelar"
+                                            data-nro-turno="@f.NroTurno" data-tipo-doc="@f.TipoDocumentoPaciente" data-nro-doc="@f.NroDocumentoPaciente"
+                                            data-paciente="@f.NombrePaciente">Cancelar</button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.Truncado)
+        {
+            <div class="p-3 small text-muted border-top">Se muestran @Model.Filas.Count de @Model.TotalCoincidencias turnos. Acotá la búsqueda para ver el resto.</div>
+        }
+    }
+</div>
+
+<!-- CUF07 alt 2.a: cancelar en representación del paciente -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" asp-controller="Odontologo" asp-action="CancelarTurnoEnRepresentacion">
+                <input type="hidden" name="idTurno" id="cancelarIdTurno" />
+                <input type="hidden" name="tipoDocumentoPaciente" id="cancelarTipoDoc" />
+                <input type="hidden" name="nroDocumentoPaciente" id="cancelarNroDoc" />
+                <input type="hidden" name="busqueda" value="@Model.Busqueda" />
+                <input type="hidden" name="estado" value="@Model.Estado" />
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Cancelar turno</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Turno <strong id="cancelarTurnoTexto"></strong> de <strong id="cancelarPacienteTexto"></strong>.</p>
+                    <div class="alert alert-warning small border-0">
+                        Si faltan menos de 24 hs para el turno, se registra una deuda por la penalización y el paciente queda <strong>Inhabilitado</strong> para agendar nuevos turnos hasta regularizarla. Con 24 hs o más no tiene costo.
+                    </div>
+                    <label class="form-label small text-muted mb-1">Motivo (opcional)</label>
+                    <textarea name="motivoCancelacion" class="form-control" rows="2" maxlength="300"></textarea>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Volver</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Confirmar cancelación</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-<!-- Tabla de Turnos -->
-<div class="table-card p-3">
-    <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-            <tr>
-                <th>Fecha y Hora</th>
-                <th>Paciente</th>
-                <th>Historia Clínica</th>
-                <th>Tratamiento / Motivo</th>
-                <th>Cobertura</th>
-                <th>Estado</th>
-                <th class="text-end">Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td class="fw-bold text-primary">Hoy - 09:30 AM</td>
-                <td>Manuel Fernández</td>
-                <td><span class="badge bg-light text-dark border">HC #10042</span></td>
-                <td>Control General</td>
-                <td>OSDE 310</td>
-                <td><span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 rounded-pill">En Sala de Espera</span></td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Reprogramar</button>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3">Cancelar</button>
-                </td>
-            </tr>
-            <tr>
-                <td class="fw-bold text-primary">Hoy - 10:30 AM</td>
-                <td>Lucía Martínez</td>
-                <td><span class="badge bg-light text-dark border">HC #10058</span></td>
-                <td>Ortodoncia (Ajuste)</td>
-                <td>Particular</td>
-                <td><span class="badge bg-secondary-subtle text-secondary border px-3 py-2 rounded-pill">Confirmado</span></td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Reprogramar</button>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3">Cancelar</button>
-                </td>
-            </tr>
-            <tr>
-                <td class="fw-bold text-muted">Hoy - 08:00 AM</td>
-                <td>Carlos Silva</td>
-                <td><span class="badge bg-light text-dark border">HC #09812</span></td>
-                <td>Extracción Simple</td>
-                <td>IAPOS</td>
-                <td><span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">Realizado</span></td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-light rounded-pill px-3 text-muted" disabled>Finalizado</button>
-                </td>
-            </tr>
-            <tr>
-                <td class="fw-bold text-primary">Mañana - 11:00 AM</td>
-                <td>Mariana López</td>
-                <td><span class="badge bg-light text-dark border">HC #10110</span></td>
-                <td>Limpieza Ultravocal</td>
-                <td>Swiss Medical</td>
-                <td><span class="badge bg-secondary-subtle text-secondary border px-3 py-2 rounded-pill">Confirmado</span></td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Reprogramar</button>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3">Cancelar</button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+<!-- CUF08 alt 2.a: reprogramar en representación del paciente -->
+<div class="modal fade" id="modalReprogramar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" asp-controller="Odontologo" asp-action="ReprogramarTurnoEnRepresentacion">
+                <input type="hidden" name="idTurno" id="reprogramarIdTurno" />
+                <input type="hidden" name="tipoDocumentoPaciente" id="reprogramarTipoDoc" />
+                <input type="hidden" name="nroDocumentoPaciente" id="reprogramarNroDoc" />
+                <input type="hidden" name="busqueda" value="@Model.Busqueda" />
+                <input type="hidden" name="estado" value="@Model.Estado" />
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">Reprogramar turno</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Turno <strong id="reprogramarTurnoTexto"></strong> de <strong id="reprogramarPacienteTexto"></strong>.</p>
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label class="form-label small text-muted mb-1">Nueva fecha</label>
+                            <input type="date" name="nuevaFecha" id="reprogramarFecha" class="form-control" required />
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label small text-muted mb-1">Nuevo horario</label>
+                            <input type="time" name="nuevoHorario" class="form-control" step="1800" required />
+                        </div>
+                    </div>
+                    <div class="alert alert-info small border-0 mb-0">
+                        El nuevo turno conserva el odontólogo y la especialidad, debe respetar la antelación mínima de 24 hs y estar dentro de la disponibilidad del odontólogo. No se puede reprogramar un turno al que le faltan menos de 24 hs: en ese caso corresponde cancelarlo.
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Volver</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Confirmar reprogramación</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        function cargarModal(prefijo, btn) {
+            document.getElementById(prefijo + 'IdTurno').value = btn.dataset.nroTurno;
+            document.getElementById(prefijo + 'TipoDoc').value = btn.dataset.tipoDoc;
+            document.getElementById(prefijo + 'NroDoc').value = btn.dataset.nroDoc;
+            document.getElementById(prefijo + 'TurnoTexto').innerText = '#' + btn.dataset.nroTurno;
+            document.getElementById(prefijo + 'PacienteTexto').innerText = btn.dataset.paciente;
+        }
+
+        document.querySelectorAll('.btn-cancelar').forEach(function (btn) {
+            btn.addEventListener('click', function () { cargarModal('cancelar', btn); });
+        });
+
+        document.querySelectorAll('.btn-reprogramar').forEach(function (btn) {
+            btn.addEventListener('click', function () { cargarModal('reprogramar', btn); });
+        });
+
+        // El nuevo turno no puede ser anterior a mañana (RN19: antelación mínima de 24 hs).
+        (function () {
+            var manana = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            var pad = function (n) { return n < 10 ? '0' + n : n; };
+            document.getElementById('reprogramarFecha').min =
+                manana.getFullYear() + '-' + pad(manana.getMonth() + 1) + '-' + pad(manana.getDate());
+        })();
+    </script>
+}

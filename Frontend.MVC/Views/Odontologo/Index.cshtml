@@ -3,8 +3,11 @@
     ViewData["ActiveTab"] = "PanelPrincipal";
     Layout = "_LayoutOdontologo";
 
-    var nombreDoctor = User.FindFirst("NombreCompleto")?.Value ?? "Dra. Karina González";
-    var matricula = "MP 3840";
+    var nombreDoctor = ViewData["NombreDoctor"]?.ToString() ?? User.FindFirst("NombreCompleto")?.Value ?? "Profesional";
+    var matricula = ViewData["Matricula"]?.ToString() ?? string.Empty;
+    var email = ViewData["Email"]?.ToString() ?? string.Empty;
+    var telefono = ViewData["Telefono"]?.ToString() ?? string.Empty;
+    var estadoOdontologo = ViewData["EstadoOdontologo"]?.ToString() ?? string.Empty;
 }
 
 @section Styles {
@@ -56,17 +59,6 @@
             padding: 22px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.02);
         }
-
-        .espera-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px;
-            background: #f8fafc;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 4px solid #f59e0b;
-        }
     </style>
 }
 
@@ -91,15 +83,18 @@
         </a>
     </div>
 
-    <!-- Módulo 2: Gestión de Turnos -->
-    <div class="col-md-6 col-lg-3">
-        <a href="@Url.Action("GestionTurnos", "Odontologo")" class="dashboard-card card-2">
-            <div class="card-icon"><i class="bi bi-calendar3"></i></div>
-            <h6 class="fw-bold mb-1 text-dark">Gestión de Turnos</h6>
-            <p class="text-muted small mb-0 flex-grow-1">Administrá el calendario completo, cancelaciones y reprogramaciones.</p>
-            <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #7c3aed;"></i></div>
-        </a>
-    </div>
+    @if (User.IsInRole("ResponsableClinica") || User.IsInRole("Admin"))
+    {
+        <!-- Módulo 2: Gestión de Turnos (Responsable de la Clínica) -->
+        <div class="col-md-6 col-lg-3">
+            <a href="@Url.Action("GestionTurnos", "Odontologo")" class="dashboard-card card-2">
+                <div class="card-icon"><i class="bi bi-calendar3"></i></div>
+                <h6 class="fw-bold mb-1 text-dark">Gestión de Turnos</h6>
+                <p class="text-muted small mb-0 flex-grow-1">Consultá los turnos, agendá y cancelá o reprogramá en representación del paciente.</p>
+                <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #7c3aed;"></i></div>
+            </a>
+        </div>
+    }
 
     @if (User.IsInRole("ResponsableClinica") || User.IsInRole("Admin"))
     {
@@ -126,75 +121,34 @@
 
 </div>
 
-<!-- SECCIÓN INFORMATIVA DE SALA DE ESPERA Y CONSULTORIO -->
-<div class="row g-3">
-    <div class="col-lg-8">
-        <div class="widget-box">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold mb-0 text-dark">
-                    <i class="bi bi-person-lines-fill text-primary me-2"></i>Pacientes en Espera (Admisión confirmada)
+<!-- SECCIÓN INFORMATIVA DEL ODONTOLOGO -->
+@if (User.IsInRole("Odontologo"))
+{
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="widget-box">
+                <h6 class="fw-bold mb-3 text-dark">
+                    <i class="bi bi-info-circle text-primary me-2"></i>Información del Odontólogo
                 </h6>
-                <a href="@Url.Action("TurnosDelDia", "Odontologo")" class="small text-decoration-none fw-semibold">Ver agenda completa &rarr;</a>
-            </div>
-
-            <div class="espera-item">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="fw-bold text-dark fs-6" style="min-width: 75px;">09:30 AM</div>
-                    <div>
-                        <div class="fw-bold text-dark">Manuel Fernández</div>
-                        <small class="text-muted">Control General • OSDE 310 (HC #10042)</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1 rounded-pill small">
-                        En Sala
-                    </span>
-                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
-                        Atender
-                    </button>
-                </div>
-            </div>
-
-            <div class="espera-item" style="border-left-color: #94a3b8;">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="fw-bold text-muted fs-6" style="min-width: 75px;">10:30 AM</div>
-                    <div>
-                        <div class="fw-bold text-dark">Lucía Martínez</div>
-                        <small class="text-muted">Ortodoncia (Ajuste) • Particular (HC #10058)</small>
-                    </div>
-                </div>
-                <div>
-                    <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill small">
-                        Programado
-                    </span>
-                </div>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                        <span class="text-muted">Matrícula Profesional:</span>
+                        <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(matricula) ? "—" : matricula)</span>
+                    </li>
+                    <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                        <span class="text-muted">Email:</span>
+                        <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(email) ? "—" : email)</span>
+                    </li>
+                    <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                        <span class="text-muted">Teléfono:</span>
+                        <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(telefono) ? "—" : telefono)</span>
+                    </li>
+                    <li class="d-flex justify-content-between">
+                        <span class="text-muted">Estado:</span>
+                        <span class="fw-semibold @(estadoOdontologo == "ACTIVO" ? "text-success" : "text-danger")">@(string.IsNullOrEmpty(estadoOdontologo) ? "—" : estadoOdontologo)</span>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
-
-    <div class="col-lg-4">
-        <div class="widget-box h-100">
-            <h6 class="fw-bold mb-3 text-dark">
-                <i class="bi bi-info-circle text-primary me-2"></i>Información del Consultorio
-            </h6>
-            <ul class="list-unstyled small mb-0">
-                <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
-                    <span class="text-muted">Consultorio Asignado:</span>
-                    <span class="fw-semibold text-dark">Box 3 (Planta Alta)</span>
-                </li>
-                <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
-                    <span class="text-muted">Horario de Atención:</span>
-                    <span class="fw-semibold text-dark">08:00 a 16:00 hs</span>
-                </li>
-                <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
-                    <span class="text-muted">Especialidad Activa:</span>
-                    <span class="fw-semibold text-dark">Odontología General</span>
-                </li>
-                <li class="d-flex justify-content-between">
-                    <span class="text-muted">Matrícula Profesional:</span>
-                    <span class="fw-semibold text-dark">@matricula</span>
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>
+}

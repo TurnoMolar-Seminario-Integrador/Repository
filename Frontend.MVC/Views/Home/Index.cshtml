@@ -355,7 +355,7 @@
                         <img src="@avatarUrl" alt="@doc.Nombre @doc.Apellido" class="doc-avatar me-3">
                         <div>
                             <h5 class="fw-bold mb-0 text-dark">@(doc.Nombre.StartsWith("Dr") ? "" : "Dr. ")@doc.Nombre @doc.Apellido</h5>
-                            <span class="text-primary small fw-semibold">@(doc.Especialidad?.Nombre ?? "Odontología General") • MP @doc.Matricula</span><br>
+                            <span class="text-primary small fw-semibold">@(doc.Especialidad?.Nombre ?? "Odontología General") • @doc.MatriculaVisible</span><br>
                             <small class="text-muted"><i class="bi bi-envelope-fill me-1 text-secondary"></i>@doc.Email</small>
                         </div>
                     </div>
@@ -391,10 +391,10 @@
                     </span>
 
                     <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Turno+Odontologico+-+Clinica+Dental+Rosario&details=@Uri.EscapeDataString(espName + " con " + docName)&location=Clinica+Dental+Rosario"
-                       target="_blank"
-                       class="calendar-btn"
-                       data-bs-toggle="tooltip"
-                       title="Sincronizar con Google Calendar">
+                        target="_blank"
+                        class="calendar-btn"
+                        data-bs-toggle="tooltip"
+                        title="Sincronizar con Google Calendar">
                         <i class="bi bi-calendar-plus"></i>
                     </a>
                 </div>

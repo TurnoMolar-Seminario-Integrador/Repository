@@ -298,54 +298,13 @@ namespace Frontend.MVC.Controllers
 
         // =========================================================================
         // CUU01 ALT 3.a - ALTA MANUAL DE TURNO POR EL RESPONSABLE DE LA CLÍNICA
-        // Cuando el paciente no encuentra turnos disponibles/convenientes y acuerda
-        // directamente con la clínica una fecha y hora. Formulario simple orientado al
-        // personal administrativo (no reutiliza el wizard de autoservicio del paciente).
         // =========================================================================
-
+        // Esta pantalla vivía acá con el layout del portal del paciente, y tras registrar el turno
+        // redirigía al comprobante del paciente (que falla para el rol Responsable). Ahora es parte
+        // de la consola del responsable: Odontologo/NuevoTurno. Se deja esta ruta para no romper
+        // enlaces guardados.
         [HttpGet]
-        public async Task<IActionResult> ReservarManual()
-        {
-            if (!User.IsInRole("Admin") && !User.IsInRole("ResponsableClinica"))
-            {
-                return Forbid();
-            }
-
-            ViewBag.Especialidades = await _especialidadRepository.GetAllAsync();
-            ViewBag.Odontologos = await _odontologoRepository.GetAllAsync();
-
-            return View(new AgendarTurnoRequestDTO());
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ReservarManual(AgendarTurnoRequestDTO request)
-        {
-            if (!User.IsInRole("Admin") && !User.IsInRole("ResponsableClinica"))
-            {
-                return Forbid();
-            }
-
-            AgendarTurnoResultDTO resultado;
-            try
-            {
-                resultado = await _agendaTurnoService.AgendarTurnoManualAsync(request);
-            }
-            catch (ArgumentException ex)
-            {
-                TempData["MensajeError"] = ex.Message;
-                return RedirectToAction("ReservarManual");
-            }
-
-            if (resultado.Resultado == ResultadoAgendarTurno.Reservado)
-            {
-                TempData["MensajeExito"] = resultado.Mensaje;
-                return RedirectToAction("Comprobante", new { idTurno = resultado.NroTurno });
-            }
-
-            TempData["MensajeError"] = resultado.Mensaje;
-            return RedirectToAction("ReservarManual");
-        }
+        public IActionResult ReservarManual() => RedirectToActionPermanent("NuevoTurno", "Odontologo");
 
         // =========================================================================
         // COMPROBANTE DE TURNO
@@ -372,7 +331,7 @@ namespace Frontend.MVC.Controllers
 
             ViewData["IdTurno"] = turno.NroTurno;
             ViewData["FechaTurno"] = turno.FechaHoraTurno.ToString("dd 'de' MMMM, yyyy • HH:mm 'hs'", new CultureInfo("es-ES"));
-            ViewData["Doctor"] = $"{turno.Odontologo.Nombre} {turno.Odontologo.Apellido} (MP {turno.Odontologo.Matricula})";
+            ViewData["Doctor"] = $"{turno.Odontologo.Nombre} {turno.Odontologo.Apellido} ({turno.Odontologo.MatriculaVisible})";
             ViewData["Especialidad"] = turno.Especialidad.Nombre;
             ViewData["ModalidadPago"] = turno.ModalidadPagoElegida == "OBRA_SOCIAL" ? "Obra Social / Prepaga" : "Particular";
             ViewData["EstadoTurno"] = turno.EstadoTurno;

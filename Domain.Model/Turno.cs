@@ -66,10 +66,7 @@ namespace Domain.Model
             string estadoTurno = "RESERVADO",
             string? descripcionMaterial = null,
             decimal? arancelPenalizacionAplicado = null,
-            int? nroTurnoOriginal = null,
-            DateTime? fechaHoraReprogramacion = null,
-            DateTime? fechaHoraCancelacion = null,
-            string? motivoCancelacion = null)
+            int? nroTurnoOriginal = null)
         {
             NroTurno = nroTurno;
             FechaHoraTurno = fechaHoraTurno;
@@ -83,9 +80,6 @@ namespace Domain.Model
             DescripcionMaterial = descripcionMaterial;
             ArancelPenalizacionAplicado = arancelPenalizacionAplicado;
             NroTurnoOriginal = nroTurnoOriginal;
-            FechaHoraReprogramacion = fechaHoraReprogramacion;
-            FechaHoraCancelacion = fechaHoraCancelacion;
-            MotivoCancelacion = motivoCancelacion;
         }
 
         // Constructor para retrocompatibilidad numérica

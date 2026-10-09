@@ -100,7 +100,7 @@ namespace Application.Services
 
             return new EstadoPacienteTurnoDTO
             {
-                Habilitado = PuedeAgendar(paciente),
+                Habilitado = paciente.EstadoPaciente == "HABILITADO",
                 MontoAdeudado = paciente.MontoAdeudado ?? 0m,
                 TieneTurnoPendiente = turnoPendiente != null,
                 TurnoPendiente = turnoPendiente == null ? null : MapTurno(turnoPendiente)
@@ -210,7 +210,7 @@ namespace Application.Services
                 ?? throw new ArgumentException("No se encontró el paciente indicado.");
 
             // Alt 2.a: paciente en estado "Inhabilitado" por deuda pendiente.
-            if (!PuedeAgendar(paciente))
+            if (paciente.EstadoPaciente != "HABILITADO")
             {
                 return new AgendarTurnoResultDTO
                 {
@@ -309,7 +309,7 @@ namespace Application.Services
                 ?? throw new ArgumentException("No se encontró el paciente indicado.");
 
             // Paso 2 (RN9): paciente "Inhabilitado" por deuda pendiente.
-            if (!PuedeAgendar(paciente))
+            if (paciente.EstadoPaciente != "HABILITADO")
             {
                 return new AgendarTurnoResultDTO
                 {
@@ -477,14 +477,6 @@ namespace Application.Services
                     ApellidoOdontologo = odontologo.Apellido
                 }
             };
-        }
-
-        private static bool PuedeAgendar(Paciente paciente)
-        {
-            var tieneDeuda = paciente.MontoAdeudado.GetValueOrDefault() > 0m;
-            var estadoInhabilitado = paciente.EstadoPaciente is "INHABILITADO" or "INACTIVO";
-
-            return !tieneDeuda && !estadoInhabilitado;
         }
 
         // internal (antes private): GestionTurnoService (CUF08 - Reprogramar) reutiliza esta

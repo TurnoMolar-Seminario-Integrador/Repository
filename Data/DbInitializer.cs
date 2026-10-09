@@ -10,245 +10,268 @@ namespace Data
         {
             try
             {
+                // Asegura la creación de las 15 tablas según el MDF
                 await context.Database.EnsureCreatedAsync();
 
+                // 1. OBRAS SOCIALES (PK NVARCHAR(20))
                 if (!await context.ObrasSociales.AnyAsync())
                 {
                     await context.ObrasSociales.AddRangeAsync(
-                        new ObraSocial("1", "OSDE", "Plan 210", "ACTIVA"),
-                        new ObraSocial("2", "Swiss Medical", "Black SMG02", "ACTIVA"),
-                        new ObraSocial("3", "IAPOS", "Plan General", "ACTIVA"),
-                        new ObraSocial("4", "Galeno", "Plan Oro 330", "INACTIVA"));
+                        new ObraSocial("OSDE", "OSDE Binario", "Plan 210 / 310", "ACTIVA"),
+                        new ObraSocial("SWISS", "Swiss Medical", "Black / Gold", "ACTIVA"),
+                        new ObraSocial("IOMA", "IOMA", "Afiliados Obligatorios", "ACTIVA"),
+                        new ObraSocial("PARTICULAR", "Particular", "Sin cobertura", "ACTIVA")
+                    );
                     await context.SaveChangesAsync();
                 }
 
+                // 2. ESPECIALIDADES
                 if (!await context.Especialidades.AnyAsync())
                 {
-                    await InsertWithIdentityAsync(context, "Especialidades",
-                        new Especialidad(101, "Odontologia General", 12000m),
-                        new Especialidad(102, "Ortodoncia", 25000m),
-                        new Especialidad(103, "Endodoncia", 22000m),
-                        new Especialidad(104, "Cirugia Maxilofacial", 30000m));
+                    await context.Especialidades.AddRangeAsync(
+                        new Especialidad("Odontología General", 15000m),
+                        new Especialidad("Endodoncia", 35000m),
+                        new Especialidad("Ortodoncia", 50000m),
+                        new Especialidad("Cirugía e Implantes", 80000m),
+                        new Especialidad("Odontopediatría", 12000m)
+                    );
+                    await context.SaveChangesAsync();
                 }
 
-                if (!await context.Insumos.AnyAsync())
-                {
-                    await InsertWithIdentityAsync(context, "Insumos",
-                        new Insumo(501, "Anestesia Cartucho Lidocaina 2%", 1450m, 120),
-                        new Insumo(502, "Resina Compuesta Fotopolimerizable (jeringa)", 8500m, 155),
-                        new Insumo(503, "Guantes de Latex Descartables (caja)", 250m, 500),
-                        new Insumo(504, "Conos de Gutapercha Esterilizados", 3200m, 40));
-                }
-
+                // 3. CONVENIOS (Obras Sociales con Especialidades)
                 if (!await context.Convenios.AnyAsync())
                 {
                     await context.Convenios.AddRangeAsync(
-                        new Convenio("1", 101, 7000m),
-                        new Convenio("1", 102, 18000m),
-                        new Convenio("2", 103, 10000m),
-                        new Convenio("2", 101, 6600m));
+                        new Convenio("OSDE", 1, 18000m),
+                        new Convenio("OSDE", 2, 40000m),
+                        new Convenio("OSDE", 3, 58000m),
+                        new Convenio("OSDE", 4, 90000m),
+                        new Convenio("OSDE", 5, 14000m),
+                        new Convenio("SWISS", 1, 20000m),
+                        new Convenio("SWISS", 2, 45000m),
+                        new Convenio("SWISS", 3, 62000m),
+                        new Convenio("SWISS", 4, 95000m),
+                        new Convenio("SWISS", 5, 16000m),
+                        new Convenio("IOMA", 1, 12000m),
+                        new Convenio("IOMA", 2, 28000m),
+                        new Convenio("IOMA", 3, 42000m),
+                        new Convenio("IOMA", 4, 65000m),
+                        new Convenio("IOMA", 5, 10000m)
+                    );
                     await context.SaveChangesAsync();
                 }
 
+                // 4. RESPONSABLES DE CLINICA
                 if (!await context.ResponsablesClinica.AnyAsync())
                 {
-                    var (adminHash, adminSalt) = PasswordHasher.Generar("admin123");
-                    var (responsableHash, responsableSalt) = PasswordHasher.Generar("resp123");
+                    // Contraseña distinta a la de su fila en Odontologos ("doc123") a propósito:
+                    // así se puede probar el login como cada rol por separado.
+                    var (claveKarina, saltKarina) = PasswordHasher.Generar("resp123");
+                    // TODO: reemplazar por una persona real — placeholder para que exista
+                    // una fila con Rol="Admin" en ResponsablesClinica (ver MU: Admin y
+                    // "Responsable de la Clínica" son dos filas distintas, mismo modelo).
+                    var (claveAdmin, saltAdmin) = PasswordHasher.Generar("admin123");
 
                     await context.ResponsablesClinica.AddRangeAsync(
-                        new ResponsableClinica("DNI", "25412587", "Roberto", "Sanchez",
-                            new DateTime(1976, 5, 10), "341-4889977", "rsanchez@clinica.com",
-                            "San Luis 1520, Rosario", adminHash, adminSalt,
-                            new DateTime(2022, 1, 15, 8, 0, 0), "Admin"),
-                        new ResponsableClinica("DNI", "30123456", "Mariana", "Lopez",
-                            new DateTime(1982, 11, 20), "341-4778899", "mlopez@clinica.com",
-                            "Mendoza 2100, Rosario", responsableHash, responsableSalt,
-                            new DateTime(2023, 3, 1, 9, 30, 0), "ResponsableClinica"));
+                        new ResponsableClinica(
+                            "DNI",
+                            "28456789",
+                            "Karina",
+                            "González",
+                            new DateTime(1980, 5, 14),
+                            "341-4567890",
+                            "karina.gonzalez@turnomolar.com",
+                            "Bv. Oroño 1234, Rosario",
+                            claveKarina,
+                            saltKarina,
+                            DateTime.Now,
+                            "ResponsableClinica"
+                        ),
+                        new ResponsableClinica(
+                            "DNI",
+                            "20000000",
+                            "Administrador",
+                            "General",
+                            new DateTime(1985, 1, 1),
+                            "341-0000000",
+                            "admin@turnomolar.com",
+                            "Sede Central, Rosario",
+                            claveAdmin,
+                            saltAdmin,
+                            DateTime.Now,
+                            "Admin"
+                        )
+                    );
                     await context.SaveChangesAsync();
                 }
 
+                // 5. ODONTÓLOGOS
                 if (!await context.Odontologos.AnyAsync())
                 {
-                    var (martinHash, martinSalt) = PasswordHasher.Generar("doc123");
-                    var (valeriaHash, valeriaSalt) = PasswordHasher.Generar("doc123");
-                    var (carlosHash, carlosSalt) = PasswordHasher.Generar("doc123");
+                    var (clave1, salt1) = PasswordHasher.Generar("doc123");
+                    var doc1 = new Odontologo(
+                        "DNI",
+                        "28456789",
+                        "MP 3840",
+                        "Karina",
+                        "González",
+                        new DateTime(1980, 5, 14),
+                        "341-4567890",
+                        "karina.gonzalez@turnomolar.com",
+                        "Bv. Oroño 1234, Rosario",
+                        "ACTIVO",
+                        clave1,
+                        salt1,
+                        DateTime.Now,
+                        "Odontologo"
+                    );
 
-                    await context.Odontologos.AddRangeAsync(
-                        new Odontologo("DNI", "32145874", "MAT-8421", "Martin", "Gómez",
-                            new DateTime(1986, 4, 12), "341-5982144", "mgomez@clinica.com",
-                            "Bv. Oroño 845, Rosario", "ACTIVO", martinHash, martinSalt,
-                            new DateTime(2020, 5, 10, 10, 0, 0), "Odontologo"),
-                        new Odontologo("DNI", "35987123", "MAT-9130", "Valeria", "Rossi",
-                            new DateTime(1991, 9, 25), "341-4329901", "vrossi@clinica.com",
-                            "Cordoba 1820, Rosario", "ACTIVO", valeriaHash, valeriaSalt,
-                            new DateTime(2021, 8, 15, 11, 30, 0), "Odontologo"),
-                        new Odontologo("DNI", "28456123", "MAT-7112", "Carlos", "Benitez",
-                            new DateTime(1980, 11, 3), "341-4112233", "cbenitez@clinica.com",
-                            "Pellegrini 1420, Rosario", "LICENCIA", carlosHash, carlosSalt,
-                            new DateTime(2015, 2, 20, 9, 15, 0), "Odontologo"));
+                    var (clave2, salt2) = PasswordHasher.Generar("doc123");
+                    var doc2 = new Odontologo(
+                        "DNI",
+                        "30123456",
+                        "MP 4512",
+                        "Elena",
+                        "Silva",
+                        new DateTime(1983, 8, 22),
+                        "341-5678901",
+                        "elena.silva@turnomolar.com",
+                        "Av. Pellegrini 850, Rosario",
+                        "ACTIVO",
+                        clave2,
+                        salt2,
+                        DateTime.Now,
+                        "Odontologo"
+                    );
+
+                    var (clave3, salt3) = PasswordHasher.Generar("doc123");
+                    var doc3 = new Odontologo(
+                        "DNI",
+                        "26789012",
+                        "MP 5120",
+                        "Martín",
+                        "López",
+                        new DateTime(1978, 11, 30),
+                        "341-6789012",
+                        "martin.lopez@turnomolar.com",
+                        "Santa Fe 2100, Rosario",
+                        "ACTIVO",
+                        clave3,
+                        salt3,
+                        DateTime.Now,
+                        "Odontologo"
+                    );
+
+                    await context.Odontologos.AddRangeAsync(doc1, doc2, doc3);
                     await context.SaveChangesAsync();
                 }
 
+                // 6. DISPONIBILIDADES HORARIAS
                 if (!await context.DisponibilidadesHorarias.AnyAsync())
                 {
                     await context.DisponibilidadesHorarias.AddRangeAsync(
-                        new DisponibilidadHoraria("DNI", "32145874", "Lunes", new TimeOnly(8, 0), new TimeOnly(12, 0), 101),
-                        new DisponibilidadHoraria("DNI", "32145874", "Miércoles", new TimeOnly(14, 0), new TimeOnly(18, 0), 102),
-                        new DisponibilidadHoraria("DNI", "35987123", "Martes", new TimeOnly(9, 0), new TimeOnly(13, 0), 102),
-                        new DisponibilidadHoraria("DNI", "35987123", "Jueves", new TimeOnly(16, 0), new TimeOnly(19, 0), 102));
+                        new DisponibilidadHoraria("DNI", "28456789", "Lunes", new TimeOnly(8, 0), new TimeOnly(13, 0), 1),
+                        new DisponibilidadHoraria("DNI", "28456789", "Martes", new TimeOnly(8, 0), new TimeOnly(13, 0), 1),
+                        new DisponibilidadHoraria("DNI", "30123456", "Miércoles", new TimeOnly(14, 0), new TimeOnly(19, 0), 2),
+                        new DisponibilidadHoraria("DNI", "26789012", "Jueves", new TimeOnly(9, 0), new TimeOnly(18, 0), 3),
+                        new DisponibilidadHoraria("DNI", "28456789", "Viernes", new TimeOnly(9, 0), new TimeOnly(18, 0), 3)
+                    );
                     await context.SaveChangesAsync();
                 }
 
+                // 7. PACIENTES
                 if (!await context.Pacientes.AnyAsync())
                 {
-                    var pacientes = new[]
-                    {
-                        CrearPaciente("DNI", "44123890", "Lucia", "Fernández", new DateTime(2002, 5, 14),
-                            "341-3568899", "lfernandez@gmail.com", "San Lorenzo 1240, Rosario", "HABILITADO", "2",
-                            new DateTime(2024, 2, 15, 10, 0, 0)),
-                        CrearPaciente("DNI", "40890123", "Esteban", "Martinez", new DateTime(1997, 12, 9),
-                            "341-6789012", "emartinez@gmail.com", "Santa Fe 2150, Rosario", "HABILITADO", "1",
-                            new DateTime(2024, 6, 10, 9, 0, 0)),
-                        CrearPaciente("DNI", "38776543", "Camila", "Alvarez", new DateTime(1995, 3, 22),
-                            "341-5234789", "calvarez@gmail.com", "Mitre 860, Rosario", "HABILITADO", null,
-                            new DateTime(2025, 1, 20, 16, 30, 0)),
-                        CrearPaciente("PAS", "A9876543", "John", "Miller", new DateTime(1988, 8, 19),
-                            "341-4112233", "jmiller@outlook.com", "España 540, Rosario", "INHABILITADO", null,
-                            new DateTime(2025, 8, 1, 14, 0, 0))
-                    };
-                    await context.Pacientes.AddRangeAsync(pacientes);
+                    var (clavePac1, saltPac1) = PasswordHasher.Generar("paciente123");
+                    var pac1 = new Paciente(
+                        "DNI",
+                        "34567890",
+                        "Manuel",
+                        "Fernández",
+                        new DateTime(1989, 4, 15),
+                        "341-3334455",
+                        "manuel.fer@email.com",
+                        "Córdoba 1540, Rosario",
+                        "HABILITADO",
+                        "OSDE",
+                        0m,
+                        clavePac1,
+                        saltPac1,
+                        DateTime.Now,
+                        "Paciente"
+                    );
+
+                    var (clavePac2, saltPac2) = PasswordHasher.Generar("paciente123");
+                    var pac2 = new Paciente(
+                        "DNI",
+                        "38999111",
+                        "Laura",
+                        "Gómez",
+                        new DateTime(1995, 9, 28),
+                        "341-8889900",
+                        "laura.gomez@gmail.com",
+                        "Rioja 2230, Rosario",
+                        "HABILITADO",
+                        "SWISS",
+                        0m,
+                        clavePac2,
+                        saltPac2,
+                        DateTime.Now,
+                        "Paciente"
+                    );
+
+                    var (clavePac3, saltPac3) = PasswordHasher.Generar("paciente123");
+                    var pac3 = new Paciente(
+                        "DNI",
+                        "29888777",
+                        "Carlos",
+                        "Rossi",
+                        new DateTime(1982, 12, 10),
+                        "341-1112233",
+                        "carlos.rossi@hotmail.com",
+                        "San Lorenzo 890, Rosario",
+                        "HABILITADO",
+                        "PARTICULAR",
+                        0m,
+                        clavePac3,
+                        saltPac3,
+                        DateTime.Now,
+                        "Paciente"
+                    );
+
+                    await context.Pacientes.AddRangeAsync(pac1, pac2, pac3);
                     await context.SaveChangesAsync();
 
+                    // Historias Clínicas para cada paciente
                     await context.HistoriasClinicas.AddRangeAsync(
-                        new HistoriaClinica(1001, "DNI", "44123890", new DateTime(2024, 2, 15)),
-                        new HistoriaClinica(1002, "DNI", "40890123", new DateTime(2024, 6, 10)),
-                        new HistoriaClinica(1003, "DNI", "38776543", new DateTime(2025, 1, 20)),
-                        new HistoriaClinica(1004, "PAS", "A9876543", new DateTime(2025, 8, 1)));
-                    await InsertWithIdentityAsync(context, "HistoriasClinicas");
-                }
-
-                if (!await context.Turnos.AnyAsync())
-                {
-                    await InsertWithIdentityAsync(context, "Turnos",
-                        new Turno(701, new DateTime(2025, 8, 10, 8, 30, 0), "OBRA_SOCIAL", 101,
-                            "DNI", "32145874", "DNI", "44123890", "ATENDIDO", "Kit descartable odontológico"),
-                        new Turno(702, new DateTime(2025, 8, 12, 14, 30, 0), "PARTICULAR", 103,
-                            "DNI", "32145874", "DNI", "38776543", "ATENDIDO", "Instrumental endodoncia"),
-                        new Turno(703, new DateTime(2025, 8, 15, 9, 30, 0), "OBRA_SOCIAL", 102,
-                            "DNI", "35987123", "DNI", "40890123", "REPROGRAMADO", null, null,
-                            null, new DateTime(2025, 8, 14, 11, 0, 0)),
-                        new Turno(704, new DateTime(2025, 8, 22, 9, 30, 0), "OBRA_SOCIAL", 102,
-                            "DNI", "35987123", "DNI", "40890123", "CONFIRMADO", "Brackets estéticos cerámicos",
-                            null, 703),
-                        new Turno(705, new DateTime(2025, 8, 18, 18, 0, 0), "PARTICULAR", 102,
-                            "DNI", "35987123", "DNI", "38776543", "CANCELADO", null, 3500m, null,
-                            null, new DateTime(2025, 8, 17, 18, 20, 0),
-                            "Viaje imprevisto del paciente"));
-                }
-
-                if (!await context.ComprobantesTurnos.AnyAsync())
-                {
-                    await InsertWithIdentityAsync(context, "ComprobantesTurnos",
-                        new ComprobanteDeTurno(9001, 701, new DateTime(2025, 8, 10, 15, 30, 0)),
-                        new ComprobanteDeTurno(9002, 702, new DateTime(2025, 8, 12, 14, 40, 11)),
-                        new ComprobanteDeTurno(9003, 703, new DateTime(2025, 8, 15, 16, 5, 45)),
-                        new ComprobanteDeTurno(9004, 704, new DateTime(2025, 8, 14, 11, 2, 18)));
-                }
-
-                if (!await context.AtencionesOdontologicas.AnyAsync())
-                {
-                    await InsertWithIdentityAsync(context, "AtencionesOdontologicas",
-                        new AtencionOdontologica(8001, new DateTime(2025, 8, 10, 8, 35, 0),
-                            new DateTime(2025, 8, 10, 9, 15, 0), "Limpieza profunda", 8500m, 701, 1001),
-                        new AtencionOdontologica(8002, new DateTime(2025, 8, 12, 14, 35, 0),
-                            new DateTime(2025, 8, 12, 15, 45, 0), "Tratamiento de conducto", 22000m, 702, 1003));
-                }
-
-                if (!await context.Valoraciones.AnyAsync())
-                {
-                    await InsertWithIdentityAsync(context, "Valoraciones",
-                        new Valoracion(301, 5, "Excelente atención y puntualidad del profesional.", 8001),
-                        new Valoracion(302, 4, "Muy buen procedimiento, molestia mínima post-tratamiento", 8002));
-                }
-
-                if (!await context.DetallesInsumosUtilizados.AnyAsync())
-                {
-                    await context.DetallesInsumosUtilizados.AddRangeAsync(
-                        new DetalleInsumoUtilizado(8001, 501, 1, 1450m),
-                        new DetalleInsumoUtilizado(8001, 502, 1, 8500m),
-                        new DetalleInsumoUtilizado(8001, 503, 2, 250m),
-                        new DetalleInsumoUtilizado(8002, 501, 1, 1450m),
-                        new DetalleInsumoUtilizado(8002, 503, 1, 250m),
-                        new DetalleInsumoUtilizado(8002, 504, 1, 3200m));
+                        new HistoriaClinica(0, "DNI", "34567890", new DateTime(2024, 1, 15), "Sin antecedentes relevantes", "Ninguna", "Paciente apto para ortodoncia y limpiezas regulares"),
+                        new HistoriaClinica(0, "DNI", "38999111", new DateTime(2024, 3, 20), "Hipertensión leve controlada", "Penicilina", "Requiere control semestral"),
+                        new HistoriaClinica(0, "DNI", "29888777", new DateTime(2024, 5, 10), "Bruxismo", "Ninguna", "Tratamiento de conducto pendiente")
+                    );
                     await context.SaveChangesAsync();
                 }
 
-                if (!await context.Pagos.AnyAsync())
+                // 8. INSUMOS
+                if (!await context.Insumos.AnyAsync())
                 {
-                    await InsertWithIdentityAsync(context, "Pagos",
-                        new Pago(6001, 701, new DateTime(2025, 8, 10, 9, 20, 0), 8500m,
-                            "Tarjeta Débito", "1", 0m, 8500m),
-                        new Pago(6002, 702, new DateTime(2025, 8, 12, 15, 50, 0), 22000m,
-                            "Efectivo", null, 22000m, 0m),
-                        new Pago(6003, 704, new DateTime(2025, 8, 22, 9, 15, 0), 15000m,
-                            "Transferencia", "2", 7200m, 7800m));
+                    await context.Insumos.AddRangeAsync(
+                        new Insumo("Kit de Anestesia Local (Mepivacaína)", 2500m, 120),
+                        new Insumo("Resina Compuesta Fotocurable", 6800m, 45),
+                        new Insumo("Película Radiográfica Periapical", 1500m, 200),
+                        new Insumo("Guantes de Látex Descartables (Par)", 400m, 500),
+                        new Insumo("Babero y Eyector Descartable", 300m, 350),
+                        new Insumo("Pasta para Profilaxis Dental", 1200m, 60),
+                        new Insumo("Conos de Gutapercha Endodoncia", 4500m, 30)
+                    );
+                    await context.SaveChangesAsync();
                 }
 
-                logger?.LogInformation("Base de datos TurnoMolar inicializada con los datos de muestra.");
+                logger?.LogInformation("Base de datos TurnoMolar (MDF v1.01) inicializada y seeders aplicados correctamente.");
             }
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Error durante la inicialización de la base de datos.");
-                throw;
             }
         }
-
-        private static Paciente CrearPaciente(
-            string tipoDocumento, string nroDocumento, string nombre, string apellido,
-            DateTime fechaNacimiento, string telefono, string email, string domicilio,
-            string estado, string? identificadorOS, DateTime fechaAlta)
-        {
-            var (hash, salt) = PasswordHasher.Generar("paciente123");
-            return new Paciente(tipoDocumento, nroDocumento, nombre, apellido, fechaNacimiento, telefono, email,
-                domicilio, estado, identificadorOS, 0m, hash, salt, fechaAlta, "Paciente");
-        }
-
-        private static async Task InsertWithIdentityAsync(TurnoMolarDbContext context, string table, params object[] entities)
-        {
-            await context.Database.OpenConnectionAsync();
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(GetIdentityInsertSql(table, true));
-                context.AddRange(entities);
-                await context.SaveChangesAsync();
-            }
-            finally
-            {
-                await context.Database.ExecuteSqlRawAsync(GetIdentityInsertSql(table, false));
-                await context.Database.CloseConnectionAsync();
-            }
-        }
-
-        private static string GetIdentityInsertSql(string table, bool enabled) =>
-            (table, enabled) switch
-            {
-                ("Especialidades", true) => "SET IDENTITY_INSERT [Especialidades] ON",
-                ("Especialidades", false) => "SET IDENTITY_INSERT [Especialidades] OFF",
-                ("Insumos", true) => "SET IDENTITY_INSERT [Insumos] ON",
-                ("Insumos", false) => "SET IDENTITY_INSERT [Insumos] OFF",
-                ("HistoriasClinicas", true) => "SET IDENTITY_INSERT [HistoriasClinicas] ON",
-                ("HistoriasClinicas", false) => "SET IDENTITY_INSERT [HistoriasClinicas] OFF",
-                ("Turnos", true) => "SET IDENTITY_INSERT [Turnos] ON",
-                ("Turnos", false) => "SET IDENTITY_INSERT [Turnos] OFF",
-                ("ComprobantesTurnos", true) => "SET IDENTITY_INSERT [ComprobantesTurnos] ON",
-                ("ComprobantesTurnos", false) => "SET IDENTITY_INSERT [ComprobantesTurnos] OFF",
-                ("AtencionesOdontologicas", true) => "SET IDENTITY_INSERT [AtencionesOdontologicas] ON",
-                ("AtencionesOdontologicas", false) => "SET IDENTITY_INSERT [AtencionesOdontologicas] OFF",
-                ("Valoraciones", true) => "SET IDENTITY_INSERT [Valoraciones] ON",
-                ("Valoraciones", false) => "SET IDENTITY_INSERT [Valoraciones] OFF",
-                ("Pagos", true) => "SET IDENTITY_INSERT [Pagos] ON",
-                ("Pagos", false) => "SET IDENTITY_INSERT [Pagos] OFF",
-                _ => throw new ArgumentOutOfRangeException(nameof(table), table, "Tabla no habilitada para identity insert.")
-            };
     }
 }

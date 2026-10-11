@@ -12,6 +12,7 @@ namespace Data
         Task<bool> TurnoExistsAsync(DateTime fechaReserva, string odontologoTipoDoc, string odontologoNroDoc);
         Task<bool> TurnoExistsAsync(DateTime fechaReserva, string odontologoTipoDoc, int odontologoNroDoc);
         Task<IEnumerable<Turno>> GetByFechaAsync(DateTime fecha);
+        Task<IEnumerable<Turno>> GetByEstadoAsync(string estado);
         Task<IEnumerable<Turno>> GetByOdontologoAsync(string tipoDoc, string nroDoc);
         Task<IEnumerable<Turno>> GetByOdontologoAsync(string tipoDoc, int nroDoc);
         Task<IEnumerable<Turno>> GetByPacienteAsync(string tipoDoc, string nroDoc);

@@ -88,6 +88,14 @@ namespace Data
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Turno>> GetByEstadoAsync(string estado)
+        {
+            return await IncludeAll()
+                .Where(t => t.EstadoTurno == estado)
+                .OrderBy(t => t.FechaHoraTurno)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Turno>> GetByOdontologoAsync(string tipoDoc, string nroDoc)
         {
             return await IncludeAll()

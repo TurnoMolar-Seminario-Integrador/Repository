@@ -10,8 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Frontend.MVC.Controllers
 {
-    // Responsable de la Clínica también puede acceder (alta manual de turnos, CUU01 alt 3.a).
-    [Authorize(Roles = "Paciente,Admin,ResponsableClinica")]
+    // Portal del paciente (el Admin lo ve en vista previa). El responsable de la clínica ya no entra
+    // acá: el alta manual de turnos (CUU01 alt 3.a) está en su propia consola, Responsable/NuevoTurno,
+    // y estas acciones resuelven al paciente de la sesión, que un responsable no tiene.
+    [Authorize(Roles = "Paciente,Admin")]
     public class TurnoController : Controller
     {
         private readonly TurnoMolarDbContext _context;
@@ -301,10 +303,13 @@ namespace Frontend.MVC.Controllers
         // =========================================================================
         // Esta pantalla vivía acá con el layout del portal del paciente, y tras registrar el turno
         // redirigía al comprobante del paciente (que falla para el rol Responsable). Ahora es parte
-        // de la consola del responsable: Odontologo/NuevoTurno. Se deja esta ruta para no romper
-        // enlaces guardados.
+        // de la consola del responsable: Responsable/NuevoTurno. Se deja esta ruta para no romper
+        // enlaces guardados. Es [AllowAnonymous] porque solo redirige (el [Authorize] de la clase ya
+        // no incluye al responsable) y la pantalla de destino exige el rol: quien no tenga sesión pasa
+        // por el login y quien tenga otro rol recibe el aviso de acceso denegado.
         [HttpGet]
-        public IActionResult ReservarManual() => RedirectToActionPermanent("NuevoTurno", "Odontologo");
+        [AllowAnonymous]
+        public IActionResult ReservarManual() => RedirectToActionPermanent("NuevoTurno", "Responsable");
 
         // =========================================================================
         // COMPROBANTE DE TURNO

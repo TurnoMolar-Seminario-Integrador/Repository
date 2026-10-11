@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Nuevo Turno - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "GestionTurnos";
-    Layout = "_LayoutOdontologo";
+    Layout = "_LayoutResponsable";
 
     var especialidades = (IEnumerable<Especialidad>)ViewBag.Especialidades;
     var odontologos = (IEnumerable<Odontologo>)ViewBag.Odontologos;
@@ -15,7 +15,7 @@
 @* CUU01 alt 3.a: el responsable registra el turno acordado con el paciente que se comunicó con la
    clínica. Forma parte de la consola del responsable (antes se mostraba con el menú del paciente). *@
 <div class="mb-4">
-    <a asp-controller="Odontologo" asp-action="GestionTurnos" class="small text-decoration-none">
+    <a asp-controller="Responsable" asp-action="GestionTurnos" class="small text-decoration-none">
         <i class="bi bi-arrow-left me-1"></i> Volver a Gestión de Turnos
     </a>
     <h3 class="fw-bold text-dark mt-2 mb-1">Nuevo Turno</h3>
@@ -34,7 +34,7 @@
 
 <div class="card shadow-sm border-0 rounded-4" style="max-width: 640px;">
     <div class="card-body p-4">
-        <form asp-controller="Odontologo" asp-action="NuevoTurno" method="post">
+        <form asp-controller="Responsable" asp-action="NuevoTurno" method="post">
             <div class="row g-3">
                 <div class="col-sm-4">
                     <label class="form-label fw-semibold small">Tipo de Documento (paciente)</label>

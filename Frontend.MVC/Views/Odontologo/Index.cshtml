@@ -8,6 +8,7 @@
     var email = ViewData["Email"]?.ToString() ?? string.Empty;
     var telefono = ViewData["Telefono"]?.ToString() ?? string.Empty;
     var estadoOdontologo = ViewData["EstadoOdontologo"]?.ToString() ?? string.Empty;
+    var turnosHoy = ViewData["TurnosHoy"] as int? ?? 0;
 }
 
 @section Styles {
@@ -46,9 +47,7 @@
         }
 
         .card-1 .card-icon { background: #eff6ff; color: #0d6efd; }
-        .card-2 .card-icon { background: #f5f3ff; color: #7c3aed; }
-        .card-3 .card-icon { background: #fffbeb; color: #d97706; }
-        .card-4 .card-icon { background: #ecfdf5; color: #059669; }
+        .card-2 .card-icon { background: #ecfdf5; color: #059669; }
 
         .dashboard-card:hover .card-icon { transform: scale(1.08); }
 
@@ -62,10 +61,25 @@
     </style>
 }
 
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <!-- BIENVENIDA -->
 <div class="mb-4">
     <h2 class="fw-bold text-dark mb-1">Hola, @nombreDoctor</h2>
-    <p class="text-muted">Tenés <strong class="text-primary">8 pacientes</strong> agendados para el día de hoy.</p>
+    @if (turnosHoy == 0)
+    {
+        <p class="text-muted">No tenés pacientes agendados para el día de hoy.</p>
+    }
+    else
+    {
+        <p class="text-muted">Tenés <strong class="text-primary">@turnosHoy @(turnosHoy == 1 ? "paciente" : "pacientes")</strong> @(turnosHoy == 1 ? "agendado" : "agendados") para el día de hoy.</p>
+    }
 </div>
 
 <!-- ACCESOS RÁPIDOS PRINCIPALES -->
@@ -78,40 +92,14 @@
         <a href="@Url.Action("TurnosDelDia", "Odontologo")" class="dashboard-card card-1">
             <div class="card-icon"><i class="bi bi-calendar2-day"></i></div>
             <h6 class="fw-bold mb-1 text-dark">Turnos del Día</h6>
-            <p class="text-muted small mb-0 flex-grow-1">Visualizá tu agenda de hoy y los pacientes en sala de espera.</p>
+            <p class="text-muted small mb-0 flex-grow-1">Visualizá tu agenda de hoy, los pacientes en sala de espera y registrá la atención.</p>
             <div class="mt-3 text-end"><i class="bi bi-arrow-right text-primary"></i></div>
         </a>
     </div>
 
-    @if (User.IsInRole("ResponsableClinica") || User.IsInRole("Admin"))
-    {
-        <!-- Módulo 2: Gestión de Turnos (Responsable de la Clínica) -->
-        <div class="col-md-6 col-lg-3">
-            <a href="@Url.Action("GestionTurnos", "Odontologo")" class="dashboard-card card-2">
-                <div class="card-icon"><i class="bi bi-calendar3"></i></div>
-                <h6 class="fw-bold mb-1 text-dark">Gestión de Turnos</h6>
-                <p class="text-muted small mb-0 flex-grow-1">Consultá los turnos, agendá y cancelá o reprogramá en representación del paciente.</p>
-                <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #7c3aed;"></i></div>
-            </a>
-        </div>
-    }
-
-    @if (User.IsInRole("ResponsableClinica") || User.IsInRole("Admin"))
-    {
-        <!-- Módulo 3: Control Asistencias -->
-        <div class="col-md-6 col-lg-3">
-            <a href="@Url.Action("ControlAsistencias", "Odontologo")" class="dashboard-card card-3">
-                <div class="card-icon"><i class="bi bi-clipboard2-check"></i></div>
-                <h6 class="fw-bold mb-1 text-dark">Control Asistencias</h6>
-                <p class="text-muted small mb-0 flex-grow-1">Registrá las llegadas y ausencias de los turnos programados.</p>
-                <div class="mt-3 text-end"><i class="bi bi-arrow-right" style="color: #d97706;"></i></div>
-            </a>
-        </div>
-    }
-
-    <!-- Módulo 4: Gestión Atenciones -->
+    <!-- Módulo 2: Gestión Atenciones -->
     <div class="col-md-6 col-lg-3">
-        <a href="@Url.Action("GestionAtenciones", "Odontologo")" class="dashboard-card card-4">
+        <a href="@Url.Action("GestionAtenciones", "Odontologo")" class="dashboard-card card-2">
             <div class="card-icon"><i class="bi bi-file-earmark-medical"></i></div>
             <h6 class="fw-bold mb-1 text-dark">Gestión Atenciones</h6>
             <p class="text-muted small mb-0 flex-grow-1">Cargá diagnósticos, historias clínicas y emití comprobantes.</p>
@@ -122,33 +110,30 @@
 </div>
 
 <!-- SECCIÓN INFORMATIVA DEL ODONTOLOGO -->
-@if (User.IsInRole("Odontologo"))
-{
-    <div class="row g-3">
-        <div class="col-12">
-            <div class="widget-box">
-                <h6 class="fw-bold mb-3 text-dark">
-                    <i class="bi bi-info-circle text-primary me-2"></i>Información del Odontólogo
-                </h6>
-                <ul class="list-unstyled small mb-0">
-                    <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
-                        <span class="text-muted">Matrícula Profesional:</span>
-                        <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(matricula) ? "—" : matricula)</span>
-                    </li>
-                    <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
-                        <span class="text-muted">Email:</span>
-                        <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(email) ? "—" : email)</span>
-                    </li>
-                    <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
-                        <span class="text-muted">Teléfono:</span>
-                        <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(telefono) ? "—" : telefono)</span>
-                    </li>
-                    <li class="d-flex justify-content-between">
-                        <span class="text-muted">Estado:</span>
-                        <span class="fw-semibold @(estadoOdontologo == "ACTIVO" ? "text-success" : "text-danger")">@(string.IsNullOrEmpty(estadoOdontologo) ? "—" : estadoOdontologo)</span>
-                    </li>
-                </ul>
-            </div>
+<div class="row g-3">
+    <div class="col-12">
+        <div class="widget-box">
+            <h6 class="fw-bold mb-3 text-dark">
+                <i class="bi bi-info-circle text-primary me-2"></i>Información del Odontólogo
+            </h6>
+            <ul class="list-unstyled small mb-0">
+                <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                    <span class="text-muted">Matrícula Profesional:</span>
+                    <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(matricula) ? "—" : matricula)</span>
+                </li>
+                <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                    <span class="text-muted">Email:</span>
+                    <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(email) ? "—" : email)</span>
+                </li>
+                <li class="mb-2 pb-2 border-bottom d-flex justify-content-between">
+                    <span class="text-muted">Teléfono:</span>
+                    <span class="fw-semibold text-dark">@(string.IsNullOrEmpty(telefono) ? "—" : telefono)</span>
+                </li>
+                <li class="d-flex justify-content-between">
+                    <span class="text-muted">Estado:</span>
+                    <span class="fw-semibold @(estadoOdontologo == "ACTIVO" ? "text-success" : "text-danger")">@(string.IsNullOrEmpty(estadoOdontologo) ? "—" : estadoOdontologo)</span>
+                </li>
+            </ul>
         </div>
     </div>
-}
+</div>

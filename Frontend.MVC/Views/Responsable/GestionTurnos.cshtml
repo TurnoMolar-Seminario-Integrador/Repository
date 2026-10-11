@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Gestión de Turnos - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "GestionTurnos";
-    Layout = "_LayoutOdontologo";
+    Layout = "_LayoutResponsable";
 }
 
 @section Styles {
@@ -23,7 +23,7 @@
         <h2 class="fw-bold text-dark mb-1">Gestión de Turnos</h2>
         <p class="text-muted mb-0">Consultá los turnos y registrá, en representación del paciente, nuevas reservas, cancelaciones y reprogramaciones.</p>
     </div>
-    <a asp-controller="Odontologo" asp-action="NuevoTurno" class="btn btn-primary rounded-pill px-4 fw-bold">
+    <a asp-controller="Responsable" asp-action="NuevoTurno" class="btn btn-primary rounded-pill px-4 fw-bold">
         <i class="bi bi-plus-lg me-1"></i> Nuevo Turno
     </a>
 </div>
@@ -51,7 +51,7 @@
 }
 
 <div class="table-card p-3 mb-3">
-    <form method="get" asp-controller="Odontologo" asp-action="GestionTurnos" class="row g-2 align-items-end">
+    <form method="get" asp-controller="Responsable" asp-action="GestionTurnos" class="row g-2 align-items-end">
         <div class="col-md-5">
             <label class="form-label small text-muted mb-1">Paciente</label>
             <input type="text" name="busqueda" value="@Model.Busqueda" class="form-control" placeholder="Nombre, apellido o documento" />
@@ -150,7 +150,7 @@
 <div class="modal fade" id="modalCancelar" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
-            <form method="post" asp-controller="Odontologo" asp-action="CancelarTurnoEnRepresentacion">
+            <form method="post" asp-controller="Responsable" asp-action="CancelarTurnoEnRepresentacion">
                 <input type="hidden" name="idTurno" id="cancelarIdTurno" />
                 <input type="hidden" name="tipoDocumentoPaciente" id="cancelarTipoDoc" />
                 <input type="hidden" name="nroDocumentoPaciente" id="cancelarNroDoc" />
@@ -181,7 +181,7 @@
 <div class="modal fade" id="modalReprogramar" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
-            <form method="post" asp-controller="Odontologo" asp-action="ReprogramarTurnoEnRepresentacion">
+            <form method="post" asp-controller="Responsable" asp-action="ReprogramarTurnoEnRepresentacion">
                 <input type="hidden" name="idTurno" id="reprogramarIdTurno" />
                 <input type="hidden" name="tipoDocumentoPaciente" id="reprogramarTipoDoc" />
                 <input type="hidden" name="nroDocumentoPaciente" id="reprogramarNroDoc" />

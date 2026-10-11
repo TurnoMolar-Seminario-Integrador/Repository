@@ -37,14 +37,15 @@ builder.Services.AddScoped<IObraSocialRepository, ObraSocialRepository>();
 builder.Services.AddScoped<IComprobanteTurnoRepository, ComprobanteTurnoRepository>();
 builder.Services.AddScoped<IAgendaTurnoService, AgendaTurnoService>();
 
-// CUU02 - Gestionar Asistencia a Turno Odontológico: OdontologoController (pantalla Control
+// CUU02 - Gestionar Asistencia a Turno Odontológico: ResponsableController (pantalla Control
 // de Asistencias) consume esta lógica de negocio, con el mismo criterio que CUU01.
 builder.Services.AddScoped<IAsistenciaTurnoService, AsistenciaTurnoService>();
 
 // CUU03 - Finalizar Atención Odontológica: IInsumoRepository e IHistoriaClinicaRepository ya
 // existían en Data/ pero no estaban registrados (nada los usaba todavía). IAtencionOdontologicaRepository
-// e IPagoRepository son nuevos. OdontologoController (pantalla Agenda de Hoy / TurnosDelDia)
-// consume IFinalizarAtencionService con el mismo criterio que CUU01 y CUU02.
+// e IPagoRepository son nuevos. IFinalizarAtencionService lo consumen OdontologoController (agenda
+// propia del odontólogo: registra la atención, pasos 1 a 4) y ResponsableController (agenda de todos
+// los odontólogos: cobra, pasos 5 y 6), con el mismo criterio que CUU01 y CUU02.
 builder.Services.AddScoped<IInsumoRepository, InsumoRepository>();
 builder.Services.AddScoped<IHistoriaClinicaRepository, HistoriaClinicaRepository>();
 builder.Services.AddScoped<IAtencionOdontologicaRepository, AtencionOdontologicaRepository>();

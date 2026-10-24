@@ -1,4 +1,5 @@
 @model Frontend.MVC.Models.MetodosPagoViewModel
+@using Domain.Model
 @{
     ViewData["Title"] = "Métodos de Pago - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "MetodosDePago";
@@ -6,6 +7,9 @@
 
     var deudaActual = Model.SaldoPendiente;
     var estaInhabilitado = Model.EstaInhabilitado;
+
+    // Sin el turno que originó la deuda no hay dónde registrar el pago (CUF10, paso 3): el detalle lo informa.
+    var puedePagar = deudaActual > 0 && (Model.DeudaDetalle == null || Model.DeudaDetalle.NroTurno.HasValue);
 }
 
 @section Styles {
@@ -63,6 +67,14 @@
     </div>
 }
 
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <div class="mb-4">
     <h2 class="fw-bold text-dark mb-1">Estado de Cuenta y Pagos</h2>
     <p class="text-muted small">Administrá tus saldos pendientes y revisá tu historial de pagos registrados en el sistema.</p>
@@ -116,35 +128,35 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="bg-light p-2 rounded text-success"><i class="bi bi-check2-circle fs-4"></i></div>
                         <div>
-                            <h6 class="fw-bold mb-0 text-dark">Pago de Consulta - $@pago.Monto.ToString("N2")</h6>
-                            <small class="text-muted">@pago.FechaYHoraPago.ToString("dd/MM/yyyy HH:mm") hs • Método: @pago.TipoMetodoPago</small>
+                            <h6 class="fw-bold mb-0 text-dark">@Frontend.MVC.Models.MetodosPagoViewModel.DescribirPago(pago)</h6>
+                            <small class="text-muted">@pago.FechaYHoraPago.ToString("dd/MM/yyyy HH:mm") hs • Método: @MetodosPago.Etiqueta(pago.TipoMetodoPago)</small>
+                            @if (pago.AporteObraSocial.GetValueOrDefault() > 0m)
+                            {
+                                @* Aporte de la obra social (CUU03 alt 6.a): el paciente puso solo su parte. *@
+                                <small class="d-block text-muted">
+                                    Tu aporte: $@((pago.AportePaciente ?? 0m).ToString("N2")) • Obra social@(pago.ObraSocial != null ? $" ({pago.ObraSocial.NombreOS})" : ""): $@pago.AporteObraSocial!.Value.ToString("N2")
+                                </small>
+                            }
                         </div>
                     </div>
-                    <span class="badge bg-success bg-opacity-10 text-success fw-bold">PAGADO</span>
+                    <div class="text-end">
+                        <div class="fw-bold text-dark">$@pago.Monto.ToString("N2")</div>
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold">PAGADO</span>
+                    </div>
                 </div>
             }
         }
         else
         {
-            <div class="payment-method-card mb-3 shadow-sm">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="bg-light p-2 rounded text-primary"><i class="bi bi-credit-card-2-front fs-4"></i></div>
-                    <div>
-                        <h6 class="fw-bold mb-0">Visa Débito (Predeterminada)</h6>
-                        <small class="text-muted">Habilitada para cobros directos en clínica</small>
-                    </div>
-                </div>
-                <span class="badge bg-primary rounded-pill">Activa</span>
-            </div>
-            <div class="bg-white border rounded-4 p-4 text-center text-muted small">
-                <i class="bi bi-receipt me-1"></i> Los recibos de tus próximos pagos se registrarán aquí automáticamente.
+            <div class="bg-white border rounded-4 p-4 text-center text-muted small" id="sinPagosRegistrados">
+                <i class="bi bi-receipt me-1"></i> Todavía no tenés pagos registrados. Los recibos de tus próximos pagos se registrarán aquí automáticamente.
             </div>
         }
     </div>
 </div>
 
 <!-- ==========================================
-     MODAL: PAGAR DEUDA
+     MODAL: PAGAR DEUDA (CUF10)
      ========================================== -->
 <div class="modal fade" id="modalPagarDeuda" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -158,62 +170,37 @@
                 @Html.AntiForgeryToken()
                 <div class="modal-body p-4">
 
-                    <div class="text-center mb-4">
-                        <span class="text-muted small text-uppercase fw-bold d-block mb-1">Monto Total a Regularizar</span>
-                        <h2 class="fw-bold text-dark">$ @deudaActual.ToString("N2")</h2>
-                    </div>
+                    @* Paso 1: saldo de deuda y detalle del turno que la originó (nroTurno, fecha y motivo). *@
+                    @if (Model.DeudaDetalle != null)
+                    {
+                        <partial name="_DetalleDeuda" model="Model.DeudaDetalle" />
+                    }
+                    else
+                    {
+                        <div class="text-center mb-2">
+                            <span class="text-muted small text-uppercase fw-bold d-block mb-1">Monto Total a Regularizar</span>
+                            <h2 class="fw-bold text-dark">$ @deudaActual.ToString("N2")</h2>
+                        </div>
+                    }
 
-                    <label class="form-label fw-bold mb-3">Seleccioná la tarjeta para el pago</label>
-
-                    <div class="position-relative mb-2">
-                        <input type="radio" class="btn-check tarjeta-radio" name="metodoPago" id="tarjeta1" value="TARJETA_CREDITO_VISA" checked>
-                        <label class="payment-method-card w-100 m-0 cursor-pointer" for="tarjeta1" style="cursor: pointer;">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="bg-light p-2 rounded"><i class="bi bi-credit-card-2-front fs-5 text-primary"></i></div>
-                                <div class="text-start">
-                                    <h6 class="fw-bold mb-0 text-dark">Visa Crédito (terminada en 4512)</h6>
-                                    <small class="text-muted">Titular: @Model.Paciente.Nombre @Model.Paciente.Apellido</small>
-                                </div>
-                            </div>
-                            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
-                        </label>
-                    </div>
-
-                    <div class="position-relative mb-4">
-                        <input type="radio" class="btn-check tarjeta-radio" name="metodoPago" id="tarjeta2" value="TARJETA_DEBITO_MASTER">
-                        <label class="payment-method-card w-100 m-0 cursor-pointer" for="tarjeta2" style="cursor: pointer;">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="bg-light p-2 rounded"><i class="bi bi-credit-card fs-5 text-secondary"></i></div>
-                                <div class="text-start">
-                                    <h6 class="fw-bold mb-0 text-dark">Mastercard Débito (terminada en 8890)</h6>
-                                </div>
-                            </div>
-                            <i class="bi bi-check-circle-fill text-primary d-none fs-5 check-icon"></i>
-                        </label>
-                    </div>
-
+                    @if (puedePagar)
+                    {
+                        @* Pasos 2 y 3: se abona el total de la deuda con el método elegido. *@
+                        <label class="form-label fw-bold mt-3 mb-2">Método de pago</label>
+                        <partial name="_SelectMetodoPago" />
+                        <div class="form-text">Se registra el pago del total de la deuda y tu cuenta queda Habilitada.</div>
+                    }
                 </div>
                 <div class="modal-footer bg-light border-0 justify-content-between p-3">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
-                        <i class="bi bi-lock-fill me-1"></i> Confirmar y Pagar
-                    </button>
+                    @if (puedePagar)
+                    {
+                        <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-lock-fill me-1"></i> Confirmar y Pagar
+                        </button>
+                    }
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        document.querySelectorAll('.tarjeta-radio').forEach(radio => {
-            radio.addEventListener('change', function() {
-                document.querySelectorAll('.check-icon').forEach(icon => icon.classList.add('d-none'));
-                if(this.checked) {
-                    var icon = this.nextElementSibling.querySelector('.check-icon');
-                    if (icon) icon.classList.remove('d-none');
-                }
-            });
-        });
-    </script>
-}

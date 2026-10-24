@@ -92,6 +92,25 @@
     </div>
 }
 
+@* CUF07 alt 3.a.2 (cancelación fuera de término confirmada) y CUU01 alt 2.b (turno pendiente existente) dejan su
+   aviso en MensajeAdvertencia / MensajeInfo. Esta pantalla solo mostraba MensajeExito y MensajeError: el paciente
+   cancelaba fuera de término y no veía que quedaba con una deuda y inhabilitado. *@
+@if (TempData["MensajeAdvertencia"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert" id="avisoCancelacionFueraDeTermino">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeAdvertencia"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["MensajeInfo"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i> @TempData["MensajeInfo"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 @if (TempData["MensajeError"] != null)
 {
     <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
@@ -381,7 +400,10 @@
                 </li>
                 <li class="d-flex gap-2">
                     <i class="bi bi-shield-exclamation text-warning mt-1"></i>
-                    <span>Cancelaciones con menos de <strong>24 hs</strong> pueden registrarse en el legajo.</span>
+                    @* Política de cancelación del diccionario de datos de CUU01 (mensajePoliticasCancelacion). Antes decía
+                       que las cancelaciones con menos de 24 hs "pueden registrarse en el legajo", sin mencionar el cobro
+                       ni la inhabilitación. *@
+                    <span id="politicaCancelacion">@ViewBag.MensajePoliticaCancelacion</span>
                 </li>
             </ul>
         </div>

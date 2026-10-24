@@ -19,8 +19,7 @@ namespace Data
                     await context.ObrasSociales.AddRangeAsync(
                         new ObraSocial("OSDE", "OSDE Binario", "Plan 210 / 310", "ACTIVA"),
                         new ObraSocial("SWISS", "Swiss Medical", "Black / Gold", "ACTIVA"),
-                        new ObraSocial("IOMA", "IOMA", "Afiliados Obligatorios", "ACTIVA"),
-                        new ObraSocial("PARTICULAR", "Particular", "Sin cobertura", "ACTIVA")
+                        new ObraSocial("IOMA", "IOMA", "Afiliados Obligatorios", "ACTIVA")
                     );
                     await context.SaveChangesAsync();
                 }
@@ -231,7 +230,7 @@ namespace Data
                         "carlos.rossi@hotmail.com",
                         "San Lorenzo 890, Rosario",
                         "HABILITADO",
-                        "PARTICULAR",
+                        null, // MU: el paciente particular no tiene obra social (IdentificadorOS nulo)
                         0m,
                         clavePac3,
                         saltPac3,
@@ -263,6 +262,24 @@ namespace Data
                         new Insumo("Pasta para Profilaxis Dental", 1200m, 60),
                         new Insumo("Conos de Gutapercha Endodoncia", 4500m, 30)
                     );
+                    await context.SaveChangesAsync();
+                }
+
+                // 9. NORMALIZACIÓN DE PACIENTES PARTICULARES (bases creadas con versiones anteriores).
+                // MU: el paciente particular tiene IdentificadorOS nulo. Antes el sembrado (Carlos Rossi) y la
+                // pantalla Seguros lo dejaban con la "obra social" PARTICULAR -- una obra social sin
+                // convenios -- y el sistema creía que su obra social no cubría nada. Es idempotente: no
+                // hace nada si no quedan pacientes con ese valor. La fila PARTICULAR de ObrasSociales, si
+                // existe, se deja como está: ya no se ofrece ni se considera con acuerdo activo.
+                var conObraSocialParticular = await context.Pacientes
+                    .Where(p => p.IdentificadorOS == ObraSocial.IdentificadorParticular)
+                    .ToListAsync();
+                if (conObraSocialParticular.Count > 0)
+                {
+                    foreach (var paciente in conObraSocialParticular)
+                    {
+                        paciente.SetIdentificadorOS(null);
+                    }
                     await context.SaveChangesAsync();
                 }
 

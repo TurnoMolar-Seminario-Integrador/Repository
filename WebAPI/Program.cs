@@ -46,9 +46,8 @@ builder.Services.AddScoped<IOdontologoRepository, OdontologoRepository>();
 builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
 builder.Services.AddScoped<IObraSocialRepository, ObraSocialRepository>();
 builder.Services.AddScoped<IComprobanteTurnoRepository, ComprobanteTurnoRepository>();
-// IPagoRepository: AgendaTurnoService.PagarDeudaAsync ahora registra un Pago real al saldar la
-// deuda (antes no dejaba ningún registro); sin este registro, resolver IAgendaTurnoService acá
-// fallaría en tiempo de ejecución.
+// IPagoRepository: RegularizarDeudaService (CUF10) registra un Pago real al saldar la deuda; sin
+// este registro, resolver IRegularizarDeudaService acá fallaría en tiempo de ejecución.
 builder.Services.AddScoped<IPagoRepository, PagoRepository>();
 
 builder.Services.AddScoped<IPacienteService, PacienteService>();
@@ -57,6 +56,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // CUU01 - Agendar Turno Odontológico (y caminos alternativos: deuda, turno pendiente,
 // obra social sin convenio, alta manual por el Responsable de la Clínica).
 builder.Services.AddScoped<IAgendaTurnoService, AgendaTurnoService>();
+// CUF10 - Regularizar Deuda del Paciente (incluye la alt 2.a.1.a de CUU01): registra el pago del total
+// de la deuda, asociado al turno que la originó, y habilita al paciente.
+builder.Services.AddScoped<IRegularizarDeudaService, RegularizarDeudaService>();
 
 builder.Services.AddAuthentication(options =>
 {

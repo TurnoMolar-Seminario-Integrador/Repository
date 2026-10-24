@@ -1,0 +1,46 @@
+@model DTOs.DeudaPacienteDTO
+
+@* CUF10, paso 1: saldo de deuda y detalle del turno que la originó (sDeudaPendienteConMotivos =
+   montoAdeudado + nroTurno + fechaYHoraTurno + motivoDeuda). Sin deuda: mensajeSinDeuda (alt 1.a).
+   La usan el portal del paciente (Reservar y Métodos de Pago) y la consola del responsable. *@
+@if (!Model.TieneDeuda)
+{
+    <div class="alert alert-secondary rounded-4 border-0 mb-0" id="sinDeuda">
+        <i class="bi bi-info-circle me-2"></i> @Model.Mensaje
+    </div>
+}
+else
+{
+    <div class="text-start" id="detalleDeuda">
+        <div class="d-flex justify-content-between align-items-baseline">
+            <span class="text-muted small">Saldo de deuda</span>
+            <strong class="fs-4 text-danger" id="montoDeuda">$@Model.MontoAdeudado.ToString("N0")</strong>
+        </div>
+
+        @if (Model.NroTurno.HasValue)
+        {
+            <ul class="list-unstyled small mb-0 mt-2">
+                <li class="d-flex justify-content-between border-top py-1">
+                    <span class="text-muted">Turno que la originó</span>
+                    <strong id="deudaNroTurno">N° @Model.NroTurno</strong>
+                </li>
+                <li class="d-flex justify-content-between border-top py-1">
+                    <span class="text-muted">Fecha y hora del turno</span>
+                    <strong id="deudaFechaTurno">@Model.FechaHoraTurno?.ToString("dd/MM/yyyy HH:mm") hs</strong>
+                </li>
+                <li class="d-flex justify-content-between border-top border-bottom py-1">
+                    <span class="text-muted">Motivo</span>
+                    <strong id="deudaMotivo">@Model.MotivoDeuda</strong>
+                </li>
+            </ul>
+        }
+        else
+        {
+            <div class="alert alert-warning rounded-4 border-0 small mt-2 mb-0" id="deudaSinTurnoOrigen">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                No se pudo identificar el turno que originó la deuda, por eso no se puede registrar el pago desde
+                el sistema. Consultá con la clínica.
+            </div>
+        }
+    </div>
+}

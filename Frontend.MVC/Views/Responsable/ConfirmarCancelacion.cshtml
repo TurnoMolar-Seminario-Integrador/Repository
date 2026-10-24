@@ -1,0 +1,13 @@
+@model Frontend.MVC.Models.ConfirmarCancelacionViewModel
+@{
+    ViewData["Title"] = "Confirmar cancelación - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "GestionTurnos";
+    Layout = "_LayoutResponsable";
+}
+
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Cancelar turno en representación del paciente</h2>
+    <p class="text-muted mb-0">Revisá el aviso antes de confirmar.</p>
+</div>
+
+<partial name="_ConfirmarCancelacion" model="Model" />

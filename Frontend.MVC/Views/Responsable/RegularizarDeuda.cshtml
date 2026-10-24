@@ -1,0 +1,168 @@
+@model Frontend.MVC.Models.RegularizarDeudaViewModel
+@{
+    ViewData["Title"] = "Regularizar Deuda - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "RegularizarDeuda";
+    Layout = "_LayoutResponsable";
+}
+
+@section Styles {
+    <style>
+        .card-deuda {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #eef2f6;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 15px;
+        }
+    </style>
+}
+
+@* CUF10 alt 2.a (pago presencial): el responsable identifica al paciente por tipo y número de documento y
+   registra el cobro en el sistema; se registra el pago del TOTAL de la deuda, asociado al turno que la
+   originó, y el paciente pasa a Habilitado. *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Regularizar Deuda</h2>
+    <p class="text-muted">Registrá el cobro presencial de la deuda de un paciente. Se registra el pago del total, asociado al turno que la originó, y el paciente queda Habilitado.</p>
+</div>
+
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeInfo"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i> @TempData["MensajeInfo"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- CUF10 alt 2.a.1: identificación del paciente (eRegistroCobroManual = tipoDocumento + nroDocumento) -->
+<div class="card-deuda">
+    <form method="get" asp-controller="Responsable" asp-action="RegularizarDeuda" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Tipo de documento</label>
+            <select name="tipoDocumento" class="form-select">
+                <option value="DNI" selected="@(Model.TipoDocumento == "DNI" ? "selected" : null)">DNI</option>
+                <option value="LE" selected="@(Model.TipoDocumento == "LE" ? "selected" : null)">LE</option>
+                <option value="LC" selected="@(Model.TipoDocumento == "LC" ? "selected" : null)">LC</option>
+                <option value="PASAPORTE" selected="@(Model.TipoDocumento == "PASAPORTE" ? "selected" : null)">Pasaporte</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Número de documento</label>
+            <input type="text" name="nroDocumento" class="form-control" placeholder="Ej: 34567890" value="@Model.NroDocumento" required />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-search me-1"></i> Buscar paciente
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (Model.Busco)
+{
+    if (Model.Consulta == null)
+    {
+        <div class="alert alert-secondary rounded-4 border-0 shadow-sm" id="pacienteNoEncontrado">
+            <i class="bi bi-info-circle me-2"></i> @Model.MensajeBusqueda
+        </div>
+    }
+    else
+    {
+        <div class="card-deuda" id="resultadoBusquedaDeuda">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h6 class="fw-bold text-dark mb-1">@Model.Consulta.NombrePaciente</h6>
+                    <p class="text-muted small mb-0">@Model.Consulta.TipoDocumento @Model.Consulta.NroDocumento • Estado: @Model.Consulta.EstadoPaciente</p>
+                </div>
+            </div>
+
+            <partial name="_DetalleDeuda" model="Model.Consulta" />
+
+            @if (Model.Consulta.TieneDeuda && Model.Consulta.NroTurno.HasValue)
+            {
+                <!-- CUF10 alt 2.a.1 y paso 3: registra el cobro del total de la deuda -->
+                <form asp-controller="Responsable" asp-action="RegistrarCobroDeuda" method="post" class="row g-2 align-items-end mt-3"
+                      onsubmit="return confirm('¿Registrar el cobro de $@Model.Consulta.MontoAdeudado.ToString("N0")? El paciente quedará Habilitado.');">
+                    <input type="hidden" name="tipoDocumento" value="@Model.Consulta.TipoDocumento" />
+                    <input type="hidden" name="nroDocumento" value="@Model.Consulta.NroDocumento" />
+                    <div class="col-auto">
+                        <label class="form-label small text-muted mb-1">Método de pago utilizado</label>
+                        <partial name="_SelectMetodoPago" />
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold" id="btnRegistrarCobroDeuda">
+                            <i class="bi bi-cash-coin me-1"></i> Registrar cobro de $@Model.Consulta.MontoAdeudado.ToString("N0")
+                        </button>
+                    </div>
+                </form>
+            }
+        </div>
+    }
+}
+
+<h5 class="fw-bold text-dark mt-4 mb-3">Pacientes con deuda pendiente</h5>
+@if (!Model.PacientesConDeuda.Any())
+{
+    <p class="text-muted" id="sinPacientesConDeuda">No hay pacientes con saldo de deuda pendiente.</p>
+}
+else
+{
+    <div class="card-deuda p-0 overflow-hidden" id="pacientesConDeuda">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Documento</th>
+                        <th>Turno de origen</th>
+                        <th>Motivo</th>
+                        <th class="text-end">Deuda</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model.PacientesConDeuda)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@d.NombrePaciente</td>
+                            <td>@d.TipoDocumento @d.NroDocumento</td>
+                            <td>
+                                @if (d.NroTurno.HasValue)
+                                {
+                                    <span>N° @d.NroTurno • @d.FechaHoraTurno?.ToString("dd/MM/yyyy HH:mm")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin identificar</span>
+                                }
+                            </td>
+                            <td>@(d.MotivoDeuda ?? "—")</td>
+                            <td class="text-end fw-bold text-danger">$@d.MontoAdeudado.ToString("N0")</td>
+                            <td class="text-end">
+                                <a asp-controller="Responsable" asp-action="RegularizarDeuda"
+                                   asp-route-tipoDocumento="@d.TipoDocumento" asp-route-nroDocumento="@d.NroDocumento"
+                                   class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="bi bi-cash-coin me-1"></i> Cobrar
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

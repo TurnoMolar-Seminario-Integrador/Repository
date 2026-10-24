@@ -3,14 +3,24 @@
     ViewData["ActiveTab"] = "MisTurnos";
     Layout = "_LayoutPaciente";
 
-    var nombrePaciente = ViewData["NombrePaciente"] ?? "Manuel Fernández";
-    var idPaciente = ViewData["IdPaciente"] ?? "10042";
-    var estadoPaciente = "HABILITADO";
-    var fechaTurno = ViewData["FechaTurno"] ?? "12 Nov, 2026 • 09:30 AM";
-    var doctor = ViewData["Doctor"] ?? "Dra. Elena Silva";
-    var especialidad = ViewData["Especialidad"] ?? "Ortodoncia y Endodoncia";
-    var metodoPago = ViewData["MetodoPago"] ?? "Obra Social (OSDE - Plan 210)";
-    var codigoReserva = ViewData["CodigoReserva"] ?? "TM-2026-8491A";
+    // Todos los datos salen del turno (TurnoController.Comprobante). Antes, si el controlador no cargaba
+    // una clave, la vista mostraba datos de ejemplo ("Manuel Fernández", "OSDE - Plan 210",
+    // "TM-2026-8491A") y el estado era siempre "HABILITADO" (el del paciente, no el del turno).
+    var nombrePaciente = ViewData["NombrePaciente"]?.ToString() ?? "";
+    var fechaTurno = ViewData["FechaTurno"]?.ToString() ?? "";
+    var doctor = ViewData["Doctor"]?.ToString() ?? "";
+    var especialidad = ViewData["Especialidad"]?.ToString() ?? "";
+    var cobertura = ViewData["MetodoPago"]?.ToString() ?? "";
+    var estadoTurno = ViewData["EstadoTurno"]?.ToString() ?? "";
+    var fechaEmision = ViewData["FechaEmision"]?.ToString();
+    // El código es el número del comprobante emitido al reservar (CUU01). Un turno sin comprobante no
+    // tiene código ni QR: no se inventa uno.
+    var codigoReserva = ViewData["CodigoReserva"]?.ToString();
+    var tieneCodigo = !string.IsNullOrEmpty(codigoReserva);
+
+    // El título refleja el estado real: solo un turno reservado está "confirmado"; el comprobante de uno
+    // cancelado, ausente o ya atendido sigue pudiendo consultarse desde Mis Turnos.
+    var turnoReservado = estadoTurno == "RESERVADO";
 }
 
 @section Styles {
@@ -92,11 +102,22 @@
 }
 
 <div class="text-center mb-4">
-    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow" style="width: 72px; height: 72px; background-color: #dcfce7; color: #16a34a;">
-        <i class="bi bi-check-lg" style="font-size: 2.4rem;"></i>
-    </div>
-    <h2 class="fw-extrabold text-dark mb-1">¡Turno Confirmado!</h2>
-    <p class="text-muted small mb-0">Tu cita ha sido agendada con éxito en el sistema.</p>
+    @if (turnoReservado)
+    {
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow" style="width: 72px; height: 72px; background-color: #dcfce7; color: #16a34a;">
+            <i class="bi bi-check-lg" style="font-size: 2.4rem;"></i>
+        </div>
+        <h2 class="fw-extrabold text-dark mb-1">¡Turno Confirmado!</h2>
+        <p class="text-muted small mb-0">Tu cita ha sido agendada con éxito en el sistema.</p>
+    }
+    else
+    {
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow" style="width: 72px; height: 72px; background-color: #e0e7ff; color: #3730a3;">
+            <i class="bi bi-receipt" style="font-size: 2.2rem;"></i>
+        </div>
+        <h2 class="fw-extrabold text-dark mb-1">Comprobante de turno</h2>
+        <p class="text-muted small mb-0">Estado actual del turno: <strong>@estadoTurno</strong></p>
+    }
 </div>
 
 <!-- TICKET DIGITAL (BSQ Pág 6) -->
@@ -110,11 +131,14 @@
     <div class="ticket-divider"></div>
 
     <div class="ticket-body">
-        <div class="text-center mb-4 pb-3 border-bottom">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=@codigoReserva" alt="QR Code" class="mb-2 rounded p-1 border">
-            <p class="small text-muted mb-0 fw-semibold">CÓDIGO DE COMPROBANTE</p>
-            <h4 class="fw-extrabold text-primary mb-0" style="letter-spacing: 2px;">@codigoReserva</h4>
-        </div>
+        @if (tieneCodigo)
+        {
+            <div class="text-center mb-4 pb-3 border-bottom" id="bloqueCodigoComprobante">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=@Uri.EscapeDataString(codigoReserva!)" alt="QR Code" class="mb-2 rounded p-1 border">
+                <p class="small text-muted mb-0 fw-semibold">CÓDIGO DE COMPROBANTE</p>
+                <h4 class="fw-extrabold text-primary mb-0" id="codigoComprobante" style="letter-spacing: 2px;">@codigoReserva</h4>
+            </div>
+        }
 
         <div class="detail-row">
             <span class="detail-label">Paciente</span>
@@ -134,16 +158,30 @@
         </div>
         <div class="detail-row">
             <span class="detail-label">Cobertura</span>
-            <span class="detail-value text-success">@metodoPago</span>
+            <span class="detail-value text-success" id="coberturaComprobante">@cobertura</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">Sede / Ubicación</span>
             <span class="detail-value">Consultorio 2 • Sede Centro</span>
         </div>
         <div class="detail-row">
-            <span class="detail-label">Estado</span>
-            <span class="detail-value text-success"><i class="bi bi-check-circle-fill me-1"></i> @estadoPaciente</span>
+            <span class="detail-label">Estado del turno</span>
+            @if (turnoReservado)
+            {
+                <span class="detail-value text-success" id="estadoComprobante"><i class="bi bi-check-circle-fill me-1"></i> @estadoTurno</span>
+            }
+            else
+            {
+                <span class="detail-value" id="estadoComprobante">@estadoTurno</span>
+            }
         </div>
+        @if (!string.IsNullOrEmpty(fechaEmision))
+        {
+            <div class="detail-row">
+                <span class="detail-label">Emitido</span>
+                <span class="detail-value" id="emisionComprobante">@fechaEmision</span>
+            </div>
+        }
     </div>
 </div>
 

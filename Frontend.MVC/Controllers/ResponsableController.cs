@@ -28,6 +28,7 @@ namespace TurnoMolar.Controllers
         private readonly IGestionTurnoService _gestionTurnoService;
         private readonly IAgendaTurnoService _agendaTurnoService;
         private readonly IEspecialidadRepository _especialidadRepository;
+        private readonly IRegularizarDeudaService _regularizarDeudaService;
 
         public ResponsableController(
             IAsistenciaTurnoService asistenciaTurnoService,
@@ -36,7 +37,8 @@ namespace TurnoMolar.Controllers
             IOdontologoRepository odontologoRepository,
             IGestionTurnoService gestionTurnoService,
             IAgendaTurnoService agendaTurnoService,
-            IEspecialidadRepository especialidadRepository)
+            IEspecialidadRepository especialidadRepository,
+            IRegularizarDeudaService regularizarDeudaService)
         {
             _asistenciaTurnoService = asistenciaTurnoService;
             _turnoRepository = turnoRepository;
@@ -45,6 +47,7 @@ namespace TurnoMolar.Controllers
             _gestionTurnoService = gestionTurnoService;
             _agendaTurnoService = agendaTurnoService;
             _especialidadRepository = especialidadRepository;
+            _regularizarDeudaService = regularizarDeudaService;
         }
 
         // GET: /Responsable/Index -> Panel Principal del Responsable de la Clínica
@@ -150,21 +153,48 @@ namespace TurnoMolar.Controllers
         }
 
         // POST: /Responsable/CancelarTurnoEnRepresentacion -> CUF07 alt 2.a: el responsable registra
-        // la cancelación en representación del paciente. Con menos de 24 hs de anticipación se
-        // aplica la penalización y el paciente queda inhabilitado (CUF07 alt 3.a, RN9 y RN11), igual
-        // que si el paciente hubiera cancelado por su cuenta.
+        // la cancelación en representación del paciente. Con menos de 24 hs de anticipación (o con el
+        // turno ya vencido) corresponde la penalización y el paciente queda inhabilitado (CUF07 alt
+        // 3.a, RN9 y RN11), igual que si el paciente hubiera cancelado por su cuenta: primero se
+        // muestra el aviso del cobro (3.a.1) y la cancelación se ejecuta recién al confirmarla (3.a.2,
+        // confirmaFueraDeTermino = true).
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelarTurnoEnRepresentacion(
             int idTurno, string tipoDocumentoPaciente, string nroDocumentoPaciente,
-            string? motivoCancelacion, string? busqueda, string? estado)
+            string? motivoCancelacion, string? busqueda, string? estado, bool confirmaFueraDeTermino = false)
         {
             var motivo = string.IsNullOrWhiteSpace(motivoCancelacion)
                 ? "Cancelado por el responsable de la clínica a pedido del paciente"
                 : motivoCancelacion.Trim();
 
             var resultado = await _gestionTurnoService.CancelarTurnoAsync(
-                idTurno, tipoDocumentoPaciente, nroDocumentoPaciente, motivo);
+                idTurno, tipoDocumentoPaciente, nroDocumentoPaciente, motivo, confirmaFueraDeTermino);
+
+            if (resultado.Resultado == ResultadoCancelarTurno.RequiereConfirmacion)
+            {
+                var turno = await _turnoRepository.GetAsync(idTurno);
+                return View("ConfirmarCancelacion", new ConfirmarCancelacionViewModel
+                {
+                    IdTurno = idTurno,
+                    MotivoCancelacion = motivoCancelacion,
+                    Mensaje = resultado.Mensaje,
+                    Penalizacion = resultado.Penalizacion ?? 0m,
+                    FechaHoraTurno = resultado.FechaHoraTurno,
+                    NombreEspecialidad = resultado.NombreEspecialidad,
+                    TipoDocumentoPaciente = tipoDocumentoPaciente,
+                    NroDocumentoPaciente = nroDocumentoPaciente,
+                    NombrePaciente = turno?.Paciente != null
+                        ? $"{turno.Paciente.Apellido}, {turno.Paciente.Nombre}"
+                        : $"{tipoDocumentoPaciente} {nroDocumentoPaciente}",
+                    Busqueda = busqueda,
+                    Estado = estado,
+                    AccionConfirmar = "CancelarTurnoEnRepresentacion",
+                    ControladorConfirmar = "Responsable",
+                    AccionVolver = "GestionTurnos",
+                    ControladorVolver = "Responsable"
+                });
+            }
 
             if (resultado.Resultado != ResultadoCancelarTurno.Cancelado)
             {
@@ -172,10 +202,11 @@ namespace TurnoMolar.Controllers
             }
             else if (resultado.Penalizacion.HasValue)
             {
-                // El texto del servicio está redactado para el paciente ("en tu cuenta"); acá se
-                // informa al responsable.
+                // El texto del servicio está redactado para el paciente ("quedaste Inhabilitado"); acá se
+                // informa al responsable (sConfirmacionCancelacionFueraDeTermino = estadoTurno +
+                // montoAdeudado + estadoPaciente).
                 TempData["MensajeAdvertencia"] =
-                    $"El turno N° {idTurno} fue cancelado con menos de {ReglaAntelacion.HorasMinimas} hs de anticipación. " +
+                    $"El turno N° {idTurno} fue cancelado fuera de término. " +
                     $"Se registró una deuda de ${resultado.Penalizacion.Value:N0} y el paciente quedó Inhabilitado hasta regularizarla.";
             }
             else
@@ -425,13 +456,24 @@ namespace TurnoMolar.Controllers
             return Json(resultado);
         }
 
+        private const string MensajeDatosCobroInvalidos =
+            "Los datos del cobro no son válidos. Revisá los importes (solo números) y el método de pago.";
+
         // POST: /Responsable/RegistrarCobroParticular -> CUU03, camino básico, paso 6.
         // Actor: Responsable de la Clínica (el Odontólogo no cobra).
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarCobroParticular(int nroTurno, decimal monto, string tipoMetodoPago)
+        public async Task<IActionResult> RegistrarCobroParticular(int nroTurno, decimal monto, string? tipoMetodoPago)
         {
-            var resultado = await _finalizarAtencionService.RegistrarCobroParticularAsync(nroTurno, monto, tipoMetodoPago);
+            // Un importe que no se pudo leer (el binder deja el error en ModelState y el valor en 0) no se
+            // puede tratar como "monto 0": el mensaje del servicio sería engañoso.
+            if (!ModelState.IsValid)
+            {
+                TempData["MensajeError"] = MensajeDatosCobroInvalidos;
+                return RedirectToAction("TurnosDelDia");
+            }
+
+            var resultado = await _finalizarAtencionService.RegistrarCobroParticularAsync(nroTurno, monto, tipoMetodoPago ?? string.Empty);
 
             if (resultado.Resultado == ResultadoRegistrarCobro.Finalizado)
             {
@@ -448,9 +490,15 @@ namespace TurnoMolar.Controllers
         // POST: /Responsable/RegistrarCobroObraSocial -> CUU03, alt 6.a.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarCobroObraSocial(int nroTurno, string tipoMetodoPago, decimal aportePaciente, decimal aporteObraSocial)
+        public async Task<IActionResult> RegistrarCobroObraSocial(int nroTurno, string? tipoMetodoPago, decimal aportePaciente, decimal aporteObraSocial)
         {
-            var resultado = await _finalizarAtencionService.RegistrarCobroObraSocialAsync(nroTurno, tipoMetodoPago, aportePaciente, aporteObraSocial);
+            if (!ModelState.IsValid)
+            {
+                TempData["MensajeError"] = MensajeDatosCobroInvalidos;
+                return RedirectToAction("TurnosDelDia");
+            }
+
+            var resultado = await _finalizarAtencionService.RegistrarCobroObraSocialAsync(nroTurno, tipoMetodoPago ?? string.Empty, aportePaciente, aporteObraSocial);
 
             if (resultado.Resultado == ResultadoRegistrarCobro.Finalizado)
             {
@@ -462,6 +510,78 @@ namespace TurnoMolar.Controllers
             }
 
             return RedirectToAction("TurnosDelDia");
+        }
+
+        // =========================================================================
+        // REGULARIZAR DEUDA DEL PACIENTE (CUF10, alt 2.a: pago presencial)
+        // =========================================================================
+        // CUF10 alt 2.a <reemplaza> "pago a través de la plataforma": el paciente abona en la clínica; el
+        // responsable lo identifica por tipo y número de documento (eRegistroCobroManual) y registra el
+        // cobro en el sistema, que continúa en el paso 3: registra el pago del total de la deuda, asociado
+        // al turno que la originó, y pasa al paciente a Habilitado. Antes esta alternativa no existía: un
+        // paciente inhabilitado solo podía regularizarse desde su portal.
+
+        // GET: /Responsable/RegularizarDeuda
+        [HttpGet]
+        public async Task<IActionResult> RegularizarDeuda(string? tipoDocumento, string? nroDocumento)
+        {
+            var modelo = new RegularizarDeudaViewModel
+            {
+                TipoDocumento = string.IsNullOrWhiteSpace(tipoDocumento) ? "DNI" : tipoDocumento.Trim(),
+                NroDocumento = (nroDocumento ?? string.Empty).Trim()
+            };
+
+            if (!string.IsNullOrWhiteSpace(tipoDocumento) && modelo.NroDocumento.Length > 0)
+            {
+                modelo.Busco = true;
+                try
+                {
+                    modelo.Consulta = await _regularizarDeudaService.ConsultarDeudaAsync(modelo.TipoDocumento, modelo.NroDocumento);
+                }
+                catch (ArgumentException)
+                {
+                    modelo.MensajeBusqueda = "No se encontró un paciente con ese tipo y número de documento.";
+                }
+            }
+
+            modelo.PacientesConDeuda = await _regularizarDeudaService.ListarPacientesConDeudaAsync();
+            return View(modelo);
+        }
+
+        // POST: /Responsable/RegistrarCobroDeuda -> CUF10 alt 2.a.1 y paso 3.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrarCobroDeuda(string tipoDocumento, string nroDocumento, string? metodoPago)
+        {
+            PagarDeudaResultDTO resultado;
+            try
+            {
+                resultado = await _regularizarDeudaService.RegistrarCobroPresencialAsync(tipoDocumento, nroDocumento, metodoPago ?? string.Empty);
+            }
+            catch (ArgumentException)
+            {
+                TempData["MensajeError"] = "No se encontró un paciente con ese tipo y número de documento.";
+                return RedirectToAction("RegularizarDeuda");
+            }
+
+            switch (resultado.Resultado)
+            {
+                case ResultadoPagarDeuda.Regularizada:
+                    TempData["MensajeExito"] = resultado.Mensaje;
+                    return RedirectToAction("RegularizarDeuda");
+
+                case ResultadoPagarDeuda.SinDeuda:
+                    // Alt 1.a: mensajeSinDeuda.
+                    TempData["MensajeInfo"] = resultado.Mensaje;
+                    break;
+
+                default:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    break;
+            }
+
+            // Vuelve con el paciente a la vista para corregir el dato (método) sin tipear de nuevo el documento.
+            return RedirectToAction("RegularizarDeuda", new { tipoDocumento, nroDocumento });
         }
 
         // POST: /Responsable/RegistrarFaltaDePago -> CUU03, alt 6.b (inhabilita al paciente).

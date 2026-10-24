@@ -1,3 +1,4 @@
+using Application.Services;
 using Data;
 using Domain.Model;
 using Microsoft.AspNetCore.Mvc;
@@ -9,17 +10,23 @@ namespace TurnoMolar.Controllers
     public class PacienteController : Controller
     {
         private readonly TurnoMolarDbContext _context;
+        private readonly ICoberturaPacienteService _coberturaService;
         private readonly ILogger<PacienteController> _logger;
 
-        public PacienteController(TurnoMolarDbContext context, ILogger<PacienteController> logger)
+        public PacienteController(
+            TurnoMolarDbContext context,
+            ICoberturaPacienteService coberturaService,
+            ILogger<PacienteController> logger)
         {
             _context = context;
+            _coberturaService = coberturaService;
             _logger = logger;
         }
 
         [HttpGet]
-        public IActionResult Crear()
+        public async Task<IActionResult> Crear()
         {
+            await CargarObrasSocialesAsync();
             return View(new PacienteViewModel());
         }
 
@@ -27,6 +34,8 @@ namespace TurnoMolar.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Crear(PacienteViewModel modelo)
         {
+            await CargarObrasSocialesAsync();
+
             if (modelo.IdObraSocial == "Otra" && string.IsNullOrWhiteSpace(modelo.OtraObraSocial))
             {
                 ModelState.AddModelError("OtraObraSocial", "Por favor, especificá el nombre de la obra social.");
@@ -44,6 +53,19 @@ namespace TurnoMolar.Controllers
                     var dniStr = dniParsed.ToString();
                     var tipoDoc = modelo.TipoDocumento ?? "DNI";
 
+                    // CUF01 / RN6: obra social con acuerdo activo o modalidad particular (sin obra social).
+                    // Antes una obra social que no estaba en la base dejaba al paciente como particular,
+                    // con mensaje de éxito y sin avisarle; y "Otra" buscaba con Contains (escribir "s"
+                    // asignaba OSDE).
+                    var cobertura = await _coberturaService.ResolverObraSocialParaAltaAsync(modelo.IdObraSocial, modelo.OtraObraSocial);
+                    if (!cobertura.Valida)
+                    {
+                        // CUF01 alt 2.a.1.a.1: se informa y el paciente puede elegir la modalidad particular.
+                        // El formulario conserva lo que ya cargó.
+                        TempData["MensajeError"] = cobertura.Mensaje;
+                        return View(modelo);
+                    }
+
                     // Validar si el paciente ya existe en BD
                     var existe = await _context.Pacientes
                         .AnyAsync(p => p.NroDocumento == dniStr && p.TipoDocumento == tipoDoc.ToUpper());
@@ -54,19 +76,8 @@ namespace TurnoMolar.Controllers
                         return View(modelo);
                     }
 
-                    // Determinar ID de Obra Social
-                    string? idOs = null;
-                    if (!string.IsNullOrEmpty(modelo.IdObraSocial) && modelo.IdObraSocial != "Particular")
-                    {
-                        var nombreBuscado = modelo.IdObraSocial == "Otra" ? modelo.OtraObraSocial : modelo.IdObraSocial;
-                        var osExistente = await _context.ObrasSociales
-                            .FirstOrDefaultAsync(o => o.NombreOS.ToLower().Contains(nombreBuscado!.ToLower()) || o.IdentificadorOS.ToLower() == nombreBuscado.ToLower());
-
-                        if (osExistente != null)
-                        {
-                            idOs = osExistente.IdentificadorOS;
-                        }
-                    }
+                    // MU: el paciente particular se registra con IdentificadorOS nulo.
+                    var idOs = cobertura.IdentificadorOS;
 
                     // 1. Crear Entidad Paciente (MDF v1.01)
                     // El propio Paciente es la cuenta de login (Clave/SaltClave/Rol viven acá,
@@ -121,6 +132,12 @@ namespace TurnoMolar.Controllers
             }
 
             return View(modelo);
+        }
+
+        // Obras sociales con acuerdo activo para el desplegable del alta (las demás no se pueden elegir).
+        private async Task CargarObrasSocialesAsync()
+        {
+            ViewBag.ObrasSociales = await _coberturaService.ListarObrasSocialesConAcuerdoAsync();
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Application.Services;
 using DTOs;
 using Microsoft.AspNetCore.OpenApi;
@@ -6,6 +7,27 @@ namespace WebAPI
 {
     public static class AgendaTurnoEndpoints
     {
+        // Roles del sistema (Persona.Rol): los mismos valores que usan los [Authorize(Roles = ...)] del
+        // frontend y que AuthService escribe en el claim de rol del token.
+        private const string RolPaciente = "Paciente";
+        private const string RolResponsable = "ResponsableClinica";
+        private const string RolAdmin = "Admin";
+
+        // CUF10, actores: el Paciente (primario) y el Responsable de la Clínica (otros). El Admin es un
+        // Responsable con rol superior.
+        private static bool EsPersonalDeLaClinica(ClaimsPrincipal user) =>
+            user.IsInRole(RolResponsable) || user.IsInRole(RolAdmin);
+
+        // El token trae el documento de quien inició sesión (claims TipoDocumento y NroDocumento, ver
+        // AuthService). Un paciente solo puede operar sobre su propia cuenta.
+        private static bool EsElPropioPaciente(ClaimsPrincipal user, string tipoDocumento, string nroDocumento) =>
+            user.IsInRole(RolPaciente)
+            && string.Equals(user.FindFirst("TipoDocumento")?.Value?.Trim(), tipoDocumento?.Trim(), StringComparison.OrdinalIgnoreCase)
+            && string.Equals(user.FindFirst("NroDocumento")?.Value?.Trim(), nroDocumento?.Trim(), StringComparison.Ordinal);
+
+        private static IResult SinPermiso(string mensaje) =>
+            Results.Json(new { error = mensaje }, statusCode: StatusCodes.Status403Forbidden);
+
         public static void MapAgendaTurnoEndpoints(this WebApplication app)
         {
             app.MapGet("/agenda/estado-paciente", async (string tipoDocumento, string nroDocumento, IAgendaTurnoService agendaService) =>
@@ -87,24 +109,83 @@ namespace WebAPI
             .Produces(StatusCodes.Status400BadRequest)
             .WithOpenApi();
 
-            // Antes devolvía 204 sin cuerpo. PagarDeudaAsync ahora informa si había o no deuda y
-            // el monto regularizado (antes no devolvía nada, ni siquiera un Pago quedaba
-            // registrado -- ver el comentario en AgendaTurnoService.PagarDeudaAsync).
-            app.MapPost("/agenda/pagar-deuda", async (string tipoDocumento, string nroDocumento, IAgendaTurnoService agendaService) =>
+            // CUF10, paso 1: saldo de deuda del paciente y detalle del turno que la originó (nroTurno, fecha
+            // y motivo). Sin deuda devuelve el mensaje "No hay saldo de deuda pendiente para regularizar."
+            // (alt 1.a). Requiere estar autenticado: la consulta la puede hacer el propio paciente o el
+            // personal de la clínica (Responsable / Admin), nadie más.
+            app.MapGet("/agenda/deuda", async (string tipoDocumento, string nroDocumento, ClaimsPrincipal user, IRegularizarDeudaService deudaService) =>
             {
+                if (!EsPersonalDeLaClinica(user) && !EsElPropioPaciente(user, tipoDocumento, nroDocumento))
+                {
+                    return SinPermiso("Solo podés consultar tu propia deuda.");
+                }
+
                 try
                 {
-                    var resultado = await agendaService.PagarDeudaAsync(tipoDocumento, nroDocumento);
-                    return Results.Ok(resultado);
+                    var deuda = await deudaService.ConsultarDeudaAsync(tipoDocumento, nroDocumento);
+                    return Results.Ok(deuda);
                 }
                 catch (ArgumentException ex)
                 {
                     return Results.NotFound(new { error = ex.Message });
                 }
             })
+            .RequireAuthorization()
+            .WithName("ConsultarDeuda")
+            .Produces<DeudaPacienteDTO>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithOpenApi();
+
+            // CUF10, pasos 2 y 3 (y CUU01 alt 2.a.1.a): registra el pago del TOTAL de la deuda con el
+            // método indicado (tipoMetodoPago: EFECTIVO, TARJETA_DEBITO, TARJETA_CREDITO o
+            // TRANSFERENCIA), asociado al turno que la originó, y habilita al paciente. Con
+            // presencial = true es el cobro que registra el responsable en la clínica (alt 2.a).
+            //
+            // Defectos corregidos: no pedía el método de pago; rehabilitaba al paciente sin registrar
+            // ningún pago cuando la deuda venía de una cancelación fuera de término; y no exigía
+            // autenticación, así que cualquiera podía rehabilitar a cualquier paciente conociendo su
+            // documento. Ahora el pago por la plataforma solo lo hace el propio paciente (paso 2) y el
+            // cobro presencial solo el personal de la clínica (alt 2.a).
+            app.MapPost("/agenda/pagar-deuda", async (string tipoDocumento, string nroDocumento, string tipoMetodoPago, bool? presencial, ClaimsPrincipal user, IRegularizarDeudaService deudaService) =>
+            {
+                if (presencial == true)
+                {
+                    if (!EsPersonalDeLaClinica(user))
+                    {
+                        return SinPermiso("Solo el responsable de la clínica puede registrar un cobro presencial.");
+                    }
+                }
+                else if (!EsElPropioPaciente(user, tipoDocumento, nroDocumento))
+                {
+                    return SinPermiso("Solo el propio paciente puede abonar su deuda a través de la plataforma.");
+                }
+
+                try
+                {
+                    var resultado = presencial == true
+                        ? await deudaService.RegistrarCobroPresencialAsync(tipoDocumento, nroDocumento, tipoMetodoPago)
+                        : await deudaService.PagarDeudaAsync(tipoDocumento, nroDocumento, tipoMetodoPago);
+
+                    return resultado.Resultado switch
+                    {
+                        ResultadoPagarDeuda.MetodoInvalido => Results.BadRequest(new { error = resultado.Mensaje }),
+                        ResultadoPagarDeuda.SinTurnoDeOrigen => Results.Conflict(new { error = resultado.Mensaje }),
+                        _ => Results.Ok(resultado)
+                    };
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.NotFound(new { error = ex.Message });
+                }
+            })
+            .RequireAuthorization()
             .WithName("PagarDeuda")
             .Produces<PagarDeudaResultDTO>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict)
             .WithOpenApi();
         }
     }

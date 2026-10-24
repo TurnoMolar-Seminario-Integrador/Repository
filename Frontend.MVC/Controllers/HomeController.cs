@@ -3,6 +3,7 @@ using Application.Services;
 using Data;
 using Domain.Model;
 using DTOs;
+using Frontend.MVC.Infrastructure;
 using Frontend.MVC.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -18,19 +19,29 @@ namespace TurnoMolar.Controllers
         private readonly IAuthService _authService;
         private readonly IValorarAtencionService _valorarAtencionService;
         private readonly IAgendaTurnoService _agendaTurnoService;
+        private readonly IRegularizarDeudaService _regularizarDeudaService;
+        private readonly ICoberturaPacienteService _coberturaService;
         private readonly ILogger<HomeController> _logger;
+
+        // Verdadero cuando la sesión es un Admin mirando el portal de "el primer paciente" (vista
+        // previa): ver ObtenerPacienteActualAsync y VistaPreviaSoloLectura.
+        private bool _vistaPreviaAdmin;
 
         public HomeController(
             TurnoMolarDbContext context,
             IAuthService authService,
             IValorarAtencionService valorarAtencionService,
             IAgendaTurnoService agendaTurnoService,
+            IRegularizarDeudaService regularizarDeudaService,
+            ICoberturaPacienteService coberturaService,
             ILogger<HomeController> logger)
         {
             _context = context;
             _authService = authService;
             _valorarAtencionService = valorarAtencionService;
             _agendaTurnoService = agendaTurnoService;
+            _regularizarDeudaService = regularizarDeudaService;
+            _coberturaService = coberturaService;
             _logger = logger;
         }
 
@@ -211,6 +222,7 @@ namespace TurnoMolar.Controllers
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
                     .FirstOrDefaultAsync();
+                _vistaPreviaAdmin = paciente != null;
             }
 
             if (paciente == null)
@@ -225,6 +237,16 @@ namespace TurnoMolar.Controllers
             ViewData["MontoAdeudado"] = paciente.MontoAdeudado ?? 0m;
 
             return paciente;
+        }
+
+        // Defecto corregido: en la vista previa del Admin (sin cuenta de paciente propia) las operaciones
+        // (pagar la deuda, cambiar la obra social, actualizar los datos de contacto) se aplicaban al primer
+        // paciente real de la base. El Admin puede mirar todas las pantallas, pero no operar sobre esa
+        // cuenta.
+        private IActionResult VistaPreviaSoloLectura(string accion)
+        {
+            TempData["MensajeError"] = VistaPreviaAdmin.MensajeSoloLectura;
+            return RedirectToAction(accion);
         }
 
         // =========================================================================
@@ -317,6 +339,9 @@ namespace TurnoMolar.Controllers
             var resultadoPendientes = await _valorarAtencionService.ObtenerPendientesDeValoracionAsync(
                 paciente.TipoDocumento, paciente.NroDocumento);
 
+            // CUU01, mensajePoliticasCancelacion (la misma que se muestra al reservar).
+            ViewBag.MensajePoliticaCancelacion = _agendaTurnoService.ObtenerMensajePoliticaCancelacion();
+
             var viewModel = new MisTurnosViewModel
             {
                 Paciente = paciente,
@@ -379,6 +404,8 @@ namespace TurnoMolar.Controllers
             var pagos = await _context.Pagos
                 .Include(p => p.Turno)
                     .ThenInclude(t => t.Atencion)
+                .Include(p => p.Turno)
+                    .ThenInclude(t => t.Especialidad)
                 .Include(p => p.ObraSocial)
                 .Where(p => p.Turno != null && p.Turno.NroDocumentoPaciente == paciente.NroDocumento)
                 .OrderByDescending(p => p.FechaHoraPago)
@@ -387,35 +414,50 @@ namespace TurnoMolar.Controllers
             var viewModel = new MetodosPagoViewModel
             {
                 Paciente = paciente,
-                HistorialPagos = pagos
+                HistorialPagos = pagos,
+                // CUF10 paso 1: con saldo pendiente, además del monto, el detalle del turno que lo originó.
+                DeudaDetalle = (paciente.MontoAdeudado ?? 0m) > 0m
+                    ? await _regularizarDeudaService.ConsultarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento)
+                    : null
             };
 
             return View(viewModel);
         }
 
-        // Defecto corregido: esta acción tenía su propia implementación de "pagar la deuda",
-        // duplicada e independiente de AgendaTurnoService.PagarDeudaAsync (la que usa
-        // TurnoController para la alt 2.a.1.a de CUU01). Si el paciente no tenía ningún turno,
-        // esta versión inventaba uno nuevo en un estado ("ATENDIDO") que ni siquiera existe en
-        // la máquina de estados de Turno, y ligaba el Pago a "el primer turno que aparezca" en
-        // vez de al turno que realmente originó la deuda. Se unifica en un solo lugar
-        // (AgendaTurnoService.PagarDeudaAsync) para que ambas pantallas se comporten igual.
+        // CUF10: el paciente abona el TOTAL de la deuda (pasos 2 y 3). Comparte la lógica con la pantalla
+        // de Reservar (TurnoController.PagarDeuda, CUU01 alt 2.a.1.a) a través de IRegularizarDeudaService:
+        // registra el pago con el método elegido, asociado al turno que originó la deuda, y habilita al
+        // paciente.
+        //
+        // Defecto corregido: la acción recibía el método elegido (y datos de una tarjeta que no existía)
+        // y los descartaba: el pago quedaba registrado con un método fijo, sin importar lo que el
+        // paciente hubiera elegido. La pantalla ofrecía además dos tarjetas inventadas.
         [HttpPost]
         [Authorize(Roles = "Paciente,Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> PagarDeuda(string? numeroTarjeta, string? titular, string metodoPago = "TARJETA_CREDITO")
+        public async Task<IActionResult> PagarDeuda(string? metodoPago)
         {
             var paciente = await ObtenerPacienteActualAsync();
-
-            var resultado = await _agendaTurnoService.PagarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
-
-            if (resultado.Resultado == ResultadoPagarDeuda.Regularizada)
+            if (_vistaPreviaAdmin)
             {
-                TempData["PagoExitoso"] = $"¡Pago de ${resultado.MontoPagado:N0} procesado correctamente! Tu cuenta ha sido habilitada para reservar nuevos turnos.";
+                return VistaPreviaSoloLectura("MetodosDePago");
             }
-            else
+
+            var resultado = await _regularizarDeudaService.PagarDeudaAsync(
+                paciente.TipoDocumento, paciente.NroDocumento, metodoPago ?? string.Empty);
+
+            switch (resultado.Resultado)
             {
-                TempData["MensajeInfo"] = resultado.Mensaje;
+                case ResultadoPagarDeuda.Regularizada:
+                    TempData["PagoExitoso"] = resultado.Mensaje;
+                    break;
+                case ResultadoPagarDeuda.SinDeuda:
+                    // CUF10 alt 1.a: mensajeSinDeuda.
+                    TempData["MensajeInfo"] = resultado.Mensaje;
+                    break;
+                default:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    break;
             }
 
             return RedirectToAction("MetodosDePago");
@@ -431,10 +473,10 @@ namespace TurnoMolar.Controllers
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var obrasSociales = await _context.ObrasSociales
-                .Include(o => o.Convenios)
-                .Where(o => o.EstadoOS == "ACTIVA")
-                .ToListAsync();
+            // Solo las obras sociales con acuerdo activo (CUF02 alt 2.b.1.a.1). Antes se ofrecía también la
+            // "obra social" PARTICULAR (que dejaba al paciente con una obra social que no cubre nada) y
+            // las que figuran activas pero no tienen ningún convenio con la clínica.
+            var obrasSociales = (await _coberturaService.ListarObrasSocialesConAcuerdoAsync()).ToList();
 
             var viewModel = new SegurosViewModel
             {
@@ -445,23 +487,45 @@ namespace TurnoMolar.Controllers
             return View(viewModel);
         }
 
+        // CUF02: el paciente cambia su obra social o pasa a particular (idObraSocial vacío). Las reglas
+        // (acuerdo activo, confirmación para pasar a particular y el resguardo de los turnos de obra
+        // social pendientes) están en ICoberturaPacienteService.
+        //
+        // Defecto corregido: cambiaba la obra social sin ningún control (con una obra social sin
+        // convenios, o con un turno de obra social pendiente de atención, que pasaba a calcularse con la
+        // obra social nueva) y la pantalla pedía un número de afiliado que se descartaba.
         [HttpPost]
         [Authorize(Roles = "Paciente,Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ActualizarSeguro(string idObraSocial, string? nroAfiliado)
+        public async Task<IActionResult> ActualizarSeguro(string? idObraSocial, bool confirmaPasarAParticular = false)
         {
             var paciente = await ObtenerPacienteActualAsync();
-
-            var obraSocial = await _context.ObrasSociales.FindAsync(idObraSocial);
-            if (obraSocial != null)
+            if (_vistaPreviaAdmin)
             {
-                paciente.AsignarObraSocial(obraSocial);
-                await _context.SaveChangesAsync();
-                TempData["MensajeExito"] = $"¡Tu cobertura médica se actualizó a {obraSocial.NombreOS} ({obraSocial.PlanCobertura}) exitosamente!";
+                return VistaPreviaSoloLectura("Seguros");
             }
-            else
+
+            var resultado = await _coberturaService.ActualizarObraSocialAsync(
+                paciente.TipoDocumento, paciente.NroDocumento, idObraSocial, confirmaPasarAParticular);
+
+            switch (resultado.Resultado)
             {
-                TempData["MensajeError"] = "La obra social seleccionada no es válida.";
+                case ResultadoActualizarCobertura.Actualizada:
+                    // CUF02, mensaje de éxito del diccionario de datos, y la cobertura que quedó.
+                    TempData["MensajeExito"] = resultado.NombreObraSocial != null
+                        ? $"{resultado.Mensaje} Tu cobertura ahora es {resultado.NombreObraSocial}."
+                        : $"{resultado.Mensaje} Ahora abonás tus turnos en la modalidad particular.";
+                    break;
+
+                case ResultadoActualizarCobertura.RequiereConfirmacion:
+                    // CUF02 alt 2.a.1: se informa que se eliminará el acuerdo de obra social y se pide confirmar.
+                    ViewData["Mensaje"] = resultado.Mensaje;
+                    ViewData["ActiveTab"] = "Seguros";
+                    return View("ConfirmarSeguroParticular");
+
+                default:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    break;
             }
 
             return RedirectToAction("Seguros");
@@ -499,6 +563,10 @@ namespace TurnoMolar.Controllers
         public async Task<IActionResult> ActualizarPerfil(string telefono, string email, string domicilio)
         {
             var paciente = await ObtenerPacienteActualAsync();
+            if (_vistaPreviaAdmin)
+            {
+                return VistaPreviaSoloLectura("Configuracion");
+            }
 
             if (string.IsNullOrWhiteSpace(email))
             {

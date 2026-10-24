@@ -163,7 +163,7 @@
                 <div class="modal-body">
                     <p class="mb-2">Turno <strong id="cancelarTurnoTexto"></strong> de <strong id="cancelarPacienteTexto"></strong>.</p>
                     <div class="alert alert-warning small border-0">
-                        Si faltan menos de 24 hs para el turno, se registra una deuda por la penalización y el paciente queda <strong>Inhabilitado</strong> para agendar nuevos turnos hasta regularizarla. Con 24 hs o más no tiene costo.
+                        Si faltan menos de 24 hs para el turno (o el turno ya pasó), el sistema muestra el aviso del cobro y pide confirmar: al confirmar se registra una deuda por la penalización y el paciente queda <strong>Inhabilitado</strong> para agendar nuevos turnos hasta regularizarla. Con 24 hs o más no tiene costo.
                     </div>
                     <label class="form-label small text-muted mb-1">Motivo (opcional)</label>
                     <textarea name="motivoCancelacion" class="form-control" rows="2" maxlength="300"></textarea>

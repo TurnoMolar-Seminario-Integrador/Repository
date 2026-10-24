@@ -7,6 +7,9 @@
     var os = Model.ObraSocialActual;
     var nombrePaciente = $"{Model.Paciente.Nombre} {Model.Paciente.Apellido}";
     var tieneOS = os != null;
+
+    // La obra social actual puede no estar entre las ofrecidas (por ejemplo, si ya no tiene acuerdo activo).
+    var osActualEnLista = Model.ObrasSocialesDisponibles.Any(o => o.IdentificadorOS == Model.Paciente.IdentificadorOS);
 }
 
 @section Styles {
@@ -91,7 +94,18 @@
                 </div>
                 <div>
                     <p class="small text-uppercase opacity-75 mb-0 fw-semibold">Estado</p>
-                    <h6 class="fw-bold mb-0 text-success"><i class="bi bi-check-circle-fill"></i> Activa</h6>
+                    @if (tieneOS)
+                    {
+                        @* Estado real de la obra social (EstadoOS); antes decía siempre "Activa", también para particular. *@
+                        var activa = string.Equals(os!.EstadoOS, "ACTIVA", StringComparison.OrdinalIgnoreCase);
+                        <h6 class="fw-bold mb-0 @(activa ? "text-success" : "text-warning")">
+                            <i class="bi @(activa ? "bi-check-circle-fill" : "bi-exclamation-circle-fill")"></i> @(activa ? "Activa" : "Inactiva")
+                        </h6>
+                    }
+                    else
+                    {
+                        <h6 class="fw-bold mb-0">Sin obra social</h6>
+                    }
                 </div>
             </div>
         </div>
@@ -101,33 +115,49 @@
         <h5 class="fw-bold mb-3 text-dark">Modificar Cobertura</h5>
         <div class="update-box">
             <h6 class="fw-bold text-dark mb-2"><i class="bi bi-arrow-repeat text-primary me-2"></i>Actualizar Obra Social / Prepaga</h6>
-            <p class="text-muted small mb-3">Seleccioná tu nueva cobertura médica para aplicar las tarifas y copagos correspondientes.</p>
-            
+            <p class="text-muted small mb-3">Seleccioná tu nueva cobertura médica. Solo se ofrecen las obras sociales con acuerdo activo con la clínica; sus aranceles se aplican a los turnos que reserves con esa modalidad.</p>
+
             <form asp-controller="Home" asp-action="ActualizarSeguro" method="post">
                 @Html.AntiForgeryToken()
-                
+
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted text-uppercase">Seleccionar Entidad</label>
                     <select class="form-select rounded-3 py-2" name="idObraSocial" required>
+                        @if (!osActualEnLista)
+                        {
+                            @* Sin esta opción vacía se preseleccionaba la primera obra social de la lista y bastaba apretar "Guardar" para afiliarse a ella. *@
+                            <option value="" selected disabled>Seleccioná una obra social...</option>
+                        }
                         @foreach (var o in Model.ObrasSocialesDisponibles)
                         {
                             var isSelected = Model.Paciente.IdentificadorOS == o.IdentificadorOS;
+                            @* Antes la etiqueta mostraba un "Copago" que en realidad era el arancel del primer convenio de la obra social, de una especialidad cualquiera. *@
                             <option value="@o.IdentificadorOS" selected="@isSelected">
-                                @o.NombreOS - Plan: @o.PlanCobertura (Copago: $@o.ArancelOS.ToString("N0"))
+                                @o.NombreOS - Plan: @o.PlanCobertura
                             </option>
                         }
                     </select>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted text-uppercase">Nro. de Credencial / Afiliado (Opcional)</label>
-                    <input type="text" class="form-control rounded-3 py-2" name="nroAfiliado" placeholder="Ej: 34567890-01" />
                 </div>
 
                 <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold w-100 py-2 shadow-sm">
                     <i class="bi bi-check-circle-fill me-1"></i> Guardar Nueva Cobertura
                 </button>
             </form>
+
+            @if (tieneOS)
+            {
+                @* CUF02 alt 2.a: pasar a la modalidad particular (el sistema pide confirmar). *@
+                <hr class="my-4" />
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-person me-2 text-secondary"></i>Pasar a modalidad particular</h6>
+                <p class="text-muted small mb-3">Dejás de tener una obra social asociada y abonás tus turnos con el arancel particular.</p>
+                <form asp-controller="Home" asp-action="ActualizarSeguro" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="idObraSocial" value="" />
+                    <button type="submit" class="btn btn-outline-secondary rounded-pill px-4 fw-bold w-100 py-2" id="btnPasarAParticular">
+                        <i class="bi bi-arrow-right-circle me-1"></i> Pasar a particular
+                    </button>
+                </form>
+            }
         </div>
     </div>
 </div>

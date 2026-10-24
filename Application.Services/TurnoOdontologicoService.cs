@@ -22,10 +22,12 @@ namespace Application.Services
                 throw new ArgumentException($"Ya existe un turno para ese odontólogo en la fecha/hora indicada.");
             }
 
+            // Lista cerrada (Particular | Obra Social): antes cualquier texto creaba un turno que después
+            // no se podía cobrar. Lanza ArgumentException, que el endpoint traduce a 400.
             var turno = new Turno(
                 0,
                 fechaReserva,
-                dto.ModalidadPago ?? "PARTICULAR",
+                ModalidadesPago.Requerir(dto.ModalidadPago),
                 dto.CodEspecialidad ?? 1,
                 "DNI",
                 dto.OdontologoNroDoc?.ToString() ?? "0",
@@ -60,7 +62,7 @@ namespace Application.Services
             var turno = new Turno(
                 dto.Id,
                 dto.Fecha.Add(dto.HorarioTurno.ToTimeSpan()),
-                dto.ModalidadPago ?? "PARTICULAR",
+                ModalidadesPago.Requerir(dto.ModalidadPago),
                 dto.CodEspecialidad ?? 1,
                 "DNI",
                 dto.OdontologoNroDoc?.ToString() ?? "0",

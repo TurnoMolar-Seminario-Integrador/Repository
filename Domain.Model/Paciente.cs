@@ -62,9 +62,14 @@ namespace Domain.Model
             EstadoPaciente = estado.ToUpper().Trim();
         }
 
+        // RN6 / MU: el paciente particular tiene IdentificadorOS nulo. "PARTICULAR" (el identificador de la
+        // pseudo obra social que se sembraba) se normaliza a null para que particular se guarde siempre
+        // igual, sin importar desde qué pantalla se cargue.
         public void SetIdentificadorOS(string? identificadorOS)
         {
-            IdentificadorOS = string.IsNullOrWhiteSpace(identificadorOS) ? null : identificadorOS.Trim();
+            IdentificadorOS = string.IsNullOrWhiteSpace(identificadorOS) || Domain.Model.ObraSocial.EsParticular(identificadorOS)
+                ? null
+                : identificadorOS.Trim();
         }
 
         public void SetMontoAdeudado(decimal? monto)
@@ -76,8 +81,15 @@ namespace Domain.Model
 
         public void AsignarObraSocial(ObraSocial? obraSocial)
         {
+            if (obraSocial == null || Domain.Model.ObraSocial.EsParticular(obraSocial.IdentificadorOS))
+            {
+                ObraSocial = null;
+                IdentificadorOS = null;
+                return;
+            }
+
             ObraSocial = obraSocial;
-            IdentificadorOS = obraSocial?.IdentificadorOS;
+            IdentificadorOS = obraSocial.IdentificadorOS;
         }
     }
 }

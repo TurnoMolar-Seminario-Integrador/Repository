@@ -243,7 +243,9 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="nroTurno" id="cobroParticularNroTurno" value="" />
                         <label class="form-label fw-semibold text-dark">Monto Abonado</label>
-                        <input type="number" step="0.01" min="0" class="form-control mb-3" name="monto" id="montoAbonadoInput" required />
+                        @* CUU03 paso 6: el cobro particular es por el monto total calculado en el paso 4; el servidor rechaza otro importe. *@
+                        <input type="number" step="0.01" min="0.01" class="form-control mb-1" name="monto" id="montoAbonadoInput" required />
+                        <div class="form-text mb-3">Debe coincidir con el total de la atención.</div>
                         <label class="form-label fw-semibold text-dark">Método de Pago</label>
                         <select class="form-select mb-3" name="tipoMetodoPago" required>
                             <option value="EFECTIVO">Efectivo</option>
@@ -335,7 +337,10 @@
                         var esObraSocial = data.modalidadPago === 'Obra Social';
 
                         document.getElementById('displayPacienteNombreCobro').innerText = data.nombrePaciente;
-                        document.getElementById('displayMontoTotal').innerText = data.montoTotal.toLocaleString('es-AR');
+                        // El cobro particular debe ser por el total exacto (CUU03 paso 6): se muestran los centavos si los hay.
+                        var totalCobro = Number(data.montoTotal);
+                        var decimalesTotal = Number.isInteger(totalCobro) ? 0 : 2;
+                        document.getElementById('displayMontoTotal').innerText = totalCobro.toLocaleString('es-AR', { minimumFractionDigits: decimalesTotal, maximumFractionDigits: decimalesTotal });
 
                         document.getElementById('formCobroParticular').style.display = esObraSocial ? 'none' : 'block';
                         document.getElementById('formCobroObraSocial').style.display = esObraSocial ? 'block' : 'none';

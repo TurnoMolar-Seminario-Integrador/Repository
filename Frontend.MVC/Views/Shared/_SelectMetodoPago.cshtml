@@ -1,0 +1,12 @@
+@using Domain.Model
+
+@* Métodos de pago admitidos al registrar un pago de deuda (CUU01 alt 2.a.1.a.1: tipoMetodoPago; CUF10).
+   La lista sale de Domain.Model.MetodosPago, la misma que valida el servidor. El campo se llama
+   "metodoPago", como el parámetro de las acciones que lo reciben. *@
+<select name="metodoPago" class="form-select" required aria-label="Método de pago">
+    <option value="">Seleccioná un método...</option>
+    @foreach (var metodo in MetodosPago.Validos)
+    {
+        <option value="@metodo">@MetodosPago.Etiqueta(metodo)</option>
+    }
+</select>

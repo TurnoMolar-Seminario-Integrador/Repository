@@ -43,6 +43,9 @@ namespace Application.Services
     // =========================================================================
     public class FinalizarAtencionService : IFinalizarAtencionService
     {
+        // Tolerancia por redondeo de centavos al comparar montos cobrados contra el total calculado.
+        private const decimal MargenCentavos = 0.01m;
+
         private readonly ITurnoRepository _turnoRepository;
         private readonly IPacienteRepository _pacienteRepository;
         private readonly IHistoriaClinicaRepository _historiaClinicaRepository;
@@ -266,9 +269,14 @@ namespace Application.Services
             // Camino básico, paso 6: "El paciente realiza el pago en forma particular. El
             // responsable de la clínica registra el cobro en el sistema, indicando el monto
             // abonado y el método de pago utilizado [...] cambia el estado del turno a
-            // 'Finalizado'". Diccionario, paso 6: eDatosPago = monto + tipoMetodoPago -- el
-            // monto es un dato que ingresa el responsable, no un valor fijo tomado del sistema
-            // (a diferencia de 6.a, acá el texto no exige que coincida con el monto total).
+            // 'Finalizado'". Diccionario, paso 6: eDatosPago = monto + tipoMetodoPago.
+            //
+            // Defecto corregido: el servicio tomaba cualquier monto (0, 1 de 35.000 o 350.000 cerraban
+            // el turno como Finalizado, sin deuda ni aviso) y cualquier texto como método. Como el
+            // modelo no tiene un saldo (Turno-Pago es 0..1 y la deuda es única, RN8), un cobro
+            // parcial haría desaparecer el faltante: el cobro particular tiene que ser por el TOTAL
+            // calculado en el paso 4 (el formulario ya lo precarga). Si el paciente no abonó, el
+            // camino es la alt 6.b (falta de pago).
             var turno = await ObtenerTurnoParaCobroAsync(nroTurno);
             if (turno == null)
             {
@@ -280,12 +288,36 @@ namespace Application.Services
                 return ModalidadNoCoincide(turno.EstadoTurno);
             }
 
-            // Se sigue necesitando la Atención para verificar que el paso 4 ya se haya hecho.
-            _ = await _atencionRepository.GetByNroTurnoAsync(nroTurno)
+            var metodo = MetodosPago.Normalizar(tipoMetodoPago);
+            if (metodo == null)
+            {
+                return MetodoPagoInvalido(turno.EstadoTurno);
+            }
+
+            // Se necesita la Atención para verificar que el paso 4 ya se haya hecho y para conocer
+            // el monto total a cobrar.
+            var atencion = await _atencionRepository.GetByNroTurnoAsync(nroTurno)
                 ?? throw new InvalidOperationException("El turno está en 'Atención Registrada' pero no tiene una Atención Odontológica asociada.");
 
+            if (monto <= 0m)
+            {
+                return DatosCobroInvalidos("El monto cobrado debe ser mayor a cero.", turno.EstadoTurno);
+            }
+            if (Math.Abs(monto - atencion.MontoTotal) > MargenCentavos)
+            {
+                return new RegistrarCobroResultDTO
+                {
+                    Resultado = ResultadoRegistrarCobro.MontoNoCoincide,
+                    Mensaje = $"El monto cobrado (${monto:N2}) no coincide con el monto total de la atención (${atencion.MontoTotal:N2}). El cobro particular se registra por el total; si el paciente no abonó, registrá la falta de pago.",
+                    EstadoTurno = turno.EstadoTurno
+                };
+            }
+
+            // Se registra el total de la atención (no el valor tipeado, que puede diferir en
+            // centavos). MU: en un pago particular AportePaciente = Monto y AporteObraSocial es nulo.
+            monto = atencion.MontoTotal;
             var fechaHoraPago = DateTime.Now;
-            var pago = new Pago(0, turno.NroTurno, fechaHoraPago, monto, tipoMetodoPago);
+            var pago = new Pago(0, turno.NroTurno, fechaHoraPago, monto, metodo, null, monto, null);
             await _pagoRepository.AddAsync(pago);
 
             turno.Finalizar();
@@ -318,13 +350,25 @@ namespace Application.Services
                 return ModalidadNoCoincide(turno.EstadoTurno);
             }
 
+            var metodo = MetodosPago.Normalizar(tipoMetodoPago);
+            if (metodo == null)
+            {
+                return MetodoPagoInvalido(turno.EstadoTurno);
+            }
+
             var atencion = await _atencionRepository.GetByNroTurnoAsync(nroTurno)
                 ?? throw new InvalidOperationException("El turno está en 'Atención Registrada' pero no tiene una Atención Odontológica asociada.");
+
+            // Defecto corregido: un aporte negativo pasaba si la suma daba el total (-5.000 + 45.000).
+            if (aportePaciente < 0m || aporteObraSocial < 0m)
+            {
+                return DatosCobroInvalidos("Los aportes del paciente y de la obra social no pueden ser negativos.", turno.EstadoTurno);
+            }
 
             // "aportePaciente + aporteObraSocial" deben igualar el monto total calculado en el
             // paso 4; si no coinciden, el sistema no debe permitir continuar. Se compara con
             // una tolerancia mínima por redondeo de centavos.
-            if (Math.Abs((aportePaciente + aporteObraSocial) - atencion.MontoTotal) > 0.01m)
+            if (Math.Abs((aportePaciente + aporteObraSocial) - atencion.MontoTotal) > MargenCentavos)
             {
                 return new RegistrarCobroResultDTO
                 {
@@ -334,7 +378,7 @@ namespace Application.Services
                 };
             }
 
-            var pago = new Pago(0, turno.NroTurno, DateTime.Now, atencion.MontoTotal, tipoMetodoPago, turno.Paciente.IdentificadorOS, aportePaciente, aporteObraSocial);
+            var pago = new Pago(0, turno.NroTurno, DateTime.Now, atencion.MontoTotal, metodo, turno.Paciente.IdentificadorOS, aportePaciente, aporteObraSocial);
             await _pagoRepository.AddAsync(pago);
 
             turno.Finalizar();
@@ -436,6 +480,26 @@ namespace Application.Services
                 Resultado = ResultadoRegistrarCobro.TurnoInvalido,
                 Mensaje = "El turno indicado no está disponible para cobrar (no existe o todavía no tiene una atención registrada).",
                 EstadoTurno = string.Empty
+            };
+        }
+
+        // Diccionario, paso 6: eDatosPago = monto + tipoMetodoPago. El método tiene que ser uno de la
+        // lista cerrada (ver MetodosPago); antes cualquier texto se guardaba y, vacío o ausente, el
+        // controlador dejaba escapar una excepción (error 500).
+        private static RegistrarCobroResultDTO MetodoPagoInvalido(string estadoTurno)
+        {
+            return DatosCobroInvalidos(
+                "El método de pago indicado no es válido. Elegí Efectivo, Tarjeta de débito, Tarjeta de crédito o Transferencia.",
+                estadoTurno);
+        }
+
+        private static RegistrarCobroResultDTO DatosCobroInvalidos(string mensaje, string estadoTurno)
+        {
+            return new RegistrarCobroResultDTO
+            {
+                Resultado = ResultadoRegistrarCobro.DatosInvalidos,
+                Mensaje = mensaje,
+                EstadoTurno = estadoTurno
             };
         }
 

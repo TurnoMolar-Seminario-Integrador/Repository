@@ -1,0 +1,86 @@
+@model Frontend.MVC.Models.ConfirmarCancelacionViewModel
+
+@* CUF07 alt 3.a.1 / 3.a.2: la cancelación se solicita fuera de término. Se informa y se advierte sobre el
+   cobro (Mensaje = sAvisoCancelacionFueraDeTermino del diccionario de datos); el turno solo se cancela
+   cuando se confirma desde acá. La usan el paciente (Turno/ConfirmarCancelacion) y el responsable
+   (Responsable/ConfirmarCancelacion), cada uno con su layout. *@
+<div class="card border-warning shadow-sm mx-auto" style="max-width: 640px;" id="confirmarCancelacionFueraDeTermino">
+    <div class="card-body p-4">
+        <div class="text-center mb-3">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width: 72px; height: 72px; background-color: #fffbeb; color: #d97706;">
+                <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Cancelación fuera de término</h4>
+            <p class="text-muted mb-0" id="mensajeFueraDeTermino">@Model.Mensaje</p>
+        </div>
+
+        <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item d-flex justify-content-between px-0">
+                <span class="text-muted">Turno</span>
+                <strong>N° @Model.IdTurno</strong>
+            </li>
+            @if (!string.IsNullOrWhiteSpace(Model.NombrePaciente))
+            {
+                <li class="list-group-item d-flex justify-content-between px-0">
+                    <span class="text-muted">Paciente</span>
+                    <strong>@Model.NombrePaciente</strong>
+                </li>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.NombreEspecialidad))
+            {
+                <li class="list-group-item d-flex justify-content-between px-0">
+                    <span class="text-muted">Especialidad</span>
+                    <strong>@Model.NombreEspecialidad</strong>
+                </li>
+            }
+            @if (Model.FechaHoraTurno.HasValue)
+            {
+                <li class="list-group-item d-flex justify-content-between px-0">
+                    <span class="text-muted">Fecha y hora</span>
+                    <strong>@Model.FechaHoraTurno.Value.ToString("dd/MM/yyyy HH:mm") hs</strong>
+                </li>
+            }
+            <li class="list-group-item d-flex justify-content-between px-0">
+                <span class="text-muted">Cobro por penalización</span>
+                <strong class="text-danger" id="montoPenalizacion">$@Model.Penalizacion.ToString("N0")</strong>
+            </li>
+        </ul>
+
+        <p class="small text-muted text-center mb-4">
+            @if (string.IsNullOrWhiteSpace(Model.NombrePaciente))
+            {
+                @:Si confirmás, el turno se cancela, se registra una deuda por ese monto y tu cuenta queda
+                @:Inhabilitada para agendar nuevos turnos hasta que la regularices.
+            }
+            else
+            {
+                @:Si confirmás, el turno se cancela, se registra una deuda por ese monto y el paciente queda
+                @:Inhabilitado para agendar nuevos turnos hasta que la regularice.
+            }
+        </p>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a asp-controller="@Model.ControladorVolver" asp-action="@Model.AccionVolver"
+               class="btn btn-light border rounded-pill px-4 fw-semibold">
+                <i class="bi bi-arrow-left me-1"></i> Volver sin cancelar
+            </a>
+
+            <form asp-controller="@Model.ControladorConfirmar" asp-action="@Model.AccionConfirmar" method="post">
+                <input type="hidden" name="idTurno" value="@Model.IdTurno" />
+                <input type="hidden" name="motivoCancelacion" value="@Model.MotivoCancelacion" />
+                @if (!string.IsNullOrEmpty(Model.TipoDocumentoPaciente))
+                {
+                    <input type="hidden" name="tipoDocumentoPaciente" value="@Model.TipoDocumentoPaciente" />
+                    <input type="hidden" name="nroDocumentoPaciente" value="@Model.NroDocumentoPaciente" />
+                    <input type="hidden" name="busqueda" value="@Model.Busqueda" />
+                    <input type="hidden" name="estado" value="@Model.Estado" />
+                }
+                <input type="hidden" name="confirmaFueraDeTermino" value="true" />
+                <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold" id="btnConfirmarCancelacionFueraDeTermino">
+                    <i class="bi bi-x-circle me-1"></i> Confirmar cancelación
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

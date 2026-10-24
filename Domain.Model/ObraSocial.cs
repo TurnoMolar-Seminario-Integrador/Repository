@@ -7,6 +7,21 @@ namespace Domain.Model
         public string PlanCobertura { get; private set; } = string.Empty;
         public string EstadoOS { get; private set; } = "ACTIVA";
 
+        // MU: el paciente particular tiene IdentificadorOS nulo. "PARTICULAR" era además el identificador
+        // de una "obra social" sembrada ("Particular / Sin cobertura") que algunas pantallas ofrecían
+        // como si fuera una OS más: con ese valor el sistema creía que el paciente tenía obra social
+        // que no cubre nada. Se trata como "sin obra social" (ver Paciente.SetIdentificadorOS).
+        public const string IdentificadorParticular = "PARTICULAR";
+
+        public static bool EsParticular(string? identificadorOS) =>
+            string.Equals(identificadorOS?.Trim(), IdentificadorParticular, StringComparison.OrdinalIgnoreCase);
+
+        // CUF01 2.a.1.a.1 / CUF02 2.b.1.a.1: "La obra social ingresada no posee un acuerdo activo".
+        // Acuerdo activo = la obra social figura como ACTIVA y tiene al menos un convenio con la clínica
+        // (requiere Convenios cargados). La "obra social" particular nunca tiene acuerdo.
+        public bool TieneAcuerdoActivo =>
+            !EsParticular(IdentificadorOS) && EstadoOS == "ACTIVA" && Convenios.Any();
+
         // Helper para compatibilidad de vistas
         public decimal ArancelOS => Convenios.FirstOrDefault()?.ArancelConvenio ?? 0m;
 

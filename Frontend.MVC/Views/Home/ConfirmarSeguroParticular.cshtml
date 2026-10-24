@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Confirmar cambio de cobertura - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "Seguros";
+    Layout = "_LayoutPaciente";
+}
+
+@* CUF02 alt 2.a.1: pasar a la modalidad particular elimina el acuerdo de obra social asociado a la cuenta;
+   el sistema lo informa y pide confirmar (el mensaje es el del diccionario de datos). *@
+<div class="mb-4">
+    <h3 class="fw-extrabold text-dark mb-1">Mi Cobertura Médica</h3>
+    <p class="text-muted small">Confirmá el cambio a la modalidad particular.</p>
+</div>
+
+<div class="card border-warning shadow-sm mx-auto" style="max-width: 640px;" id="confirmarSeguroParticular">
+    <div class="card-body p-4 text-center">
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+             style="width: 72px; height: 72px; background-color: #fffbeb; color: #d97706;">
+            <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+        </div>
+        <p class="fs-5 text-dark mb-4" id="mensajeConfirmarParticular">@ViewData["Mensaje"]</p>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a asp-controller="Home" asp-action="Seguros" class="btn btn-light border rounded-pill px-4 fw-semibold">
+                <i class="bi bi-arrow-left me-1"></i> No, volver
+            </a>
+            <form asp-controller="Home" asp-action="ActualizarSeguro" method="post">
+                <input type="hidden" name="idObraSocial" value="" />
+                <input type="hidden" name="confirmaPasarAParticular" value="true" />
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold" id="btnConfirmarParticular">
+                    <i class="bi bi-check-circle-fill me-1"></i> Sí, continuar
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

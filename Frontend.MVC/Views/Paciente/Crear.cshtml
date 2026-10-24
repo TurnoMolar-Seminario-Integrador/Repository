@@ -3,6 +3,9 @@
 @{
     ViewData["Title"] = "Registro de Paciente - Clínica Dental Rosario";
     Layout = null;
+
+    // Obras sociales con acuerdo activo (las carga el controlador desde la base).
+    var obrasSociales = ViewBag.ObrasSociales as IEnumerable<Domain.Model.ObraSocial> ?? Enumerable.Empty<Domain.Model.ObraSocial>();
 }
 
 <!DOCTYPE html>
@@ -235,13 +238,10 @@
                 <label asp-for="IdObraSocial" class="form-label">Obra Social o Prepaga</label>
                 <select asp-for="IdObraSocial" class="form-control-custom" id="selectObraSocial">
                     <option value="">Seleccione una obra social...</option>
-                    <option value="OSDE">OSDE</option>
-                    <option value="Swiss Medical">Swiss Medical</option>
-                    <option value="IAPOS">IAPOS</option>
-                    <option value="Sancor Salud">Sancor Salud</option>
-                    <option value="Federada Salud">Federada Salud</option>
-                    <option value="Jerarquicos Salud">Jerárquicos Salud</option>
-                    <option value="Galeno">Galeno</option>
+                    @foreach (var obraSocial in obrasSociales)
+                    {
+                        <option value="@obraSocial.IdentificadorOS">@obraSocial.NombreOS</option>
+                    }
                     <option value="Particular">Particular (Sin Obra Social)</option>
                     <option value="Otra">Otra (Especificar)</option>
                 </select>

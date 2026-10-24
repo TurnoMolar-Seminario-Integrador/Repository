@@ -35,6 +35,26 @@ namespace Frontend.MVC.Models
         public decimal SaldoPendiente => Paciente.MontoAdeudado ?? 0m;
         public bool EstaInhabilitado => Paciente.EstadoPaciente == "INHABILITADO" || (Paciente.MontoAdeudado.HasValue && Paciente.MontoAdeudado.Value > 0);
         public List<Pago> HistorialPagos { get; set; } = new();
+
+        // CUF10, paso 1: detalle del turno que originó la deuda (nroTurno, fecha y motivo). Solo se carga
+        // cuando hay saldo pendiente.
+        public DeudaPacienteDTO? DeudaDetalle { get; set; }
+
+        // Qué se pagó. El modelo guarda un Pago asociado al turno: la atención cobrada, o la deuda que dejó
+        // una ausencia o una cancelación fuera de término (CUF10). Antes todos se mostraban como "Pago de
+        // Consulta" por el monto total, aunque una parte la hubiera puesto la obra social.
+        public static string DescribirPago(Pago pago)
+        {
+            var turno = pago.Turno;
+            return turno?.EstadoTurno switch
+            {
+                "AUSENTE" => $"Deuda por inasistencia (turno N° {pago.NroTurno})",
+                "CANCELADO" => $"Deuda por cancelación fuera de término (turno N° {pago.NroTurno})",
+                _ => turno?.Especialidad != null
+                    ? $"Pago de la atención de {turno.Especialidad.Nombre} (turno N° {pago.NroTurno})"
+                    : $"Pago de la atención (turno N° {pago.NroTurno})"
+            };
+        }
     }
 
     public class SegurosViewModel

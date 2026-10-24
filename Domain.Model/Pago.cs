@@ -45,8 +45,7 @@ namespace Domain.Model
             SetMonto(monto);
             SetMetodoPago(metodoPago);
             IdentificadorOS = string.IsNullOrWhiteSpace(identificadorOS) ? null : identificadorOS.Trim();
-            AportePaciente = aportePaciente;
-            AporteObraSocial = aporteObraSocial;
+            SetAportes(aportePaciente, aporteObraSocial);
         }
 
         public void SetMonto(decimal monto)
@@ -56,11 +55,29 @@ namespace Domain.Model
             Monto = monto;
         }
 
+        // MD: aportePaciente [0..1] y aporteObraSocial [0..1]. Un aporte negativo no tiene sentido
+        // (antes pasaba si la suma daba el total: -5.000 + 45.000).
+        private void SetAportes(decimal? aportePaciente, decimal? aporteObraSocial)
+        {
+            if (aportePaciente < 0)
+                throw new ArgumentException("El aporte del paciente no puede ser negativo.", nameof(aportePaciente));
+            if (aporteObraSocial < 0)
+                throw new ArgumentException("El aporte de la obra social no puede ser negativo.", nameof(aporteObraSocial));
+
+            AportePaciente = aportePaciente;
+            AporteObraSocial = aporteObraSocial;
+        }
+
         public void SetMetodoPago(string metodoPago)
         {
             if (string.IsNullOrWhiteSpace(metodoPago))
                 throw new ArgumentException("El método de pago es requerido.", nameof(metodoPago));
-            MetodoPago = metodoPago.ToUpper().Trim();
+
+            // Lista cerrada (ver MetodosPago): antes se guardaba cualquier texto, en mayúsculas.
+            MetodoPago = MetodosPago.Normalizar(metodoPago)
+                ?? throw new ArgumentException(
+                    "El método de pago indicado no es válido. Las opciones son Efectivo, Tarjeta de débito, Tarjeta de crédito o Transferencia.",
+                    nameof(metodoPago));
         }
 
         public void SetTipoMetodoPago(string tipoMetodoPago) => SetMetodoPago(tipoMetodoPago);

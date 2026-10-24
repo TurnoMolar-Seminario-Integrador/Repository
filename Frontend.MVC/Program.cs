@@ -1,5 +1,6 @@
 using Application.Services;
 using Data;
+using Frontend.MVC.Infrastructure;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,15 @@ builder.Services.AddScoped<IValorarAtencionService, ValorarAtencionService>();
 // e IComprobanteTurnoRepository (ya registrados más arriba).
 builder.Services.AddScoped<IGestionTurnoService, GestionTurnoService>();
 
+// CUF10 - Regularizar Deuda del Paciente: la usan el paciente (Métodos de Pago / Reservar) y el
+// responsable de la clínica (alt 2.a, cobro presencial). Reutiliza ITurnoRepository,
+// IPacienteRepository e IPagoRepository (ya registrados más arriba).
+builder.Services.AddScoped<IRegularizarDeudaService, RegularizarDeudaService>();
+
+// CUF01 / CUF02 - Obra social del paciente (alta y pantalla Seguros): reutiliza
+// IObraSocialRepository, IPacienteRepository e ITurnoRepository.
+builder.Services.AddScoped<ICoberturaPacienteService, CoberturaPacienteService>();
+
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -81,7 +91,12 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 // 4. Controladores y Vistas MVC
-builder.Services.AddControllersWithViews();
+// Los importes se leen con el mismo formato sin importar la cultura del servidor (ver
+// InvariantDecimalModelBinder).
+builder.Services.AddControllersWithViews(options =>
+{
+    options.ModelBinderProviders.Insert(0, new InvariantDecimalModelBinderProvider());
+});
 
 // 5. Cliente HTTP para llamadas a la API
 builder.Services.AddHttpClient();

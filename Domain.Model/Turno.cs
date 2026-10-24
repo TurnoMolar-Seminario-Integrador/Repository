@@ -70,7 +70,9 @@ namespace Domain.Model
         {
             NroTurno = nroTurno;
             FechaHoraTurno = fechaHoraTurno;
-            ModalidadPagoElegida = modalidadPagoElegida;
+            // Lista cerrada (ver ModalidadesPago): antes se guardaba cualquier texto.
+            ModalidadPagoElegida = ModalidadesPago.Normalizar(modalidadPagoElegida)
+                ?? throw new ArgumentException("La modalidad de pago indicada no es válida. Las opciones son Particular u Obra Social.", nameof(modalidadPagoElegida));
             IdEspecialidad = idEspecialidad;
             TipoDocumentoOdontologo = tipoDocumentoOdontologo;
             NroDocumentoOdontologo = nroDocumentoOdontologo;
@@ -149,6 +151,30 @@ namespace Domain.Model
             Pago == null &&
             Atencion != null &&
             Atencion.Valoracion == null;
+
+        // CUF10, motivoDeuda(d): por qué este turno dejó una deuda que todavía no se pagó. Es null si el
+        // turno no originó deuda o si ya tiene su Pago (CUF10 paso 3: el pago se registra asociado al
+        // turno que originó la deuda). Requiere Pago y Atencion cargados para evaluarse bien.
+        //   - AUSENTE                                   -> Inasistencia (CUU02 alt 1.b)
+        //   - CANCELADO con penalización aplicada       -> Cancelación fuera de término (CUF07 alt 3.a)
+        //   - FINALIZADO con atención y sin Pago        -> Falta de pago de la atención (CUU03 alt 6.b)
+        public string? MotivoDeudaPendiente
+        {
+            get
+            {
+                if (Pago != null)
+                    return null;
+
+                if (EstadoTurno == "AUSENTE")
+                    return MotivosDeuda.Inasistencia;
+                if (EstadoTurno == "CANCELADO" && ArancelPenalizacionAplicado > 0m)
+                    return MotivosDeuda.CancelacionFueraDeTermino;
+                if (EstadoTurno == "FINALIZADO" && Atencion != null)
+                    return MotivosDeuda.FaltaDePago;
+
+                return null;
+            }
+        }
 
         public void Reprogramar(DateTime nuevaFechaHora, int? nuevoNroTurno = null)
         {

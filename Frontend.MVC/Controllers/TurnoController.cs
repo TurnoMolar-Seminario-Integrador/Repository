@@ -3,6 +3,7 @@ using Application.Services;
 using Data;
 using Domain.Model;
 using DTOs;
+using Frontend.MVC.Infrastructure;
 using Frontend.MVC.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,11 @@ namespace Frontend.MVC.Controllers
         private readonly IObraSocialRepository _obraSocialRepository;
         private readonly IValorarAtencionService _valorarAtencionService;
         private readonly IGestionTurnoService _gestionTurnoService;
+        private readonly IRegularizarDeudaService _regularizarDeudaService;
+
+        // Verdadero cuando la sesión es un Admin mirando el portal de "el primer paciente" (vista
+        // previa): ver ObtenerPacienteActualAsync y VistaPreviaSoloLectura.
+        private bool _vistaPreviaAdmin;
 
         public TurnoController(
             TurnoMolarDbContext context,
@@ -33,7 +39,8 @@ namespace Frontend.MVC.Controllers
             IOdontologoRepository odontologoRepository,
             IObraSocialRepository obraSocialRepository,
             IValorarAtencionService valorarAtencionService,
-            IGestionTurnoService gestionTurnoService)
+            IGestionTurnoService gestionTurnoService,
+            IRegularizarDeudaService regularizarDeudaService)
         {
             _context = context;
             _logger = logger;
@@ -43,6 +50,7 @@ namespace Frontend.MVC.Controllers
             _obraSocialRepository = obraSocialRepository;
             _valorarAtencionService = valorarAtencionService;
             _gestionTurnoService = gestionTurnoService;
+            _regularizarDeudaService = regularizarDeudaService;
         }
 
         // Defecto corregido: esta resolución caía silenciosamente en "el primer paciente de la
@@ -77,6 +85,7 @@ namespace Frontend.MVC.Controllers
                     .Include(p => p.ObraSocial)
                     .Include(p => p.HistoriaClinica)
                     .FirstOrDefaultAsync();
+                _vistaPreviaAdmin = paciente != null;
             }
 
             if (paciente == null)
@@ -91,6 +100,15 @@ namespace Frontend.MVC.Controllers
             ViewData["MontoAdeudado"] = paciente.MontoAdeudado ?? 0m;
 
             return paciente;
+        }
+
+        // Defecto corregido: en la vista previa del Admin (sin cuenta de paciente propia) las operaciones
+        // (agendar, cancelar, reprogramar, pagar la deuda) se aplicaban al primer paciente real de la
+        // base. El Admin puede mirar todas las pantallas, pero no operar sobre esa cuenta.
+        private IActionResult VistaPreviaSoloLectura(string accion, string? controlador = null)
+        {
+            TempData["MensajeError"] = VistaPreviaAdmin.MensajeSoloLectura;
+            return RedirectToAction(accion, controlador);
         }
 
         // =========================================================================
@@ -147,6 +165,10 @@ namespace Frontend.MVC.Controllers
 
             ViewBag.Habilitado = estado.Habilitado;
             ViewBag.MontoAdeudado = estado.MontoAdeudado;
+            // CUF10 paso 1: además del saldo, el detalle del turno que originó la deuda (nro, fecha, motivo).
+            ViewBag.DeudaDetalle = estado.Habilitado
+                ? null
+                : await _regularizarDeudaService.ConsultarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
             ViewBag.TieneTurnoPendiente = estado.TieneTurnoPendiente;
             ViewBag.TurnoPendiente = estado.TurnoPendiente;
 
@@ -226,6 +248,10 @@ namespace Frontend.MVC.Controllers
         public async Task<IActionResult> Reservar(ReservaTurnoViewModel modelo)
         {
             var paciente = await ObtenerPacienteActualAsync();
+            if (_vistaPreviaAdmin)
+            {
+                return VistaPreviaSoloLectura("Reservar", "Turno");
+            }
 
             // Alt 5.a: el paciente no acepta la política de cancelación -> se descarta la selección.
             if (!modelo.AceptaPoliticas)
@@ -286,15 +312,39 @@ namespace Frontend.MVC.Controllers
             }
         }
 
-        // Alt 2.a.1.a: el paciente abona la deuda y el sistema lo rehabilita ("Vuelve al paso 2").
+        // CUU01 alt 2.a.1.a / CUF10 pasos 2 y 3: el paciente abona el TOTAL de la deuda y el sistema
+        // registra el pago (con el método elegido, asociado al turno que la originó) y lo rehabilita
+        // ("Vuelve al paso 2").
+        //
+        // Defecto corregido: la acción no recibía el método (la pantalla ni lo preguntaba) y rehabilitaba
+        // a cualquier paciente inhabilitado con solo enviar el formulario.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> PagarDeuda()
+        public async Task<IActionResult> PagarDeuda(string? metodoPago)
         {
             var paciente = await ObtenerPacienteActualAsync();
-            var resultado = await _agendaTurnoService.PagarDeudaAsync(paciente.TipoDocumento, paciente.NroDocumento);
+            if (_vistaPreviaAdmin)
+            {
+                return VistaPreviaSoloLectura("Reservar", "Turno");
+            }
 
-            TempData["MensajeExito"] = resultado.Mensaje;
+            var resultado = await _regularizarDeudaService.PagarDeudaAsync(
+                paciente.TipoDocumento, paciente.NroDocumento, metodoPago ?? string.Empty);
+
+            switch (resultado.Resultado)
+            {
+                case ResultadoPagarDeuda.Regularizada:
+                    TempData["MensajeExito"] = resultado.Mensaje;
+                    break;
+                case ResultadoPagarDeuda.SinDeuda:
+                    // CUF10 alt 1.a: mensajeSinDeuda.
+                    TempData["MensajeInfo"] = resultado.Mensaje;
+                    break;
+                default:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    break;
+            }
+
             return RedirectToAction("Reservar");
         }
 
@@ -318,7 +368,7 @@ namespace Frontend.MVC.Controllers
         [HttpGet]
         public async Task<IActionResult> Comprobante(int idTurno)
         {
-            await ObtenerPacienteActualAsync();
+            var paciente = await ObtenerPacienteActualAsync();
 
             var turno = await _context.Turnos
                 .Include(t => t.Odontologo)
@@ -328,21 +378,48 @@ namespace Frontend.MVC.Controllers
                 .Include(t => t.Comprobante)
                 .FirstOrDefaultAsync(t => t.NroTurno == idTurno);
 
-            if (turno == null)
+            // El comprobante es de su titular. Antes se mostraba el de cualquier número de turno, así
+            // que un paciente podía ver el de otro (sus datos y los del odontólogo) cambiando el
+            // número en la URL. Mismo mensaje que si el turno no existiera, para no confirmar que existe.
+            if (turno == null
+                || turno.TipoDocumentoPaciente != paciente.TipoDocumento
+                || turno.NroDocumentoPaciente != paciente.NroDocumento)
             {
                 TempData["MensajeError"] = "No se encontró el turno solicitado.";
                 return RedirectToAction("MisTurnos", "Home");
             }
 
+            // Defecto corregido: la vista leía "MetodoPago" y "CodigoReserva", que este método nunca
+            // cargaba (cargaba "ModalidadPago"), así que todos los comprobantes mostraban la cobertura
+            // "Obra Social (OSDE - Plan 210)" y el código "TM-2026-8491A" de ejemplo. Ahora se muestran
+            // los datos del turno: el número de comprobante (sComprobanteTurno, CUU01) y su cobertura.
             ViewData["IdTurno"] = turno.NroTurno;
             ViewData["FechaTurno"] = turno.FechaHoraTurno.ToString("dd 'de' MMMM, yyyy • HH:mm 'hs'", new CultureInfo("es-ES"));
             ViewData["Doctor"] = $"{turno.Odontologo.Nombre} {turno.Odontologo.Apellido} ({turno.Odontologo.MatriculaVisible})";
             ViewData["Especialidad"] = turno.Especialidad.Nombre;
-            ViewData["ModalidadPago"] = turno.ModalidadPagoElegida == "OBRA_SOCIAL" ? "Obra Social / Prepaga" : "Particular";
-            ViewData["EstadoTurno"] = turno.EstadoTurno;
-            ViewData["FechaEmision"] = turno.Comprobante?.FechaHoraEmision.ToString("dd/MM/yyyy HH:mm") ?? DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+            ViewData["ModalidadPago"] = ModalidadesPago.Etiqueta(turno.ModalidadPagoElegida);
+            ViewData["MetodoPago"] = DescribirCobertura(turno);
+            ViewData["EstadoTurno"] = turno.EstadoLegible;
+            ViewData["CodigoReserva"] = turno.Comprobante?.NroComprobante.ToString("D6");
+            ViewData["FechaEmision"] = turno.Comprobante?.FechaHoraEmision.ToString("dd/MM/yyyy HH:mm");
 
             return View(turno);
+        }
+
+        // El turno guarda solo la modalidad (PARTICULAR u OBRA_SOCIAL), no cuál obra social. Mientras el
+        // turno está pendiente la obra social del paciente no se puede cambiar (CoberturaPacienteService),
+        // así que la actual es la que corresponde; en un turno ya cerrado no se afirma cuál era.
+        private static string DescribirCobertura(Turno turno)
+        {
+            if (turno.ModalidadPagoElegida != ModalidadesPago.ObraSocial)
+            {
+                return "Particular";
+            }
+
+            var obraSocial = turno.Paciente?.ObraSocial;
+            return turno.PendienteDeAtencion && obraSocial != null
+                ? $"Obra Social: {obraSocial.NombreOS} ({obraSocial.PlanCobertura})"
+                : "Obra Social";
         }
 
         // =========================================================================
@@ -353,14 +430,40 @@ namespace Frontend.MVC.Controllers
         // directo con una penalización de $5000 fija, sin relación con la especialidad del
         // turno -- el único lugar del proyecto que no seguía el criterio arquitectónico ya
         // aplicado a CUU01-04 (lógica de negocio en Application.Services, no en el controlador).
+        //
+        // CUF07 alt 3.a: si la cancelación se pide fuera de término (menos de 24 hs, o el turno ya pasó)
+        // no se cancela de inmediato: se muestra el aviso del cobro (3.a.1) y la cancelación se ejecuta
+        // recién cuando el paciente la confirma (3.a.2, confirmaFueraDeTermino = true). Antes la
+        // penalización se cobraba y el paciente quedaba inhabilitado sin haber visto ninguna advertencia.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Cancelar(int idTurno, string motivoCancelacion)
+        public async Task<IActionResult> Cancelar(int idTurno, string? motivoCancelacion, bool confirmaFueraDeTermino = false)
         {
             var paciente = await ObtenerPacienteActualAsync();
+            if (_vistaPreviaAdmin)
+            {
+                return VistaPreviaSoloLectura("MisTurnos", "Home");
+            }
 
             var resultado = await _gestionTurnoService.CancelarTurnoAsync(
-                idTurno, paciente.TipoDocumento, paciente.NroDocumento, motivoCancelacion);
+                idTurno, paciente.TipoDocumento, paciente.NroDocumento, motivoCancelacion, confirmaFueraDeTermino);
+
+            if (resultado.Resultado == ResultadoCancelarTurno.RequiereConfirmacion)
+            {
+                return View("ConfirmarCancelacion", new ConfirmarCancelacionViewModel
+                {
+                    IdTurno = idTurno,
+                    MotivoCancelacion = motivoCancelacion,
+                    Mensaje = resultado.Mensaje,
+                    Penalizacion = resultado.Penalizacion ?? 0m,
+                    FechaHoraTurno = resultado.FechaHoraTurno,
+                    NombreEspecialidad = resultado.NombreEspecialidad,
+                    AccionConfirmar = "Cancelar",
+                    ControladorConfirmar = "Turno",
+                    AccionVolver = "MisTurnos",
+                    ControladorVolver = "Home"
+                });
+            }
 
             if (resultado.Resultado != ResultadoCancelarTurno.Cancelado)
             {
@@ -393,6 +496,10 @@ namespace Frontend.MVC.Controllers
         public async Task<IActionResult> Reprogramar(int idTurnoOriginal, string nuevaFecha, string nuevoHorario)
         {
             var paciente = await ObtenerPacienteActualAsync();
+            if (_vistaPreviaAdmin)
+            {
+                return VistaPreviaSoloLectura("MisTurnos", "Home");
+            }
 
             // La fecha/hora default (+7 días desde el turno original) y el parseo del horario
             // elegido se resuelven acá porque son datos de entrada del formulario, no lógica de

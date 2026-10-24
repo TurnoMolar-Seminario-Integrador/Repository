@@ -27,8 +27,13 @@ namespace Application.Services
     // =========================================================================
     public interface IGestionTurnoService
     {
+        // CUF07. Con menos de 24 hs de anticipación (o con el turno ya pasado) la cancelación no se
+        // ejecuta hasta que se confirme: sin confirmaFueraDeTermino devuelve RequiereConfirmacion con la
+        // advertencia del cobro (alt 3.a.1); con confirmaFueraDeTermino = true cancela, cobra la
+        // penalización e inhabilita al paciente (alt 3.a.2).
         Task<CancelarTurnoResultDTO> CancelarTurnoAsync(
-            int nroTurno, string tipoDocumentoPaciente, string nroDocumentoPaciente, string? motivoCancelacion);
+            int nroTurno, string tipoDocumentoPaciente, string nroDocumentoPaciente, string? motivoCancelacion,
+            bool confirmaFueraDeTermino = false);
 
         Task<ReprogramarTurnoResultDTO> ReprogramarTurnoAsync(
             int nroTurnoOriginal, string tipoDocumentoPaciente, string nroDocumentoPaciente, DateTime nuevaFechaHoraTurno);
@@ -36,10 +41,9 @@ namespace Application.Services
 
     public class GestionTurnoService : IGestionTurnoService
     {
-        // Política de cancelación informada en CUU01 paso 5 (ver
-        // AgendaTurnoService.ObtenerMensajePoliticaCancelacion): menos de 24 hs de
-        // anticipación implica penalización.
-        private const int HorasMinimasSinPenalizacion = 24;
+        // CUF07, diccionario de datos, alt 3.a.1: sAvisoCancelacionFueraDeTermino.
+        public const string MensajeCancelacionFueraDeTermino =
+            "La cancelación se está solicitando fuera de término. Se aplicará el cobro correspondiente por inasistencia sin aviso.";
 
         private readonly ITurnoRepository _turnoRepository;
         private readonly IPacienteRepository _pacienteRepository;
@@ -62,7 +66,8 @@ namespace Application.Services
         }
 
         public async Task<CancelarTurnoResultDTO> CancelarTurnoAsync(
-            int nroTurno, string tipoDocumentoPaciente, string nroDocumentoPaciente, string? motivoCancelacion)
+            int nroTurno, string tipoDocumentoPaciente, string nroDocumentoPaciente, string? motivoCancelacion,
+            bool confirmaFueraDeTermino = false)
         {
             var turno = await _turnoRepository.GetAsync(nroTurno);
             var esDelPaciente = turno != null
@@ -89,10 +94,17 @@ namespace Application.Services
                 };
             }
 
-            var horasRestantes = (turno.FechaHoraTurno - DateTime.Now).TotalHours;
+            // CUF07 paso 3: se valida la anticipación (RN10: 24 hs o más sin costo).
+            //
+            // Defecto corregido: la condición era "horasRestantes < 24 && horasRestantes > 0", así que un
+            // turno cuya hora ya había pasado (y que el responsable todavía no marcó como ausente) se
+            // cancelaba gratis, mientras que la ausencia equivalente (CUU02) sí cobra la penalización.
+            // Un turno vencido está, con más razón, "fuera de término" (RN9 / RN11: inasistencia sin
+            // aviso).
+            var fueraDeTermino = !ReglaAntelacion.CumpleAntelacionMinima(turno.FechaHoraTurno, DateTime.Now);
             decimal? penalizacion = null;
 
-            if (horasRestantes < HorasMinimasSinPenalizacion && horasRestantes > 0)
+            if (fueraDeTermino)
             {
                 // RN11 / MD - nota sobre Turno.montoPenalizacion (atributo derivado): depende de
                 // la modalidadPagoElegida del turno -- arancelConvenio para Obra Social,
@@ -123,6 +135,32 @@ namespace Application.Services
                     penalizacion = turno.Especialidad.ArancelParticular;
                 }
 
+                // Un arancel en cero (Especialidad.ArancelParticular admite 0) no deja nada que cobrar:
+                // no hay deuda que registrar ni motivo para advertir o inhabilitar.
+                if (penalizacion <= 0m)
+                {
+                    penalizacion = null;
+                }
+            }
+
+            if (penalizacion.HasValue)
+            {
+                // Alt 3.a.1: "El sistema informa que la cancelación se está solicitando fuera de
+                // término y advierte sobre el cobro correspondiente." Alt 3.a.2: "El paciente
+                // confirma." Defecto corregido: el cobro y la inhabilitación se aplicaban en el mismo
+                // paso, sin que el paciente (o el responsable en su nombre) hubiera visto el aviso.
+                if (!confirmaFueraDeTermino)
+                {
+                    return new CancelarTurnoResultDTO
+                    {
+                        Resultado = ResultadoCancelarTurno.RequiereConfirmacion,
+                        Mensaje = MensajeCancelacionFueraDeTermino,
+                        Penalizacion = penalizacion,
+                        FechaHoraTurno = turno.FechaHoraTurno,
+                        NombreEspecialidad = turno.Especialidad?.Nombre
+                    };
+                }
+
                 var paciente = await _pacienteRepository.GetAsync(tipoDocumentoPaciente, nroDocumentoPaciente)
                     ?? throw new InvalidOperationException("No se encontró el paciente asociado al turno.");
 
@@ -139,10 +177,15 @@ namespace Application.Services
             return new CancelarTurnoResultDTO
             {
                 Resultado = ResultadoCancelarTurno.Cancelado,
+                // Alt 3.a.2, diccionario: sConfirmacionCancelacionFueraDeTermino = estadoTurno +
+                // montoAdeudado + estadoPaciente.
                 Mensaje = penalizacion.HasValue
-                    ? $"El turno fue cancelado con menos de 24 hs de anticipación. Se registró un cargo por penalización de ${penalizacion.Value:N0} en tu cuenta."
+                    ? $"El turno fue cancelado fuera de término. Se registró una deuda de ${penalizacion.Value:N0} por la penalización y quedaste Inhabilitado para agendar nuevos turnos hasta regularizarla."
                     : "El turno fue cancelado correctamente sin penalizaciones.",
-                Penalizacion = penalizacion
+                Penalizacion = penalizacion,
+                EstadoTurno = turno.EstadoTurno,
+                MontoAdeudado = penalizacion,
+                EstadoPaciente = penalizacion.HasValue ? "INHABILITADO" : null
             };
         }
 

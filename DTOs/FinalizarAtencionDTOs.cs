@@ -90,7 +90,9 @@ namespace DTOs
         FaltaDePago,         // Alt 6.b: deuda registrada -> Turno "Finalizado", Paciente "Inhabilitado".
         TurnoInvalido,       // El turno no existe o todavía no está en "Atención Registrada".
         ModalidadNoCoincide, // Alt 6.c: se intentó cobrar bajo una modalidad distinta a la del turno.
-        AportesNoCoinciden   // Validación propia de 6.a: aportePaciente + aporteObraSocial != montoTotal.
+        AportesNoCoinciden,  // Validación propia de 6.a: aportePaciente + aporteObraSocial != montoTotal.
+        MontoNoCoincide,     // Cobro particular: el monto cobrado no es el monto total de la atención.
+        DatosInvalidos       // Método de pago fuera de la lista, monto <= 0 o aportes negativos.
     }
 
     // Diccionario de datos, paso 6 / 6.a: sConfirmacionPago = fechaYHoraPago + monto + estadoTurno(d).

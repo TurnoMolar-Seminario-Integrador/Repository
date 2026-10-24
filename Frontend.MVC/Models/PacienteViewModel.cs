@@ -28,14 +28,17 @@ namespace TurnoMolar.Models
         [EmailAddress(ErrorMessage = "Formato de correo inválido.")]
         public string MailPer { get; set; } = string.Empty;
 
-        public string Domicilio { get; set; } = string.Empty;
+        // Opcional (el alta lo completa con un valor por defecto). Con <Nullable>enable</Nullable> un string no
+        // nulo es "requerido" implícitamente: sin el "?" el alta se rechazaba cuando no se cargaba.
+        public string? Domicilio { get; set; }
 
         public bool EstadoHabilitacion { get; set; } = true;
 
         [Required(ErrorMessage = "Seleccioná una obra social.")]
         public string IdObraSocial { get; set; } = string.Empty;
 
-        // Propiedad extra para cuando eligen "Otra"
-        public string OtraObraSocial { get; set; } = string.Empty;
+        // Propiedad extra para cuando eligen "Otra". Solo se completa en ese caso: sin el "?" el alta se
+        // rechazaba con cualquier otra opción ("requerido" implícito de los strings no nulos).
+        public string? OtraObraSocial { get; set; }
     }
 }

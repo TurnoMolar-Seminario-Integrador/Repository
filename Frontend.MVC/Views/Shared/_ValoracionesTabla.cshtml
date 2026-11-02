@@ -1,0 +1,40 @@
+@* CUF05: listado de valoraciones (paso 1 / alt 1.b), detalle (paso 2) y mensaje sin valoraciones (alt 1.a). *@
+@model (DTOs.ConsultaValoracionesResultDTO consulta, bool mostrarOdontologo, DTOs.ValoracionListadoDTO? detalle)
+@if (Model.detalle != null)
+{
+    var d = Model.detalle;
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h5 class="fw-bold mb-2">Turno #@d.NroTurno</h5>
+        <p class="mb-1"><strong>Atención:</strong> @d.FechaYHoraAtencionInicio.ToString("dd/MM/yyyy HH:mm") · @d.NombreEspecialidad</p>
+        <p class="mb-1"><strong>Paciente:</strong> @d.NombrePaciente @d.ApellidoPaciente</p>
+        @if (Model.mostrarOdontologo) { <p class="mb-1"><strong>Odontólogo:</strong> @d.NombreOdontologo @d.ApellidoOdontologo</p> }
+        <p class="mb-1"><strong>Calificación:</strong> <span class="text-warning">@(new string('★', d.Calificacion))@(new string('☆', 5 - d.Calificacion))</span></p>
+        <p class="mb-0"><strong>Observaciones:</strong> @(string.IsNullOrWhiteSpace(d.Observaciones) ? "—" : d.Observaciones)</p>
+    </div>
+}
+@if (Model.consulta.Mensaje != null)
+{
+    <div class="alert alert-secondary rounded-4 border-0 shadow-sm"><i class="bi bi-info-circle me-2"></i> @Model.consulta.Mensaje</div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <table class="table align-middle mb-0">
+            <thead><tr><th>Turno</th><th>Atención</th><th>Especialidad</th><th>Paciente</th>@if (Model.mostrarOdontologo) { <th>Odontólogo</th> }<th>Calificación</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var v in Model.consulta.Valoraciones)
+            {
+                <tr>
+                    <td>#@v.NroTurno</td>
+                    <td>@v.FechaYHoraAtencionInicio.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@v.NombreEspecialidad</td>
+                    <td>@v.NombrePaciente @v.ApellidoPaciente</td>
+                    @if (Model.mostrarOdontologo) { <td>@v.NombreOdontologo @v.ApellidoOdontologo</td> }
+                    <td class="text-warning">@(new string('★', v.Calificacion))@(new string('☆', 5 - v.Calificacion))</td>
+                    <td><a class="btn btn-sm btn-link" href="?nroTurno=@v.NroTurno">Ver detalle</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

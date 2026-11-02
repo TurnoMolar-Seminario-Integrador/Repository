@@ -1,0 +1,13 @@
+<script>
+    // "Agregar franja": clona la última fila del contenedor indicado y la deja vacía.
+    document.querySelectorAll('[data-agregar-franja]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            var contenedor = document.getElementById(boton.getAttribute('data-agregar-franja'));
+            var filas = contenedor.querySelectorAll('.fila-franja');
+            var nueva = filas[filas.length - 1].cloneNode(true);
+            nueva.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+            nueva.querySelectorAll('select[name=franjaDia]').forEach(function (s) { s.selectedIndex = 0; });
+            contenedor.appendChild(nueva);
+        });
+    });
+</script>

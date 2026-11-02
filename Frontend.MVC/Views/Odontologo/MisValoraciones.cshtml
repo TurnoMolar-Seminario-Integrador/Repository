@@ -1,0 +1,12 @@
+@model DTOs.ConsultaValoracionesResultDTO
+@{
+    ViewData["Title"] = "Mis valoraciones - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "MisValoraciones";
+    Layout = "_LayoutOdontologo";
+}
+@* CUF05 - Consultar Valoraciones (odontólogo) *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Mis valoraciones</h2>
+    <p class="text-muted">Calificaciones que dejaron tus pacientes sobre las atenciones que realizaste.</p>
+</div>
+@await Html.PartialAsync("_ValoracionesTabla", (Model, false, (DTOs.ValoracionListadoDTO?)ViewBag.Detalle))

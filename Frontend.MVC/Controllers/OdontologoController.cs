@@ -20,6 +20,7 @@ namespace TurnoMolar.Controllers
         private readonly IInsumoRepository _insumoRepository;
         private readonly IOdontologoRepository _odontologoRepository;
         private readonly IAdministrarHistoriaClinicaService _historiaClinicaService;
+        private readonly IConsultarValoracionesService _valoracionesService;
         private readonly ILogger<OdontologoController> _logger;
 
         public OdontologoController(
@@ -28,6 +29,7 @@ namespace TurnoMolar.Controllers
             IInsumoRepository insumoRepository,
             IOdontologoRepository odontologoRepository,
             IAdministrarHistoriaClinicaService historiaClinicaService,
+            IConsultarValoracionesService valoracionesService,
             ILogger<OdontologoController> logger)
         {
             _turnoRepository = turnoRepository;
@@ -35,12 +37,26 @@ namespace TurnoMolar.Controllers
             _insumoRepository = insumoRepository;
             _odontologoRepository = odontologoRepository;
             _historiaClinicaService = historiaClinicaService;
+            _valoracionesService = valoracionesService;
             _logger = logger;
         }
 
         // Defecto corregido: la matrícula quedaba hardcodeada en "MP 3840" (la de Karina
         // González) sin importar qué profesional estuviera logueado. Ahora se busca la del
         // odontólogo real.
+        // CUF05 - Consultar Valoraciones (pasos 1 y 2, alt 1.a): el odontólogo ve solo las valoraciones
+        // de sus propias atenciones y el detalle de una de ellas.
+        [HttpGet]
+        public async Task<IActionResult> MisValoraciones(int? nroTurno)
+        {
+            await CargarDatosOdontologoViewDataAsync();
+            var tipoDocumento = User.FindFirst("TipoDocumento")?.Value ?? string.Empty;
+            var nroDocumento = User.FindFirst("NroDocumento")?.Value ?? string.Empty;
+            if (nroTurno.HasValue)
+                ViewBag.Detalle = await _valoracionesService.ObtenerDetalleAsync(nroTurno.Value, tipoDocumento, nroDocumento);
+            return View(await _valoracionesService.ConsultarPorOdontologoAsync(tipoDocumento, nroDocumento));
+        }
+
         private async Task CargarDatosOdontologoViewDataAsync()
         {
             ViewData["NombreDoctor"] = User.FindFirst("NombreCompleto")?.Value ?? "Profesional";

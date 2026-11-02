@@ -97,9 +97,9 @@
                     @if (tieneOS)
                     {
                         @* Estado real de la obra social (EstadoOS); antes decía siempre "Activa", también para particular. *@
-                        var activa = string.Equals(os!.EstadoOS, "ACTIVA", StringComparison.OrdinalIgnoreCase);
+                        var activa = Domain.Model.EstadosObraSocial.EsDisponible(os!.EstadoOS);
                         <h6 class="fw-bold mb-0 @(activa ? "text-success" : "text-warning")">
-                            <i class="bi @(activa ? "bi-check-circle-fill" : "bi-exclamation-circle-fill")"></i> @(activa ? "Activa" : "Inactiva")
+                            <i class="bi @(activa ? "bi-check-circle-fill" : "bi-exclamation-circle-fill")"></i> @(activa ? "Disponible" : "No Disponible")
                         </h6>
                     }
                     else

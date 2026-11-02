@@ -1,0 +1,21 @@
+@model DTOs.AtencionExtraordinariaResultDTO
+@{
+    ViewData["Title"] = "Comprobante - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "AtencionExtraordinaria";
+    Layout = "_LayoutResponsable";
+    var c = Model.Comprobante!;
+}
+@* CUF11 paso 4: sComprobanteTurnoExtraordinario *@
+<partial name="_Alertas" />
+<div class="card border-0 shadow-sm rounded-4 p-4" style="max-width:560px">
+    <h4 class="fw-bold mb-3">Comprobante de turno #@Model.NroTurno</h4>
+    <p class="mb-1"><strong>Comprobante:</strong> @c.NroComprobante · emitido @c.FechaHoraEmision.ToString("dd/MM/yyyy HH:mm")</p>
+    <p class="mb-1"><strong>Paciente:</strong> @c.NombrePaciente @c.ApellidoPaciente</p>
+    <p class="mb-1"><strong>Turno:</strong> @c.FechaHoraTurno.ToString("dddd dd/MM/yyyy HH:mm") · @c.NombreEspecialidad</p>
+    <p class="mb-1"><strong>Odontólogo:</strong> @c.NombreOdontologo @c.ApellidoOdontologo</p>
+    <p class="mb-3"><strong>Material:</strong> @Model.DescripcionMaterial</p>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary rounded-pill" onclick="window.print()"><i class="bi bi-printer me-1"></i> Imprimir</button>
+        <a class="btn btn-primary rounded-pill" asp-action="AtencionExtraordinaria">Nueva atención</a>
+    </div>
+</div>

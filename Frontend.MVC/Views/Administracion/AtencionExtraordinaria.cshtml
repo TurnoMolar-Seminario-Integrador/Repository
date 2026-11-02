@@ -1,0 +1,106 @@
+@{
+    ViewData["Title"] = "Atención extraordinaria - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "AtencionExtraordinaria";
+    Layout = "_LayoutResponsable";
+    var especialidades = (IReadOnlyList<DTOs.EspecialidadListadoDTO>)ViewBag.Especialidades;
+    var odontologos = (List<DTOs.OdontologoListadoDTO>)ViewBag.Odontologos;
+    var validacion = ViewBag.Validacion as DTOs.ResultadoOperacionDTO;
+    string tipoDoc = ViewBag.TipoDocumento;
+    string? nroDoc = ViewBag.NroDocumento;
+}
+@* CUF11 - Coordinar Atención Extraordinaria (RN13). No aplica la grilla estándar ni la antelación mínima (RN19). *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Atención extraordinaria</h2>
+    <p class="text-muted">Turno acordado fuera del circuito habitual, con la descripción del material requerido.</p>
+</div>
+<partial name="_Alertas" />
+
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <form method="get" asp-action="AtencionExtraordinaria" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Tipo de documento</label>
+            <select name="tipoDocumento" class="form-select">
+                @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones)
+                {
+                    <option value="@valor" selected="@(string.Equals(tipoDoc, valor, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@texto</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Número de documento</label>
+            <input name="nroDocumento" class="form-control" value="@nroDoc" required />
+        </div>
+        <div class="col-auto"><button class="btn btn-primary rounded-pill px-4"><i class="bi bi-search me-1"></i> Buscar paciente</button></div>
+    </form>
+</div>
+
+@if (validacion != null && !validacion.Exito)
+{
+    <div class="alert alert-warning rounded-4 border-0 shadow-sm"><i class="bi bi-exclamation-circle me-2"></i> @validacion.Mensaje</div>
+}
+else if (validacion != null)
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <p class="text-success mb-3"><i class="bi bi-check-circle me-1"></i> @validacion.Mensaje</p>
+        <form method="post" asp-action="RegistrarAtencionExtraordinaria" class="row g-3">
+            <input type="hidden" name="TipoDocumentoPaciente" value="@tipoDoc" />
+            <input type="hidden" name="NroDocumentoPaciente" value="@nroDoc" />
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Especialidad</label>
+                <select name="IdEspecialidad" id="selEspecialidad" class="form-select">
+                    @foreach (var e in especialidades) { <option value="@e.IdEspecialidad">@e.Nombre</option> }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Odontólogo</label>
+                <select name="odontologo" id="selOdontologo" class="form-select">
+                    @foreach (var o in odontologos)
+                    {
+                        <option value="@o.TipoDocumento|@o.NroDocumento" data-especialidades="@string.Join(",", o.Especialidades.Select(e => e.IdEspecialidad))">@o.Apellido, @o.Nombre (@string.Join(", ", o.Especialidades.Select(e => e.NombreEspecialidad)))</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Fecha y hora acordadas</label>
+                <input name="FechaHoraTurno" type="datetime-local" class="form-control" required />
+            </div>
+            <div class="col-md-8">
+                <label class="form-label small text-muted mb-1">Descripción del material</label>
+                <input name="DescripcionMaterial" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Modalidad de pago</label>
+                <select name="ModalidadPago" class="form-select">
+                    <option value="PARTICULAR">Particular</option>
+                    <option value="OBRA_SOCIAL">Obra Social</option>
+                </select>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary rounded-pill px-4"><i class="bi bi-calendar-plus me-1"></i> Registrar turno</button>
+                <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="AtencionExtraordinaria">Cancelar</a>
+            </div>
+        </form>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Solo se ofrecen los odontólogos que atienden la especialidad elegida.
+        (function () {
+            var esp = document.getElementById('selEspecialidad');
+            var odo = document.getElementById('selOdontologo');
+            if (!esp || !odo) return;
+            function filtrar() {
+                var primera = null;
+                Array.from(odo.options).forEach(function (o) {
+                    var ok = o.dataset.especialidades.split(',').indexOf(esp.value) >= 0;
+                    o.hidden = !ok; o.disabled = !ok;
+                    if (ok && primera === null) primera = o;
+                });
+                if (odo.selectedOptions.length === 0 || odo.selectedOptions[0].disabled) odo.value = primera ? primera.value : '';
+            }
+            esp.addEventListener('change', filtrar);
+            filtrar();
+        })();
+    </script>
+}

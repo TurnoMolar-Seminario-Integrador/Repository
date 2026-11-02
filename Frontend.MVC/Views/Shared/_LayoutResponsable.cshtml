@@ -91,6 +91,36 @@
                     <i class="bi bi-person-lines-fill"></i> Rectificar Datos
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="@Url.Action("AtencionExtraordinaria", "Administracion")" class="nav-link @(activeTab == "AtencionExtraordinaria" ? "active" : "")">
+                    <i class="bi bi-calendar-plus"></i> Atención Extraordinaria
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("Odontologos", "Administracion")" class="nav-link @(activeTab == "Odontologos" ? "active" : "")">
+                    <i class="bi bi-person-badge"></i> Odontólogos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("ObrasSociales", "Administracion")" class="nav-link @(activeTab == "ObrasSociales" ? "active" : "")">
+                    <i class="bi bi-building"></i> Obras Sociales
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("Especialidades", "Administracion")" class="nav-link @(activeTab == "Especialidades" ? "active" : "")">
+                    <i class="bi bi-list-check"></i> Especialidades
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("Insumos", "Administracion")" class="nav-link @(activeTab == "Insumos" ? "active" : "")">
+                    <i class="bi bi-box-seam"></i> Insumos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="@Url.Action("Valoraciones", "Administracion")" class="nav-link @(activeTab == "Valoraciones" ? "active" : "")">
+                    <i class="bi bi-star-half"></i> Valoraciones
+                </a>
+            </li>
             <li class="nav-item" style="margin-top: auto;">
                 <a href="#" class="nav-link text-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#modalCerrarSesionResponsable">
                     <i class="bi bi-box-arrow-right"></i> Cerrar Sesión

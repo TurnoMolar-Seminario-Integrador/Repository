@@ -1,0 +1,14 @@
+@* Mensajes de resultado (TempData) con el mismo formato que el resto de la consola. *@
+@foreach (var (clave, clase, icono) in new[] {
+    ("MensajeExito", "success", "bi-check-circle-fill"),
+    ("MensajeInfo", "info", "bi-info-circle-fill"),
+    ("MensajeError", "danger", "bi-exclamation-triangle-fill") })
+{
+    if (TempData[clave] != null)
+    {
+        <div class="alert alert-@clase alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+            <i class="bi @icono me-2"></i> @TempData[clave]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+}

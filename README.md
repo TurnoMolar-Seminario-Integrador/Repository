@@ -16,9 +16,10 @@
 8. [Instalación y Puesta en Marcha](#instalación-y-puesta-en-marcha)
 9. [Configuración de Base de Datos](#configuración-de-base-de-datos)
 10. [Ejecución del Proyecto](#ejecución-del-proyecto)
-11. [Datos de Prueba](#datos-de-prueba-seed-data)
-12. [Integrantes del Grupo](#integrantes-del-grupo)
-13. [Materia y Contexto Académico](#materia-y-contexto-académico)
+11. [Pruebas Automatizadas](#pruebas-automatizadas)
+12. [Datos de Prueba](#datos-de-prueba-seed-data)
+13. [Integrantes del Grupo](#integrantes-del-grupo)
+14. [Materia y Contexto Académico](#materia-y-contexto-académico)
 
 ---
 
@@ -93,29 +94,28 @@ El proyecto implementa una arquitectura en capas orientada al dominio. **Fronten
 
 ## Casos de Uso Principales (CUU)
 
-Estado real a la fecha, verificado contra la documentación del proyecto (casos de uso, reglas de negocio y máquina de estados):
+Estado verificado contra la documentación del proyecto (casos de uso E2/E4, reglas de negocio, máquinas de estado y diccionario de datos). La correspondencia detallada entre cada artefacto UML y el código está en [`docs/TRAZABILIDAD.md`](docs/TRAZABILIDAD.md); las decisiones que se apartan de la documentación, en [`docs/DESVIOS.md`](docs/DESVIOS.md).
 
-### 1. CUU01 - Agendar Turno Odontológico — ✅ Implementado
-- El sistema valida primero el estado del paciente: si tiene deuda pendiente lo informa y permite saldarla; si ya tiene un turno reservado pendiente de atención, no deja pedir otro.
-- Calendario y horarios disponibles reales, calculados a partir de la disponibilidad horaria de cada odontólogo y los turnos ya ocupados (no hay selección de odontólogo aparte: cada horario ya pertenece a un profesional puntual).
-- Verificación de convenio vigente de la obra social para la especialidad elegida; si no corresponde, se ofrece pagar en forma particular.
-- Confirmación con política de cancelación informada, registro del turno en estado `Reservado` y emisión de comprobante con código QR.
-- Alta manual por el Responsable de la Clínica para cuando el paciente no encuentra un turno disponible/conveniente.
+| Caso de uso | Actor | Dónde está | Estado |
+| :--- | :--- | :--- | :--- |
+| CUU01 Agendar turno | Paciente / Responsable | `AgendaTurnoService` | ✅ |
+| CUU02 Gestionar asistencia | Responsable | `AsistenciaTurnoService` | ✅ |
+| CUU03 Finalizar atención (pago total, sin pagos parciales) | Odontólogo / Responsable | `FinalizarAtencionService` | ✅ |
+| CUU04 Valorar atención | Paciente | `ValorarAtencionService` | ✅ |
+| CUF01 Incorporar paciente | Paciente / Responsable | `IncorporarPacienteService` | ✅ |
+| CUF02 Rectificar datos del paciente | Paciente / Responsable | `RectificarDatosPacienteService` | ✅ |
+| CUF03 Administrar historia clínica | Odontólogo | `AdministrarHistoriaClinicaService` | ✅ |
+| CUF04 Conformar cuerpo de odontólogos | Responsable | `ConformarCuerpoOdontologosService` — menú **Odontólogos** | ✅ |
+| CUF05 Consultar valoraciones | Odontólogo / Responsable | `ConsultarValoracionesService` — **Mis Valoraciones** / **Valoraciones** | ✅ |
+| CUF06 Administrar convenios con obras sociales | Responsable | `AdministrarConveniosService` — menú **Obras Sociales** | ✅ |
+| CUF07 Cancelar turno | Paciente | `GestionTurnoService` | ✅ |
+| CUF08 Reprogramar turno | Paciente | `GestionTurnoService` | ✅ |
+| CUF09 Abastecer insumos y materiales | Responsable | `AbastecerInsumosService` — menú **Insumos** | ✅ |
+| CUF10 Regularizar deuda | Paciente / Responsable | `RegularizarDeudaService` | ✅ |
+| CUF11 Coordinar atención extraordinaria | Responsable | `CoordinarAtencionExtraordinariaService` — menú **Atención Extraordinaria** | ✅ |
+| CUF12 Administrar especialidad | Responsable | `AdministrarEspecialidadService` — menú **Especialidades** | ✅ |
 
-### 2. CUU02 - Reprogramar Turno — ⚠️ Parcial
-Existe la función desde "Mis Turnos". Se corrigió un bug que dejaba el turno nuevo en un estado inexistente (`Confirmado`) en lugar de `Reservado`, lo que rompía la detección de "turno pendiente" de CUU01. Falta todavía revisar el resto del caso de uso contra su documentación específica (antelación mínima, camino alterno del Responsable).
-
-### 3. CUU03 - Cancelar Turno — ⚠️ Parcial
-Existe cancelación con penalización si se hace con menos de 24 hs de anticipación. Pendiente de revisión formal contra su documentación específica.
-
-### 4. CUU04 - Valorar Atención Odontológica — ⚠️ Parcial
-Existe calificación por estrellas (1 a 5) y comentario de satisfacción. Pendiente de revisión formal contra su documentación específica.
-
-### 5. CUU05 - Gestión de Estado de Cuenta — 🔜 Pendiente
-Hoy solo existe una función mínima (saldar toda la deuda de una vez) como parte del camino alternativo de CUU01. No hay todavía selección de método de pago ni pantalla propia de estado de cuenta.
-
-### 6. CUU06 - Cobertura Médica y Obras Sociales — 🔜 Pendiente
-El modelo de obra social/convenio existe y ya se usa dentro de CUU01, pero no hay una pantalla dedicada para que el paciente gestione o adjunte su credencial.
+**Cierre de jornada:** un turno que sigue `Reservado` cuando termina su día pasa a `Ausente` con la penalización correspondiente y el paciente queda `Inhabilitado` (mismo criterio que CUU02 alt 1.b). Lo hace `VencimientoTurnosService`, que `Frontend.MVC` ejecuta al iniciar y luego cada hora (`CierreJornadaHostedService`).
 
 ---
 
@@ -207,6 +207,8 @@ Si el equipo trabaja contra un servidor remoto compartido, **no subas usuario y 
 
 2. No hace falta correr migraciones a mano: al iniciar cualquiera de los dos proyectos (`WebAPI` o `Frontend.MVC`), `DbInitializer` crea la base si no existe (`EnsureCreatedAsync`) y siembra los datos iniciales automáticamente.
 
+3. **Si ya tenías la base creada de una versión anterior, borrala y dejá que se vuelva a crear.** `EnsureCreated` no modifica una base existente, y esta versión cambia el esquema: la clave de `DisponibilidadesHorarias` ahora incluye `HoraInicio` (como en el MDF), y los estados por defecto de odontólogo y obra social pasan a `HABILITADO` y `DISPONIBLE`. Por ejemplo, desde SQL Server Management Studio: `DROP DATABASE clinicakarina_local;` y luego iniciar `Frontend.MVC`.
+
 ---
 
 ## Ejecución del Proyecto
@@ -227,6 +229,18 @@ Portal del Paciente disponible en: `http://localhost:5247` o `https://localhost:
 
 ---
 
+## Pruebas Automatizadas
+
+El proyecto `TurnoMolar.Tests` (xUnit) prueba los servicios de los casos de uso contra una base **SQLite en memoria** con el mismo esquema y los mismos datos iniciales que `DbInitializer`. No necesita SQL Server.
+
+```bash
+dotnet test TurnoMolar.Tests
+```
+
+Cada clase de prueba lleva el nombre del caso de uso y cada prueba el paso o camino alternativo que cubre (por ejemplo `Alt_3a_rechaza_matricula_repetida`). Hoy cubren CUF04, CUF05, CUF06, CUF09, CUF11, CUF12, el cierre de jornada, CUF07, CUF08, CUF10 y el rechazo del pago parcial de CUU03.
+
+---
+
 ## Datos de Prueba (Seed Data)
 
 | Rol | Usuario | DNI | Especialidad / Cobertura |
@@ -235,6 +249,8 @@ Portal del Paciente disponible en: `http://localhost:5247` o `https://localhost:
 | **Odontóloga** | Dra. Karina González (MP 3840) | `28456789` | Odontología General — Lunes y Martes 8 a 13 hs |
 | **Odontóloga** | Dra. Elena Silva (MP 4512) | `30123456` | Endodoncia — Miércoles 14 a 19 hs |
 | **Odontólogo** | Dr. Martín López (MP 5120) | `26789012` | Ortodoncia — Jueves 9 a 18 hs |
+
+Contraseñas del seed: responsable `resp123` (DNI `28456789`), admin `admin123`, odontólogos `doc123`, pacientes `paciente123`. Un odontólogo dado de alta desde **Odontólogos** (CUF04) entra con su número de documento como contraseña inicial.
 
 > Cirugía e Implantes y Odontopediatría todavía no tienen ningún odontólogo ni disponibilidad horaria cargados en el seed — al elegirlas en el wizard de turnos no va a haber nada para reservar hasta que se agregue esa disponibilidad.
 

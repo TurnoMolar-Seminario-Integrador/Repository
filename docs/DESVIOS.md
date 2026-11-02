@@ -1,0 +1,19 @@
+# Desvíos respecto de la documentación
+
+Decisiones de implementación que agregan algo que la documentación no define, o que la interpretan. Cada una está marcada en el código con su código (`D-…`) o con un comentario en el paso correspondiente.
+
+| Código | Caso | Qué dice la documentación | Qué hace el código | Por qué |
+| :--- | :--- | :--- | :--- | :--- |
+| D-CUF04-1 | CUF04 alta | Solo valida matrícula repetida (alt 3.a). | También rechaza un documento ya registrado como odontólogo. | El documento es la clave primaria de `Odontologos` (MDF); sin el control la base rechazaría el alta con un error técnico. |
+| D-CUF04-2 | CUF04 alta | No define cómo obtiene su clave el odontólogo nuevo. | La clave inicial es su número de documento (guardada con PBKDF2). | Sin clave no podría ingresar. Conviene que el grupo defina el circuito definitivo. |
+| D-CUF04-3 | CUF04 disponibilidad | Pide la disponibilidad horaria por especialidad. | Valida lunes a viernes (Minuta E1: "la clínica funciona de lunes a viernes"), fin posterior al inicio y sin superposición entre franjas del mismo día, aun de especialidades distintas. | Un odontólogo no puede atender dos turnos a la vez. Feriados: siguen sin modelarse (ambigüedad A9). |
+| D-CUF04-4 | CUF04 alt 5.b | Quitar especialidad valida turnos pendientes. | Además no permite quitar la última especialidad. | El diccionario exige 1 o más especialidades. |
+| D-CUF04-5 | CUF04 alt 5.d | Inhabilitar "sin afectar turnos, atenciones ni pagos" (RN15). | Inhabilita y, si hay turnos pendientes, lo informa en el mensaje para que la clínica los reprograme o cancele. No los cancela solo. | Cancelarlos automáticamente afectaría turnos, cosa que RN15 excluye. |
+| D-CUF04-6 | MDF | PK de `DisponibilidadesHorarias` incluye `HoraInicio`. | El código anterior la tenía sin `HoraInicio` (una sola franja por día). Se alineó al MDF. | Fidelidad al modelo físico. Requiere recrear la base (ver README). |
+| D-CUF06-1 | CUF06 alt 3.d | Permite eliminar un convenio sin condiciones. | No lo elimina si hay turnos pendientes por obra social de pacientes de esa obra social en esa especialidad, ni si es el último convenio. | La penalización y el cobro de esos turnos dependen del arancel del convenio (RN11, RN16); el diccionario exige 1 o más convenios. |
+| D-CUF09-1 | CUF09 alta | No detalla validaciones del costo y el stock. | Costo > 0 y stock ≥ 0. | CHECK del MDF. |
+| D-CUF11-1 | CUF11 paso 3 | Odontólogo y fecha acordados. | Valida que el odontólogo atienda la especialidad, que la fecha sea futura y que no choque con otro turno suyo (30 min). No valida la grilla de disponibilidad ni RN19. | Evita dos turnos simultáneos del mismo profesional; RN13 permite salir de la grilla. |
+| D-CUF12-1 | CUF12 | "Nombre ya registrado". | La comparación ignora mayúsculas y espacios al inicio y al final. | Evita duplicados como "Endodoncia" / "endodoncia". |
+| D-VENC-1 | Cierre de jornada | No está en la documentación (ambigüedad A3). Decisión del usuario: el turno Reservado vencido pasa a Ausente con penalización. | Se ejecuta al iniciar la app y cada hora; toma turnos `RESERVADO` de días anteriores. Si el convenio se eliminó después de reservar, cobra el arancel particular. | Idempotente y robusto si el servidor estuvo apagado a medianoche. |
+| D-CUU03-1 | CUU03 cobro | Ambigüedad sobre pagos parciales. Decisión del usuario: rechazarlos. | Ya estaba implementado (el monto debe igualar el total; en obra social los aportes deben sumar el total). Se agregaron pruebas. | — |
+| D-EST-1 | Diccionario | Estados "Habilitado"/"Inhabilitado" (odontólogo) y "Disponible"/"No Disponible" (obra social). | Se guardan en mayúsculas (`HABILITADO`, `DISPONIBLE`) como el resto de los estados; se aceptan los valores anteriores `ACTIVO`/`ACTIVA` como sinónimos. | Compatibilidad con bases existentes. |

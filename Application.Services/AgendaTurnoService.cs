@@ -38,7 +38,7 @@ namespace Application.Services
         // El CUU01 y las Reglas de Negocio no especifican una duración fija de turno;
         // se asume 30 minutos para poder particionar cada DisponibilidadHoraria
         // (HoraInicio-HoraFin) de un odontólogo en franjas reservables concretas.
-        private const int DuracionTurnoMinutos = 30;
+        internal const int DuracionTurnoMinutos = 30;
 
         // Debe coincidir exactamente con los valores de DisponibilidadHoraria.DiaSemana
         // sembrados en DbInitializer ("Lunes", "Martes", "Miércoles", "Jueves", "Viernes").
@@ -63,6 +63,9 @@ namespace Application.Services
         private readonly IObraSocialRepository _obraSocialRepository;
         private readonly ITurnoRepository _turnoRepository;
         private readonly IComprobanteTurnoRepository _comprobanteRepository;
+
+        public const string MensajeOdontologoInhabilitado =
+            "El odontólogo seleccionado se encuentra inhabilitado y no puede recibir turnos.";
 
         public AgendaTurnoService(
             IPacienteRepository pacienteRepository,
@@ -106,7 +109,10 @@ namespace Application.Services
 
         public async Task<IEnumerable<DateTime>> ObtenerDiasDisponiblesAsync(int idEspecialidad, int diasHaciaAdelante = 30)
         {
-            var odontologos = (await _odontologoRepository.GetByEspecialidadAsync(idEspecialidad)).ToList();
+            // CUF04 alt 5.d.1 / RN15: un odontólogo inhabilitado queda desafectado de la oferta de turnos.
+            var odontologos = (await _odontologoRepository.GetByEspecialidadAsync(idEspecialidad))
+                .Where(o => o.EstaHabilitado)
+                .ToList();
 
             var diasConDisponibilidad = odontologos
                 .SelectMany(o => o.DisponibilidadesHorarias)
@@ -138,7 +144,10 @@ namespace Application.Services
             var nombreEspecialidad = especialidad?.Nombre ?? string.Empty;
             var nombreDia = DiasSemanaEs[(int)dia.DayOfWeek];
 
-            var odontologos = (await _odontologoRepository.GetByEspecialidadAsync(idEspecialidad)).ToList();
+            // CUF04 alt 5.d.1 / RN15: un odontólogo inhabilitado queda desafectado de la oferta de turnos.
+            var odontologos = (await _odontologoRepository.GetByEspecialidadAsync(idEspecialidad))
+                .Where(o => o.EstaHabilitado)
+                .ToList();
             var turnosDelDia = (await _turnoRepository.GetByFechaAsync(dia))
                 .Where(t => t.EstadoTurno != "CANCELADO")
                 .ToList();
@@ -197,7 +206,7 @@ namespace Application.Services
 
             var obraSocial = await _obraSocialRepository.GetAsync(identificadorOS);
             return obraSocial != null
-                && obraSocial.EstadoOS == "ACTIVA"
+                && obraSocial.EstaDisponible
                 && obraSocial.Convenios.Any(c => c.IdEspecialidad == idEspecialidad);
         }
 
@@ -246,7 +255,7 @@ namespace Application.Services
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
 
-            if (!TieneDisponibilidadValida(odontologo, request.IdEspecialidad, request.FechaHoraTurno))
+            if (!odontologo.EstaHabilitado || !TieneDisponibilidadValida(odontologo, request.IdEspecialidad, request.FechaHoraTurno))
             {
                 return new AgendarTurnoResultDTO
                 {
@@ -334,6 +343,16 @@ namespace Application.Services
 
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
+
+            // CUF04 alt 5.d.1 / RN15: el odontólogo inhabilitado no está en la oferta de turnos.
+            if (!odontologo.EstaHabilitado)
+            {
+                return new AgendarTurnoResultDTO
+                {
+                    Resultado = ResultadoAgendarTurno.OdontologoInhabilitado,
+                    Mensaje = MensajeOdontologoInhabilitado
+                };
+            }
 
             // Alt 3.a.2: el responsable "indica la especialidad requerida" y "asigna un odontólogo
             // disponible": el odontólogo tiene que atender esa especialidad. En el circuito estándar

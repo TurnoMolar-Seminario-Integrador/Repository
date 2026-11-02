@@ -1,0 +1,121 @@
+@model IReadOnlyList<DTOs.OdontologoListadoDTO>
+@{
+    ViewData["Title"] = "Odontólogos - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "Odontologos";
+    Layout = "_LayoutResponsable";
+    var especialidades = (IReadOnlyList<DTOs.EspecialidadListadoDTO>)ViewBag.Especialidades;
+}
+@* CUF04 - Conformar Cuerpo de Odontólogos *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Cuerpo de odontólogos</h2>
+    <p class="text-muted">Alta de profesionales con sus especialidades y disponibilidad horaria (lunes a viernes). La clave inicial del odontólogo es su número de documento.</p>
+</div>
+<partial name="_Alertas" />
+
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h5 class="fw-bold mb-3">Nuevo odontólogo</h5>
+    <form method="post" asp-action="RegistrarOdontologo">
+        <div class="row g-2 mb-3">
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Tipo doc.</label>
+                <select name="TipoDocumento" class="form-select">
+                    @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones) { <option value="@valor">@texto</option> }
+                </select>
+            </div>
+            <div class="col-md-2"><label class="form-label small text-muted mb-1">Nro. documento</label><input name="NroDocumento" class="form-control" required /></div>
+            <div class="col-md-3"><label class="form-label small text-muted mb-1">Nombre</label><input name="Nombre" class="form-control" required /></div>
+            <div class="col-md-3"><label class="form-label small text-muted mb-1">Apellido</label><input name="Apellido" class="form-control" required /></div>
+            <div class="col-md-2"><label class="form-label small text-muted mb-1">Matrícula</label><input name="Matricula" class="form-control" placeholder="MP 0000" required /></div>
+            <div class="col-md-2"><label class="form-label small text-muted mb-1">Nacimiento</label><input name="FechaNacimiento" type="date" class="form-control" required /></div>
+            <div class="col-md-3"><label class="form-label small text-muted mb-1">Teléfono</label><input name="Telefono" class="form-control" /></div>
+            <div class="col-md-3"><label class="form-label small text-muted mb-1">Email</label><input name="Email" type="email" class="form-control" /></div>
+            <div class="col-md-4"><label class="form-label small text-muted mb-1">Domicilio</label><input name="Domicilio" class="form-control" /></div>
+        </div>
+        <label class="form-label small text-muted mb-1">Especialidades y disponibilidad horaria</label>
+        <div id="franjasAlta">
+            @await Html.PartialAsync("_FilaFranja", (true, (IReadOnlyList<DTOs.EspecialidadListadoDTO>?)especialidades))
+        </div>
+        <button type="button" class="btn btn-sm btn-link px-0" data-agregar-franja="franjasAlta"><i class="bi bi-plus"></i> Agregar franja</button>
+        <div class="mt-2"><button class="btn btn-primary rounded-pill px-4"><i class="bi bi-person-plus me-1"></i> Registrar odontólogo</button></div>
+    </form>
+</div>
+
+@foreach (var o in Model)
+{
+    var id = $"{o.TipoDocumento}-{o.NroDocumento}";
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-0">@o.Apellido, @o.Nombre <small class="text-muted">@o.Matricula</small></h5>
+                <span class="badge @(o.Habilitado ? "bg-success" : "bg-secondary")">@o.EstadoOdontologo</span>
+                <span class="text-muted small ms-2">@o.TipoDocumento @o.NroDocumento · @o.Telefono · @o.Email</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#gestion-@id">Gestionar</button>
+                <form method="post" asp-action="@(o.Habilitado ? "InhabilitarOdontologo" : "RehabilitarOdontologo")"
+                      onsubmit="return confirm('@(o.Habilitado ? "¿Inhabilitar al odontólogo? Deja de recibir turnos." : "¿Rehabilitar al odontólogo?")');">
+                    <input type="hidden" name="tipoDocumento" value="@o.TipoDocumento" />
+                    <input type="hidden" name="nroDocumento" value="@o.NroDocumento" />
+                    <button class="btn btn-sm @(o.Habilitado ? "btn-outline-danger" : "btn-outline-success")">@(o.Habilitado ? "Inhabilitar" : "Rehabilitar")</button>
+                </form>
+            </div>
+        </div>
+
+        <table class="table table-sm align-middle mt-3 mb-0">
+            <thead><tr><th>Especialidad</th><th>Disponibilidad</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var e in o.Especialidades)
+            {
+                <tr>
+                    <td>@e.NombreEspecialidad</td>
+                    <td>@string.Join(" · ", e.Franjas.Select(f => $"{f.DiaSemana} {f.HoraInicio:HH\\:mm}-{f.HoraFin:HH\\:mm}"))</td>
+                    <td class="text-end">
+                        <form method="post" asp-action="QuitarEspecialidad" class="d-inline" onsubmit="return confirm('¿Quitar esta especialidad?');">
+                            <input type="hidden" name="tipoDocumento" value="@o.TipoDocumento" />
+                            <input type="hidden" name="nroDocumento" value="@o.NroDocumento" />
+                            <input type="hidden" name="idEspecialidad" value="@e.IdEspecialidad" />
+                            <button class="btn btn-sm btn-link text-danger">Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+
+        <div class="collapse mt-3" id="gestion-@id">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <h6 class="fw-bold">Ajustar disponibilidad o agregar especialidad</h6>
+                    <form method="post">
+                        <input type="hidden" name="tipoDocumento" value="@o.TipoDocumento" />
+                        <input type="hidden" name="nroDocumento" value="@o.NroDocumento" />
+                        <select name="idEspecialidad" class="form-select form-select-sm mb-2">
+                            @foreach (var e in especialidades) { <option value="@e.IdEspecialidad">@e.Nombre</option> }
+                        </select>
+                        <div id="franjas-@id">@await Html.PartialAsync("_FilaFranja", (false, (IReadOnlyList<DTOs.EspecialidadListadoDTO>?)null))</div>
+                        <button type="button" class="btn btn-sm btn-link px-0" data-agregar-franja="franjas-@id"><i class="bi bi-plus"></i> Agregar franja</button>
+                        <div class="d-flex gap-2 mt-1">
+                            <button class="btn btn-sm btn-outline-primary" asp-action="AjustarDisponibilidad">Reemplazar disponibilidad</button>
+                            <button class="btn btn-sm btn-outline-success" asp-action="AgregarEspecialidad">Agregar especialidad</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-lg-6">
+                    <h6 class="fw-bold">Datos de contacto</h6>
+                    <form method="post" asp-action="ActualizarContactoOdontologo">
+                        <input type="hidden" name="tipoDocumento" value="@o.TipoDocumento" />
+                        <input type="hidden" name="nroDocumento" value="@o.NroDocumento" />
+                        <input name="telefono" class="form-control form-control-sm mb-2" placeholder="Teléfono" value="@o.Telefono" />
+                        <input name="email" type="email" class="form-control form-control-sm mb-2" placeholder="Email" value="@o.Email" />
+                        <input name="domicilio" class="form-control form-control-sm mb-2" placeholder="Domicilio" value="@o.Domicilio" />
+                        <button class="btn btn-sm btn-outline-primary">Guardar contacto</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ScriptFranjas" />
+}

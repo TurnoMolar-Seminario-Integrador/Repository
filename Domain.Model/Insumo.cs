@@ -53,6 +53,14 @@ namespace Domain.Model
             StockDisponible = stock;
         }
 
+        // CUF09 alt 3.a.1: "El sistema suma la cantidad ingresada al stock disponible e informa el nuevo total."
+        public void ReponerStock(int cantidadIncorporada)
+        {
+            if (cantidadIncorporada <= 0)
+                throw new ArgumentException("La cantidad a incorporar debe ser mayor a 0.", nameof(cantidadIncorporada));
+            StockDisponible += cantidadIncorporada;
+        }
+
         public void DescontarStock(int cantidad)
         {
             if (cantidad <= 0)

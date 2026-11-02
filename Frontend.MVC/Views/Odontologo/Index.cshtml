@@ -131,7 +131,7 @@
                 </li>
                 <li class="d-flex justify-content-between">
                     <span class="text-muted">Estado:</span>
-                    <span class="fw-semibold @(estadoOdontologo == "ACTIVO" ? "text-success" : "text-danger")">@(string.IsNullOrEmpty(estadoOdontologo) ? "—" : estadoOdontologo)</span>
+                    <span class="fw-semibold @(Domain.Model.EstadosOdontologo.EsHabilitado(estadoOdontologo) ? "text-success" : "text-danger")">@(string.IsNullOrEmpty(estadoOdontologo) ? "—" : Domain.Model.EstadosOdontologo.Legible(estadoOdontologo))</span>
                 </li>
             </ul>
         </div>

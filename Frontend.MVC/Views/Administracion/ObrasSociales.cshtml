@@ -1,0 +1,112 @@
+@model IReadOnlyList<DTOs.ObraSocialListadoDTO>
+@{
+    ViewData["Title"] = "Obras sociales - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "ObrasSociales";
+    Layout = "_LayoutResponsable";
+    var especialidades = (IReadOnlyList<DTOs.EspecialidadListadoDTO>)ViewBag.Especialidades;
+}
+@* CUF06 - Administrar Convenios con Obras Sociales *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Obras sociales y convenios</h2>
+    <p class="text-muted">Alta de obras sociales con sus convenios por especialidad, cambio de plan, baja y rehabilitación.</p>
+</div>
+<partial name="_Alertas" />
+
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h5 class="fw-bold mb-3">Nueva obra social</h5>
+    <form method="post" asp-action="RegistrarObraSocial">
+        <div class="row g-2 mb-3">
+            <div class="col-md-3"><label class="form-label small text-muted mb-1">Identificador</label><input name="identificadorOS" class="form-control" maxlength="20" required /></div>
+            <div class="col-md-5"><label class="form-label small text-muted mb-1">Nombre</label><input name="nombreOS" class="form-control" required /></div>
+            <div class="col-md-4"><label class="form-label small text-muted mb-1">Plan de cobertura</label><input name="planCobertura" class="form-control" /></div>
+        </div>
+        <label class="form-label small text-muted mb-1">Convenios (al menos uno)</label>
+        <div id="filasConvenio">
+            <div class="row g-2 mb-2 fila-convenio">
+                <div class="col-md-5">
+                    <select name="convenioEspecialidad" class="form-select form-select-sm">
+                        <option value="0">Especialidad…</option>
+                        @foreach (var e in especialidades) { <option value="@e.IdEspecialidad">@e.Nombre</option> }
+                    </select>
+                </div>
+                <div class="col-md-3"><input name="convenioArancel" type="number" step="0.01" min="0.01" class="form-control form-control-sm" placeholder="Arancel convenio" /></div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-link px-0" id="agregarConvenio"><i class="bi bi-plus"></i> Agregar convenio</button>
+        <div class="mt-2"><button class="btn btn-primary rounded-pill px-4"><i class="bi bi-plus-lg me-1"></i> Registrar obra social</button></div>
+    </form>
+</div>
+
+@foreach (var os in Model)
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-0">@os.NombreOS <small class="text-muted">(@os.IdentificadorOS)</small></h5>
+                <span class="badge @(os.Disponible ? "bg-success" : "bg-secondary")">@os.EstadoOS</span>
+                <span class="text-muted small ms-2">Plan: @(string.IsNullOrEmpty(os.PlanCobertura) ? "—" : os.PlanCobertura)</span>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <form method="post" asp-action="ModificarPlan" class="d-flex gap-2">
+                    <input type="hidden" name="identificadorOS" value="@os.IdentificadorOS" />
+                    <input name="planCobertura" class="form-control form-control-sm" placeholder="Nuevo plan" required />
+                    <button class="btn btn-sm btn-outline-primary">Cambiar plan</button>
+                </form>
+                @if (os.Disponible)
+                {
+                    <form method="post" asp-action="BajaObraSocial" onsubmit="return confirm('¿Dar de baja la obra social? Se conserva su historial.');">
+                        <input type="hidden" name="identificadorOS" value="@os.IdentificadorOS" />
+                        <button class="btn btn-sm btn-outline-danger">Dar de baja</button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" asp-action="RehabilitarObraSocial">
+                        <input type="hidden" name="identificadorOS" value="@os.IdentificadorOS" />
+                        <button class="btn btn-sm btn-outline-success">Rehabilitar</button>
+                    </form>
+                }
+            </div>
+        </div>
+        <table class="table table-sm align-middle mt-3 mb-2">
+            <thead><tr><th>Especialidad</th><th>Arancel convenio</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var c in os.Convenios)
+            {
+                <tr>
+                    <td>@c.NombreEspecialidad</td>
+                    <td>$@c.ArancelConvenio.ToString("N2")</td>
+                    <td class="text-end">
+                        <form method="post" asp-action="EliminarConvenio" class="d-inline" onsubmit="return confirm('¿Eliminar este convenio?');">
+                            <input type="hidden" name="identificadorOS" value="@os.IdentificadorOS" />
+                            <input type="hidden" name="idEspecialidad" value="@c.IdEspecialidad" />
+                            <button class="btn btn-sm btn-link text-danger">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <form method="post" asp-action="GuardarConvenio" class="d-flex gap-2 flex-wrap">
+            <input type="hidden" name="identificadorOS" value="@os.IdentificadorOS" />
+            <select name="idEspecialidad" class="form-select form-select-sm" style="max-width:240px">
+                @foreach (var e in especialidades) { <option value="@e.IdEspecialidad">@e.Nombre</option> }
+            </select>
+            <input name="arancelConvenio" type="number" step="0.01" min="0.01" class="form-control form-control-sm" style="max-width:160px" placeholder="Arancel" required />
+            <button class="btn btn-sm btn-outline-primary">Agregar o modificar convenio</button>
+        </form>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.getElementById('agregarConvenio').addEventListener('click', function () {
+            var cont = document.getElementById('filasConvenio');
+            var filas = cont.querySelectorAll('.fila-convenio');
+            var nueva = filas[filas.length - 1].cloneNode(true);
+            nueva.querySelector('input').value = '';
+            nueva.querySelector('select').selectedIndex = 0;
+            cont.appendChild(nueva);
+        });
+    </script>
+}

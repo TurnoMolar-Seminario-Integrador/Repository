@@ -52,7 +52,7 @@ namespace Data
             modelBuilder.Entity<DisponibilidadHoraria>(e =>
             {
                 e.ToTable("DisponibilidadesHorarias");
-                e.HasKey(d => new { d.TipoDocumentoOdontologo, d.NroDocumentoOdontologo, d.DiaSemana });
+                e.HasKey(d => new { d.TipoDocumentoOdontologo, d.NroDocumentoOdontologo, d.DiaSemana, d.HoraInicio }); // MDF E5.R00: PK incluye HoraInicio
                 e.Property(d => d.TipoDocumentoOdontologo).HasMaxLength(20);
                 e.Property(d => d.NroDocumentoOdontologo).HasMaxLength(20);
                 e.Property(d => d.DiaSemana).HasMaxLength(20);
@@ -83,7 +83,7 @@ namespace Data
                 e.Property(o => o.Telefono).HasMaxLength(20);
                 e.Property(o => o.Email).HasMaxLength(150);
                 e.Property(o => o.Domicilio).HasMaxLength(150);
-                e.Property(o => o.EstadoOdontologo).HasMaxLength(20).HasDefaultValue("ACTIVO");
+                e.Property(o => o.EstadoOdontologo).HasMaxLength(20).HasDefaultValue("HABILITADO");
                 e.Property(o => o.Clave).HasMaxLength(255);
                 e.Property(o => o.SaltClave).HasMaxLength(100);
                 e.Property(o => o.FechaAlta).HasColumnType("datetime2(0)");
@@ -117,7 +117,7 @@ namespace Data
                 e.Property(o => o.IdentificadorOS).HasMaxLength(20);
                 e.Property(o => o.NombreOS).IsRequired().HasMaxLength(100);
                 e.Property(o => o.PlanCobertura).HasMaxLength(100);
-                e.Property(o => o.EstadoOS).HasMaxLength(20).HasDefaultValue("ACTIVA");
+                e.Property(o => o.EstadoOS).HasMaxLength(20).HasDefaultValue("DISPONIBLE");
             });
 
             // 6. CONVENIOS (PK Compuesta)

@@ -63,7 +63,7 @@ namespace Application.Services
                 telefono: dto.Telefono,
                 email: dto.Email,
                 domicilio: dto.Domicilio,
-                estadoOdontologo: dto.EstadoOdontologo ?? "ACTIVO"
+                estadoOdontologo: dto.EstadoOdontologo ?? EstadosOdontologo.Habilitado
             );
 
             await _odontologoRepository.AddAsync(odontologo);
@@ -82,7 +82,7 @@ namespace Application.Services
                 telefono: dto.Telefono,
                 email: dto.Email,
                 domicilio: dto.Domicilio,
-                estadoOdontologo: dto.EstadoOdontologo ?? "ACTIVO"
+                estadoOdontologo: dto.EstadoOdontologo ?? EstadosOdontologo.Habilitado
             );
 
             return await _odontologoRepository.UpdateAsync(odontologo);

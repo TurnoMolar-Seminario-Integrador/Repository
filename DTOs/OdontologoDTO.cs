@@ -35,7 +35,7 @@ namespace DTOs
 
         public string Domicilio { get; set; } = string.Empty;
         public DateTime FechaNacimiento { get; set; } = new DateTime(1985, 1, 1);
-        public string EstadoOdontologo { get; set; } = "ACTIVO";
+        public string EstadoOdontologo { get; set; } = "HABILITADO";
 
         public int? CodEspecialidad { get; set; } = 1;
         public int EspecialidadId { get => CodEspecialidad ?? 1; set => CodEspecialidad = value; }

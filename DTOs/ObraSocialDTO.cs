@@ -23,7 +23,7 @@ namespace DTOs
             set => PlanCobertura = value ?? string.Empty;
         }
 
-        public string EstadoOS { get; set; } = "ACTIVA";
+        public string EstadoOS { get; set; } = "DISPONIBLE";
         public decimal PorcentajeCobertura { get; set; } = 0.50m;
         public List<ConvenioDTO> Convenios { get; set; } = new List<ConvenioDTO>();
     }

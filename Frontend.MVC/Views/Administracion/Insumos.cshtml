@@ -1,0 +1,52 @@
+@model IReadOnlyList<DTOs.InsumoListadoDTO>
+@{
+    ViewData["Title"] = "Insumos - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "Insumos";
+    Layout = "_LayoutResponsable";
+}
+@* CUF09 - Abastecer Insumos y Materiales *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Insumos y materiales</h2>
+    <p class="text-muted">Alta de insumos, reposición de stock y ajuste del costo unitario. El cambio de costo no afecta atenciones previas.</p>
+</div>
+<partial name="_Alertas" />
+
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h5 class="fw-bold mb-3">Nuevo insumo</h5>
+    <form method="post" asp-action="RegistrarInsumo" class="row g-2 align-items-end">
+        <div class="col-md-5"><label class="form-label small text-muted mb-1">Nombre</label><input name="nombre" class="form-control" required /></div>
+        <div class="col-md-2"><label class="form-label small text-muted mb-1">Costo unitario ($)</label><input name="costoUnitario" type="number" step="0.01" min="0.01" class="form-control" required /></div>
+        <div class="col-md-2"><label class="form-label small text-muted mb-1">Stock inicial</label><input name="stockDisponible" type="number" min="0" class="form-control" required /></div>
+        <div class="col-auto"><button class="btn btn-primary rounded-pill px-4"><i class="bi bi-plus-lg me-1"></i> Registrar</button></div>
+    </form>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 p-4">
+    <table class="table align-middle mb-0">
+        <thead><tr><th>Insumo</th><th>Costo unitario</th><th>Stock</th><th>Reponer stock</th><th>Modificar costo</th></tr></thead>
+        <tbody>
+        @foreach (var i in Model)
+        {
+            <tr>
+                <td class="fw-semibold">@i.Nombre</td>
+                <td>$@i.CostoUnitario.ToString("N2")</td>
+                <td>@i.StockDisponible</td>
+                <td>
+                    <form method="post" asp-action="ReponerStock" class="d-flex gap-2">
+                        <input type="hidden" name="idInsumo" value="@i.IdInsumo" />
+                        <input name="cantidadIncorporada" type="number" min="1" class="form-control form-control-sm" placeholder="Cantidad" style="max-width:110px" required />
+                        <button class="btn btn-sm btn-outline-success">Reponer</button>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" asp-action="ModificarCostoInsumo" class="d-flex gap-2">
+                        <input type="hidden" name="idInsumo" value="@i.IdInsumo" />
+                        <input name="costoUnitario" type="number" step="0.01" min="0.01" class="form-control form-control-sm" placeholder="Nuevo costo" style="max-width:130px" required />
+                        <button class="btn btn-sm btn-outline-primary">Guardar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

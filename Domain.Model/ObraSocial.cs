@@ -5,7 +5,7 @@ namespace Domain.Model
         public string IdentificadorOS { get; private set; } = string.Empty;
         public string NombreOS { get; private set; } = string.Empty;
         public string PlanCobertura { get; private set; } = string.Empty;
-        public string EstadoOS { get; private set; } = "ACTIVA";
+        public string EstadoOS { get; private set; } = EstadosObraSocial.Disponible;
 
         // MU: el paciente particular tiene IdentificadorOS nulo. "PARTICULAR" era además el identificador
         // de una "obra social" sembrada ("Particular / Sin cobertura") que algunas pantallas ofrecían
@@ -20,7 +20,9 @@ namespace Domain.Model
         // Acuerdo activo = la obra social figura como ACTIVA y tiene al menos un convenio con la clínica
         // (requiere Convenios cargados). La "obra social" particular nunca tiene acuerdo.
         public bool TieneAcuerdoActivo =>
-            !EsParticular(IdentificadorOS) && EstadoOS == "ACTIVA" && Convenios.Any();
+            !EsParticular(IdentificadorOS) && EstaDisponible && Convenios.Any();
+
+        public bool EstaDisponible => EstadosObraSocial.EsDisponible(EstadoOS);
 
         // Helper para compatibilidad de vistas
         public decimal ArancelOS => Convenios.FirstOrDefault()?.ArancelConvenio ?? 0m;
@@ -31,7 +33,7 @@ namespace Domain.Model
 
         protected ObraSocial() { }
 
-        public ObraSocial(string identificadorOS, string nombreOS, string planCobertura = "", string estadoOS = "ACTIVA")
+        public ObraSocial(string identificadorOS, string nombreOS, string planCobertura = "", string estadoOS = EstadosObraSocial.Disponible)
         {
             SetIdentificadorOS(identificadorOS);
             SetNombreOS(nombreOS);
@@ -39,7 +41,7 @@ namespace Domain.Model
             SetEstadoOS(estadoOS);
         }
 
-        public ObraSocial(string identificadorOS, string nombreOS, string planCobertura, decimal arancelOS, string estadoOS = "ACTIVA")
+        public ObraSocial(string identificadorOS, string nombreOS, string planCobertura, decimal arancelOS, string estadoOS = EstadosObraSocial.Disponible)
             : this(identificadorOS, nombreOS, planCobertura, estadoOS)
         {
         }
@@ -65,12 +67,18 @@ namespace Domain.Model
 
         public void SetEstadoOS(string estado)
         {
-            EstadoOS = estado?.ToUpper().Trim() ?? "ACTIVA";
+            EstadoOS = string.IsNullOrWhiteSpace(estado) ? EstadosObraSocial.Disponible : estado.ToUpper().Trim();
         }
 
         public void SetArancelOS(decimal arancel)
         {
             // Helper de compatibilidad
         }
+
+        // CUF06 alt 3.b.1: deja de ofrecerse a nuevos pacientes, conservando atenciones y pagos (RN15).
+        public void DarDeBaja() => EstadoOS = EstadosObraSocial.NoDisponible;
+
+        // CUF06 alt 3.c.1: vuelve a ofrecerse, conservando su historial.
+        public void Rehabilitar() => EstadoOS = EstadosObraSocial.Disponible;
     }
 }

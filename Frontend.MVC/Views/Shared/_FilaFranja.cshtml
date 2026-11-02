@@ -1,0 +1,27 @@
+@* Una fila de disponibilidad horaria (diaSemana + horaInicio + horaFin). Si el modelo es true, incluye la
+   especialidad (alta de odontólogo). Las filas se duplican con el botón "Agregar franja". *@
+@model (bool conEspecialidad, IReadOnlyList<DTOs.EspecialidadListadoDTO>? especialidades)
+<div class="row g-2 mb-2 fila-franja">
+    @if (Model.conEspecialidad)
+    {
+        <div class="col-md-4">
+            <select name="franjaEspecialidad" class="form-select form-select-sm">
+                @foreach (var e in Model.especialidades!)
+                {
+                    <option value="@e.IdEspecialidad">@e.Nombre</option>
+                }
+            </select>
+        </div>
+    }
+    <div class="col">
+        <select name="franjaDia" class="form-select form-select-sm">
+            <option value="">Día…</option>
+            @foreach (var d in new[] { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes" })
+            {
+                <option value="@d">@d</option>
+            }
+        </select>
+    </div>
+    <div class="col"><input type="time" name="franjaInicio" class="form-control form-control-sm" /></div>
+    <div class="col"><input type="time" name="franjaFin" class="form-control form-control-sm" /></div>
+</div>

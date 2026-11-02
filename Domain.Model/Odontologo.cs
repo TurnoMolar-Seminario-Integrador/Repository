@@ -9,7 +9,7 @@ namespace Domain.Model
         // y mostraban "MP MP 3840". Propiedad de solo lectura: EF no la mapea.
         public string MatriculaVisible =>
             Matricula.StartsWith("MP", StringComparison.OrdinalIgnoreCase) ? Matricula : $"MP {Matricula}";
-        public string EstadoOdontologo { get; private set; } = "ACTIVO";
+        public string EstadoOdontologo { get; private set; } = EstadosOdontologo.Habilitado;
 
         public virtual ICollection<DisponibilidadHoraria> DisponibilidadesHorarias { get; private set; } = new List<DisponibilidadHoraria>();
         public virtual ICollection<Turno> Turnos { get; private set; } = new List<Turno>();
@@ -31,7 +31,7 @@ namespace Domain.Model
             string telefono,
             string email,
             string domicilio,
-            string estadoOdontologo = "ACTIVO",
+            string estadoOdontologo = EstadosOdontologo.Habilitado,
             string clave = "",
             string saltClave = "",
             DateTime? fechaAlta = null,
@@ -52,7 +52,7 @@ namespace Domain.Model
             string telefono,
             string email,
             string domicilio,
-            string estadoOdontologo = "ACTIVO",
+            string estadoOdontologo = EstadosOdontologo.Habilitado,
             int? codDisponibilidad = null,
             int? codEspecialidad = null,
             string clave = "",
@@ -72,12 +72,29 @@ namespace Domain.Model
 
         public void SetEstadoOdontologo(string estado)
         {
-            EstadoOdontologo = estado?.ToUpper().Trim() ?? "ACTIVO";
+            EstadoOdontologo = string.IsNullOrWhiteSpace(estado) ? EstadosOdontologo.Habilitado : estado.ToUpper().Trim();
         }
 
         public void AsignarEspecialidad(Especialidad especialidad)
         {
             // Helper de asignación
+        }
+
+        public bool EstaHabilitado => EstadosOdontologo.EsHabilitado(EstadoOdontologo);
+
+        // CUF04 alt 5.d.1: baja lógica. El odontólogo queda desafectado de la oferta de turnos, pero se
+        // conservan sus turnos y atenciones (RN15: "sin afectar turnos, atenciones ni pagos previos").
+        public void Inhabilitar() => EstadoOdontologo = EstadosOdontologo.Inhabilitado;
+
+        // CUF04 alt 5.e.1: vuelve a la oferta de turnos según sus especialidades y disponibilidad.
+        public void Rehabilitar() => EstadoOdontologo = EstadosOdontologo.Habilitado;
+
+        // CUF04 alt 5.c.1: eActualizacionContacto = matricula + (telefono) + (email) + (domicilio).
+        public void ActualizarContacto(string? telefono, string? email, string? domicilio)
+        {
+            if (!string.IsNullOrWhiteSpace(telefono)) SetTelefono(telefono);
+            if (!string.IsNullOrWhiteSpace(email)) SetEmail(email);
+            if (!string.IsNullOrWhiteSpace(domicilio)) SetDomicilio(domicilio);
         }
     }
 }

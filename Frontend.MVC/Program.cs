@@ -89,6 +89,18 @@ builder.Services.AddScoped<IRectificarDatosPacienteService, RectificarDatosPacie
 // observaciones. Usa IPacienteRepository, IHistoriaClinicaRepository e IAtencionOdontologicaRepository.
 builder.Services.AddScoped<IAdministrarHistoriaClinicaService, AdministrarHistoriaClinicaService>();
 
+// CUF04, CUF05, CUF06, CUF09, CUF11 y CUF12 (usan TurnoMolarDbContext directamente, como CUF03).
+builder.Services.AddScoped<IConformarCuerpoOdontologosService, ConformarCuerpoOdontologosService>();
+builder.Services.AddScoped<IConsultarValoracionesService, ConsultarValoracionesService>();
+builder.Services.AddScoped<IAdministrarConveniosService, AdministrarConveniosService>();
+builder.Services.AddScoped<IAbastecerInsumosService, AbastecerInsumosService>();
+builder.Services.AddScoped<ICoordinarAtencionExtraordinariaService, CoordinarAtencionExtraordinariaService>();
+builder.Services.AddScoped<IAdministrarEspecialidadService, AdministrarEspecialidadService>();
+
+// Cierre de jornada: turnos "Reservado" de días anteriores pasan a "Ausente" con penalización.
+builder.Services.AddScoped<IVencimientoTurnosService, VencimientoTurnosService>();
+builder.Services.AddHostedService<Frontend.MVC.Services.CierreJornadaHostedService>();
+
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

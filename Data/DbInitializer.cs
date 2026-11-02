@@ -17,9 +17,9 @@ namespace Data
                 if (!await context.ObrasSociales.AnyAsync())
                 {
                     await context.ObrasSociales.AddRangeAsync(
-                        new ObraSocial("OSDE", "OSDE Binario", "Plan 210 / 310", "ACTIVA"),
-                        new ObraSocial("SWISS", "Swiss Medical", "Black / Gold", "ACTIVA"),
-                        new ObraSocial("IOMA", "IOMA", "Afiliados Obligatorios", "ACTIVA")
+                        new ObraSocial("OSDE", "OSDE Binario", "Plan 210 / 310", "DISPONIBLE"),
+                        new ObraSocial("SWISS", "Swiss Medical", "Black / Gold", "DISPONIBLE"),
+                        new ObraSocial("IOMA", "IOMA", "Afiliados Obligatorios", "DISPONIBLE")
                     );
                     await context.SaveChangesAsync();
                 }
@@ -118,7 +118,7 @@ namespace Data
                         "341-4567890",
                         "karina.gonzalez@turnomolar.com",
                         "Bv. Oroño 1234, Rosario",
-                        "ACTIVO",
+                        "HABILITADO",
                         clave1,
                         salt1,
                         DateTime.Now,
@@ -136,7 +136,7 @@ namespace Data
                         "341-5678901",
                         "elena.silva@turnomolar.com",
                         "Av. Pellegrini 850, Rosario",
-                        "ACTIVO",
+                        "HABILITADO",
                         clave2,
                         salt2,
                         DateTime.Now,
@@ -154,7 +154,7 @@ namespace Data
                         "341-6789012",
                         "martin.lopez@turnomolar.com",
                         "Santa Fe 2100, Rosario",
-                        "ACTIVO",
+                        "HABILITADO",
                         clave3,
                         salt3,
                         DateTime.Now,

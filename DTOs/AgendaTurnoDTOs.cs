@@ -11,7 +11,8 @@ namespace DTOs
         ObraSocialSinConvenio,      // Alt 3.a.2.a / 5.b: la obra social no cubre la especialidad.
         HorarioNoDisponible,        // El horario elegido ya no está libre (choque de agenda).
         OdontologoNoAtiendeEspecialidad, // Alt 3.a.2 (reserva manual): el odontólogo asignado no atiende la especialidad indicada.
-        AntelacionInsuficiente      // RN19: el turno se solicita con menos de 24 horas de antelación.
+        AntelacionInsuficiente,     // RN19: el turno se solicita con menos de 24 horas de antelación.
+        OdontologoInhabilitado      // CUF04 alt 5.d / RN15: el odontólogo está fuera de la oferta de turnos.
     }
 
     // Resultado de la validación de estado del paciente al consultar turnos disponibles

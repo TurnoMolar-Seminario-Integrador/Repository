@@ -1,24 +1,44 @@
 using Application.Services;
-using Data;
-using Domain.Model;
+using DTOs;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TurnoMolar.Models;
 
 namespace TurnoMolar.Controllers
 {
+    // CUF01 - Incorporar Paciente. El controlador solo traduce el formulario al caso de uso
+    // (IIncorporarPacienteService) y el resultado a mensajes: la validación, el control de paciente ya
+    // registrado, la obra social y el alta (paciente + historia clínica) viven en el servicio.
+    //
+    // Antes este controlador accedía directo al DbContext y armaba el alta acá: la historia clínica salía
+    // con textos inventados en lugar de vacía, el número de documento se leía como int, el domicilio y la
+    // fecha de nacimiento ausentes se completaban con "Rosario" y 1/1/1995, la confirmación no informaba
+    // el número de historia clínica y ante un error se le mostraba al paciente el texto de la excepción.
     public class PacienteController : Controller
     {
-        private readonly TurnoMolarDbContext _context;
+        // Campo del servicio -> campo del formulario.
+        private static readonly Dictionary<string, string> CamposDelFormulario = new()
+        {
+            ["Nombre"] = nameof(PacienteViewModel.NombrePers),
+            ["Apellido"] = nameof(PacienteViewModel.Apellido),
+            ["TipoDocumento"] = nameof(PacienteViewModel.TipoDocumento),
+            ["NroDocumento"] = nameof(PacienteViewModel.DniPers),
+            ["FechaNacimiento"] = nameof(PacienteViewModel.FechaNacimiento),
+            ["Telefono"] = nameof(PacienteViewModel.TelefonoPers),
+            ["Email"] = nameof(PacienteViewModel.MailPer),
+            ["Domicilio"] = nameof(PacienteViewModel.Domicilio),
+            ["Password"] = nameof(PacienteViewModel.Clave)
+        };
+
+        private readonly IIncorporarPacienteService _incorporarPacienteService;
         private readonly ICoberturaPacienteService _coberturaService;
         private readonly ILogger<PacienteController> _logger;
 
         public PacienteController(
-            TurnoMolarDbContext context,
+            IIncorporarPacienteService incorporarPacienteService,
             ICoberturaPacienteService coberturaService,
             ILogger<PacienteController> logger)
         {
-            _context = context;
+            _incorporarPacienteService = incorporarPacienteService;
             _coberturaService = coberturaService;
             _logger = logger;
         }
@@ -41,96 +61,76 @@ namespace TurnoMolar.Controllers
                 ModelState.AddModelError("OtraObraSocial", "Por favor, especificá el nombre de la obra social.");
             }
 
-            if (!int.TryParse(modelo.DniPers, out int dniParsed) || dniParsed <= 0)
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("DniPers", "Ingresá un número de documento válido.");
+                TempData["MensajeError"] = IncorporarPacienteService.MensajeDatosInvalidos;
+                return VistaConClavesVacias(modelo);
             }
 
-            if (ModelState.IsValid)
+            try
             {
-                try
+                var resultado = await _incorporarPacienteService.IncorporarAsync(new IncorporarPacienteRequestDTO
                 {
-                    var dniStr = dniParsed.ToString();
-                    var tipoDoc = modelo.TipoDocumento ?? "DNI";
-
-                    // CUF01 / RN6: obra social con acuerdo activo o modalidad particular (sin obra social).
-                    // Antes una obra social que no estaba en la base dejaba al paciente como particular,
-                    // con mensaje de éxito y sin avisarle; y "Otra" buscaba con Contains (escribir "s"
-                    // asignaba OSDE).
-                    var cobertura = await _coberturaService.ResolverObraSocialParaAltaAsync(modelo.IdObraSocial, modelo.OtraObraSocial);
-                    if (!cobertura.Valida)
+                    DatosPersonales = new DatosPersonalesPacienteDTO
                     {
-                        // CUF01 alt 2.a.1.a.1: se informa y el paciente puede elegir la modalidad particular.
-                        // El formulario conserva lo que ya cargó.
-                        TempData["MensajeError"] = cobertura.Mensaje;
-                        return View(modelo);
-                    }
+                        Nombre = modelo.NombrePers,
+                        Apellido = modelo.Apellido,
+                        TipoDocumento = modelo.TipoDocumento,
+                        NroDocumento = modelo.DniPers,
+                        FechaNacimiento = modelo.FechaNacimiento,
+                        Telefono = modelo.TelefonoPers,
+                        Email = modelo.MailPer,
+                        Domicilio = modelo.Domicilio
+                    },
+                    ObraSocial = modelo.IdObraSocial,
+                    OtraObraSocial = modelo.OtraObraSocial,
+                    Password = modelo.Clave
+                });
 
-                    // Validar si el paciente ya existe en BD
-                    var existe = await _context.Pacientes
-                        .AnyAsync(p => p.NroDocumento == dniStr && p.TipoDocumento == tipoDoc.ToUpper());
-
-                    if (existe)
-                    {
-                        TempData["MensajeError"] = $"El paciente con documento {dniParsed} ya se encuentra registrado en el sistema.";
-                        return View(modelo);
-                    }
-
-                    // MU: el paciente particular se registra con IdentificadorOS nulo.
-                    var idOs = cobertura.IdentificadorOS;
-
-                    // 1. Crear Entidad Paciente (MDF v1.01)
-                    // El propio Paciente es la cuenta de login (Clave/SaltClave/Rol viven acá,
-                    // no hay una tabla Usuarios aparte — ver AuthService/IUsuarioRepository).
-                    var (clave, salt) = PasswordHasher.Generar("paciente123");
-                    var nuevoPaciente = new Paciente(
-                        tipoDoc,
-                        dniStr,
-                        modelo.NombrePers,
-                        modelo.Apellido,
-                        modelo.FechaNacimiento ?? new DateTime(1995, 1, 1),
-                        modelo.TelefonoPers,
-                        modelo.MailPer,
-                        modelo.Domicilio ?? "Rosario",
-                        "HABILITADO",
-                        idOs,
-                        0m,
-                        clave,
-                        salt,
-                        DateTime.Now,
-                        "Paciente"
-                    );
-                    _context.Pacientes.Add(nuevoPaciente);
-
-                    // 2. Crear Historia Clínica de base (MDF v1.01)
-                    var hc = new HistoriaClinica(
-                        0,
-                        nuevoPaciente.TipoDocumento,
-                        nuevoPaciente.NroDocumento,
-                        DateTime.Now,
-                        "Sin antecedentes registrados en el alta.",
-                        "Ninguna declarada.",
-                        "Ficha clínica de registro inicial."
-                    );
-                    _context.HistoriasClinicas.Add(hc);
-
-                    await _context.SaveChangesAsync();
-
-                    TempData["MensajeExito"] = $"¡Paciente registrado con éxito! Podés iniciar sesión con tu DNI ({dniParsed}) y contraseña provisoria: 'paciente123'.";
-                    ModelState.Clear();
-                    return View(new PacienteViewModel());
-                }
-                catch (Exception ex)
+                switch (resultado.Resultado)
                 {
-                    _logger.LogError(ex, "Error al registrar el paciente.");
-                    TempData["MensajeError"] = $"Ocurrió un error al guardar en la base de datos: {ex.Message}";
+                    case ResultadoIncorporarPaciente.Incorporado:
+                        // Paso 3: confirmación con el estado y el número de historia clínica asignado.
+                        TempData["MensajeExito"] =
+                            $"¡Paciente registrado con éxito! {resultado.Mensaje} " +
+                            $"Podés iniciar sesión con tu documento ({resultado.TipoDocumento} {resultado.NroDocumento}) " +
+                            "y la contraseña que elegiste.";
+                        // Redirección (PRG): recargar la página no vuelve a enviar el alta.
+                        return RedirectToAction(nameof(Crear));
+
+                    case ResultadoIncorporarPaciente.DatosInvalidos:
+                        foreach (var error in resultado.Errores)
+                        {
+                            var campo = CamposDelFormulario.TryGetValue(error.Key, out var nombreCampo) ? nombreCampo : string.Empty;
+                            ModelState.AddModelError(campo, error.Value);
+                        }
+                        TempData["MensajeError"] = resultado.Mensaje;
+                        break;
+
+                    default:
+                        // Alt 1.a.1 (paciente ya registrado) y alt 2.a.1.a.1 (obra social sin acuerdo activo):
+                        // se informa y el formulario conserva lo que ya cargó, para poder corregirlo (por
+                        // ejemplo, elegir la modalidad particular).
+                        TempData["MensajeError"] = resultado.Mensaje;
+                        break;
                 }
             }
-            else
+            catch (Exception ex)
             {
-                TempData["MensajeError"] = "Por favor, revisá los campos marcados en rojo.";
+                // El detalle técnico va al log, no a la pantalla del paciente.
+                _logger.LogError(ex, "Error al registrar el paciente.");
+                TempData["MensajeError"] = "No pudimos registrar tus datos por un problema del sistema. Intentá nuevamente en unos minutos.";
             }
 
+            return VistaConClavesVacias(modelo);
+        }
+
+        // La contraseña no se devuelve en el modelo ante un error (el campo type="password" tampoco la escribe
+        // en el HTML): se la pide de nuevo. Los mensajes de error del ModelState se conservan.
+        private ViewResult VistaConClavesVacias(PacienteViewModel modelo)
+        {
+            modelo.Clave = string.Empty;
+            modelo.ConfirmarClave = string.Empty;
             return View(modelo);
         }
 

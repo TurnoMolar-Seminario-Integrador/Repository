@@ -6,6 +6,10 @@ namespace WebAPI
 {
     public static class TurnoOdontologicoEndpoints
     {
+        // Autorización (ver AutorizacionApi): este CRUD genérico de turnos no pasa por las reglas de CUU01
+        // (un turno pendiente por paciente, deuda, disponibilidad, penalización) y expone datos de los
+        // pacientes, así que queda reservado al personal de la clínica. El paciente reserva, cancela y
+        // consulta sus turnos por /agenda y por el frontend. Antes estos endpoints no pedían token.
         public static void MapTurnoOdontologicoEndpoints(this WebApplication app)
         {
             app.MapGet("/turnos/{id}", async (int id, ITurnoOdontologicoService turnoService) =>
@@ -17,6 +21,7 @@ namespace WebAPI
                 }
                 return Results.Ok(dto);
             })
+            .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
             .WithName("GetTurno")
             .Produces<TurnoOdontologicoDTO>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound)
@@ -27,6 +32,7 @@ namespace WebAPI
                 var dtos = await turnoService.GetAllAsync();
                 return Results.Ok(dtos);
             })
+            .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
             .WithName("GetAllTurnos")
             .Produces<List<TurnoOdontologicoDTO>>(StatusCodes.Status200OK)
             .WithOpenApi();
@@ -43,6 +49,7 @@ namespace WebAPI
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
+            .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
             .WithName("AddTurno")
             .Produces<TurnoOdontologicoDTO>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
@@ -64,6 +71,7 @@ namespace WebAPI
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
+            .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
             .WithName("UpdateTurno")
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound)
@@ -79,6 +87,7 @@ namespace WebAPI
                 }
                 return Results.NoContent();
             })
+            .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
             .WithName("DeleteTurno")
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound)
@@ -97,6 +106,7 @@ namespace WebAPI
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
+                 .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
                  .WithName("GetTurnosByCriteria")
                  .Produces<List<TurnoOdontologicoDTO>>(StatusCodes.Status200OK)
                  .Produces(StatusCodes.Status400BadRequest)

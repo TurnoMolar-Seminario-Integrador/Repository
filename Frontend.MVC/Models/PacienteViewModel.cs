@@ -13,8 +13,12 @@ namespace TurnoMolar.Models
         [Required(ErrorMessage = "Seleccioná un tipo de documento.")]
         public string TipoDocumento { get; set; } = "DNI";
 
+        // Alfanumérico: un pasaporte lleva letras. Que un DNI, LC o LE sea solo numérico lo controla el servicio
+        // del alta (DatosPersonalesPacienteValidador), que conoce el tipo elegido. Se guarda como texto: leerlo
+        // como int perdía los ceros a la izquierda y rechazaba los documentos con letras.
         [Required(ErrorMessage = "El número de documento es obligatorio.")]
-        [RegularExpression(@"^\d+$", ErrorMessage = "Solo se permiten números.")]
+        [StringLength(20, ErrorMessage = "El número de documento no puede superar los 20 caracteres.")]
+        [RegularExpression(@"^[A-Za-z0-9]+$", ErrorMessage = "Solo se permiten letras y números, sin puntos ni espacios.")]
         public string DniPers { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria.")]
@@ -28,11 +32,24 @@ namespace TurnoMolar.Models
         [EmailAddress(ErrorMessage = "Formato de correo inválido.")]
         public string MailPer { get; set; } = string.Empty;
 
-        // Opcional (el alta lo completa con un valor por defecto). Con <Nullable>enable</Nullable> un string no
-        // nulo es "requerido" implícitamente: sin el "?" el alta se rechazaba cuando no se cargaba.
+        // Dato requerido del alta (CUF01 paso 1; antes se inventaba "Rosario" si no se cargaba). Es "string?"
+        // para que el mensaje lo dé este [Required] y no el requerido implícito de <Nullable>enable</Nullable>.
+        [Required(ErrorMessage = "El domicilio es obligatorio.")]
         public string? Domicilio { get; set; }
 
         public bool EstadoHabilitacion { get; set; } = true;
+
+        // RN3: el paciente establece su contraseña al registrarse. El largo mínimo y el resto de las reglas
+        // los controla el servicio del alta (DatosPersonalesPacienteValidador.ValidarClave); acá solo se pide
+        // y se confirma. Nunca se vuelve a mostrar en el formulario (ver PacienteController).
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
+        [DataType(DataType.Password)]
+        public string Clave { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Repetí la contraseña.")]
+        [DataType(DataType.Password)]
+        [Compare(nameof(Clave), ErrorMessage = "Las contraseñas no coinciden.")]
+        public string ConfirmarClave { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Seleccioná una obra social.")]
         public string IdObraSocial { get; set; } = string.Empty;

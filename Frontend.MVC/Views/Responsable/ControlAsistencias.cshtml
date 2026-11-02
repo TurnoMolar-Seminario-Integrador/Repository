@@ -55,10 +55,10 @@
         <div class="col-auto">
             <label class="form-label small text-muted mb-1">Tipo de documento</label>
             <select name="tipoDocumento" class="form-select">
-                <option value="DNI" selected="@(tipoDocumentoBuscado == "DNI" ? "selected" : null)">DNI</option>
-                <option value="LE" selected="@(tipoDocumentoBuscado == "LE" ? "selected" : null)">LE</option>
-                <option value="LC" selected="@(tipoDocumentoBuscado == "LC" ? "selected" : null)">LC</option>
-                <option value="PASAPORTE" selected="@(tipoDocumentoBuscado == "PASAPORTE" ? "selected" : null)">Pasaporte</option>
+                @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones)
+                {
+                    <option value="@valor" selected="@(string.Equals(tipoDocumentoBuscado, valor, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@texto</option>
+                }
             </select>
         </div>
         <div class="col-auto">

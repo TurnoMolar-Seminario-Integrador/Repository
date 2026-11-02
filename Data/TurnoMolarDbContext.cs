@@ -202,7 +202,11 @@ namespace Data
                 e.Property(a => a.IdAtencion).ValueGeneratedOnAdd();
                 e.Property(a => a.FechaHoraAtencionInicio).HasColumnType("datetime2(0)");
                 e.Property(a => a.FechaHoraAtencionFin).HasColumnType("datetime2(0)");
-                e.Property(a => a.Observaciones).HasMaxLength(1000);
+                // CUF03: control de concurrencia optimista sobre las observaciones (se corrigen después de
+                // registradas). EF agrega "AND Observaciones = <valor leído>" al UPDATE: si otro usuario las
+                // cambió entre la lectura y el guardado, no se pisa en silencio (DbUpdateConcurrencyException).
+                // Un concurrency token común no agrega columnas: no cambia el esquema de la base.
+                e.Property(a => a.Observaciones).HasMaxLength(1000).IsConcurrencyToken();
                 e.Property(a => a.ArancelAplicado).HasPrecision(12, 2);
 
                 e.HasOne(a => a.Turno)
@@ -298,12 +302,18 @@ namespace Data
                 e.HasKey(p => new { p.TipoDocumento, p.NroDocumento });
                 e.Property(p => p.TipoDocumento).HasMaxLength(20);
                 e.Property(p => p.NroDocumento).HasMaxLength(20);
-                e.Property(p => p.Nombre).IsRequired().HasMaxLength(100);
-                e.Property(p => p.Apellido).IsRequired().HasMaxLength(100);
-                e.Property(p => p.FechaNacimiento).HasColumnType("date");
-                e.Property(p => p.Telefono).HasMaxLength(20);
-                e.Property(p => p.Email).HasMaxLength(150);
-                e.Property(p => p.Domicilio).HasMaxLength(150);
+                // CUF02: control de concurrencia optimista sobre los datos personales que se rectifican (igual
+                // criterio que las observaciones de la atención, ver AtencionOdontologica): si otro usuario
+                // los modificó entre la lectura y el guardado, el UPDATE no se aplica y EF lanza
+                // DbUpdateConcurrencyException. No agrega columnas: no cambia el esquema de la base. El estado,
+                // la deuda y la obra social no son tokens, así que cobrar una deuda mientras alguien corrige el
+                // teléfono no genera conflicto.
+                e.Property(p => p.Nombre).IsRequired().HasMaxLength(100).IsConcurrencyToken();
+                e.Property(p => p.Apellido).IsRequired().HasMaxLength(100).IsConcurrencyToken();
+                e.Property(p => p.FechaNacimiento).HasColumnType("date").IsConcurrencyToken();
+                e.Property(p => p.Telefono).HasMaxLength(20).IsConcurrencyToken();
+                e.Property(p => p.Email).HasMaxLength(150).IsConcurrencyToken();
+                e.Property(p => p.Domicilio).HasMaxLength(150).IsConcurrencyToken();
                 e.Property(p => p.EstadoPaciente).HasMaxLength(20).HasDefaultValue("HABILITADO");
                 e.Property(p => p.Clave).HasMaxLength(255);
                 e.Property(p => p.SaltClave).HasMaxLength(100);

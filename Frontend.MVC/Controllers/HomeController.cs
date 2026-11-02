@@ -21,6 +21,7 @@ namespace TurnoMolar.Controllers
         private readonly IAgendaTurnoService _agendaTurnoService;
         private readonly IRegularizarDeudaService _regularizarDeudaService;
         private readonly ICoberturaPacienteService _coberturaService;
+        private readonly IRectificarDatosPacienteService _rectificarDatosService;
         private readonly ILogger<HomeController> _logger;
 
         // Verdadero cuando la sesión es un Admin mirando el portal de "el primer paciente" (vista
@@ -34,6 +35,7 @@ namespace TurnoMolar.Controllers
             IAgendaTurnoService agendaTurnoService,
             IRegularizarDeudaService regularizarDeudaService,
             ICoberturaPacienteService coberturaService,
+            IRectificarDatosPacienteService rectificarDatosService,
             ILogger<HomeController> logger)
         {
             _context = context;
@@ -42,6 +44,7 @@ namespace TurnoMolar.Controllers
             _agendaTurnoService = agendaTurnoService;
             _regularizarDeudaService = regularizarDeudaService;
             _coberturaService = coberturaService;
+            _rectificarDatosService = rectificarDatosService;
             _logger = logger;
         }
 
@@ -535,32 +538,26 @@ namespace TurnoMolar.Controllers
         // 6. CONFIGURACIÓN Y PERFIL DEL PACIENTE
         // =========================================================================
 
+        // CUF02, paso 1: el paciente ingresa a sus datos personales y el sistema muestra nombre, apellido,
+        // tipo y número de documento, fecha de nacimiento, teléfono, email y domicilio.
         [HttpGet]
         [Authorize(Roles = "Paciente,Admin")]
         public async Task<IActionResult> Configuracion()
         {
             var paciente = await ObtenerPacienteActualAsync();
+            var datos = await _rectificarDatosService.ConsultarDatosAsync(paciente.TipoDocumento, paciente.NroDocumento);
 
-            var viewModel = new ConfiguracionViewModel
-            {
-                TipoDocumento = paciente.TipoDocumento,
-                NroDocumento = paciente.NroDocumentoInt,
-                Nombre = paciente.Nombre,
-                Apellido = paciente.Apellido,
-                Telefono = paciente.Telefono,
-                Email = paciente.Email,
-                Domicilio = paciente.Domicilio,
-                EstadoPaciente = paciente.EstadoPaciente,
-                ObraSocialNombre = paciente.ObraSocial != null ? $"{paciente.ObraSocial.NombreOS} - {paciente.ObraSocial.PlanCobertura}" : "Particular / Sin Obra Social"
-            };
-
-            return View(viewModel);
+            return View(ArmarConfiguracion(paciente, FormDatosPersonalesViewModel.Desde(datos, "Home", "ActualizarPerfil")));
         }
 
+        // CUF02, pasos 2 y 3: el paciente modifica sus datos y confirma; el sistema valida, actualiza SIN
+        // MODIFICAR EL ESTADO DE HABILITACIÓN y confirma. Antes solo se podían cambiar el teléfono, el
+        // correo y el domicilio, sin validar el formato (guardaba lo que llegara) y el mensaje de éxito
+        // no era el del diccionario de datos.
         [HttpPost]
         [Authorize(Roles = "Paciente,Admin")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ActualizarPerfil(string telefono, string email, string domicilio)
+        public async Task<IActionResult> ActualizarPerfil(FormDatosPersonalesViewModel form)
         {
             var paciente = await ObtenerPacienteActualAsync();
             if (_vistaPreviaAdmin)
@@ -568,20 +565,89 @@ namespace TurnoMolar.Controllers
                 return VistaPreviaSoloLectura("Configuracion");
             }
 
-            if (string.IsNullOrWhiteSpace(email))
+            RectificarDatosResultDTO resultado;
+            try
             {
-                TempData["MensajeError"] = "El correo electrónico es obligatorio.";
+                // El paciente que se rectifica es el de la sesión: el documento "actual" que traiga el
+                // formulario se ignora (no se puede rectificar la cuenta de otro paciente).
+                resultado = await _rectificarDatosService.RectificarDatosAsync(
+                    paciente.TipoDocumento, paciente.NroDocumento, form.ADatos(), form.VersionDatos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al rectificar los datos del paciente {TipoDocumento} {NroDocumento}.", paciente.TipoDocumento, paciente.NroDocumento);
+                TempData["MensajeError"] = "No pudimos guardar tus datos por un problema del sistema. Intentá nuevamente en unos minutos.";
                 return RedirectToAction("Configuracion");
             }
 
-            paciente.SetTelefono(telefono);
-            paciente.SetEmail(email);
-            paciente.SetDomicilio(domicilio);
+            switch (resultado.Resultado)
+            {
+                case ResultadoRectificarDatos.Actualizada:
+                    // Si cambió el documento o el nombre, la sesión (cookie) tiene que reflejarlo: con el
+                    // documento viejo en la cookie el paciente "desaparecería" en la próxima pantalla.
+                    await RefrescarSesionAsync(resultado);
+                    TempData["MensajeExito"] = resultado.Mensaje;
+                    return RedirectToAction("Configuracion");
 
-            await _context.SaveChangesAsync();
+                case ResultadoRectificarDatos.SinCambios:
+                    TempData["MensajeInfo"] = resultado.Mensaje;
+                    return RedirectToAction("Configuracion");
 
-            TempData["MensajeExito"] = "Tus datos personales fueron actualizados y guardados correctamente en la base de datos.";
-            return RedirectToAction("Configuracion");
+                case ResultadoRectificarDatos.PacienteNoEncontrado:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return RedirectToAction("Configuracion");
+
+                case ResultadoRectificarDatos.ConflictoConcurrencia:
+                    // Otro usuario (p. ej. el responsable de la clínica) modificó la ficha mientras se editaba:
+                    // no se guardó nada y se vuelven a mostrar los datos vigentes, con su versión nueva.
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return RedirectToAction("Configuracion");
+
+                default:
+                    // Datos inválidos o documento ya registrado: se vuelve a mostrar el formulario con lo
+                    // que el paciente cargó y el error junto a cada campo.
+                    form.TipoDocumentoActual = paciente.TipoDocumento;
+                    form.NroDocumentoActual = paciente.NroDocumento;
+                    form.Controlador = "Home";
+                    form.Accion = "ActualizarPerfil";
+                    form.Errores = resultado.Errores;
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return View("Configuracion", ArmarConfiguracion(paciente, form));
+            }
+        }
+
+        private static ConfiguracionViewModel ArmarConfiguracion(Paciente paciente, FormDatosPersonalesViewModel form)
+        {
+            return new ConfiguracionViewModel
+            {
+                Form = form,
+                EstadoPaciente = paciente.EstadoPaciente,
+                ObraSocialNombre = paciente.ObraSocial != null ? $"{paciente.ObraSocial.NombreOS} - {paciente.ObraSocial.PlanCobertura}" : "Particular / Sin Obra Social"
+            };
+        }
+
+        // Vuelve a emitir la cookie con el documento y el nombre vigentes, conservando el rol y la
+        // vigencia de la sesión.
+        private async Task RefrescarSesionAsync(RectificarDatosResultDTO resultado)
+        {
+            var reemplazados = new[] { ClaimTypes.NameIdentifier, "TipoDocumento", "NroDocumento", "NombreCompleto" };
+            var claims = User.Claims.Where(c => !reemplazados.Contains(c.Type)).ToList();
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, $"{resultado.TipoDocumento}|{resultado.NroDocumento}"));
+            claims.Add(new Claim("TipoDocumento", resultado.TipoDocumento ?? string.Empty));
+            claims.Add(new Claim("NroDocumento", resultado.NroDocumento ?? string.Empty));
+            claims.Add(new Claim("NombreCompleto", resultado.NombreCompleto ?? string.Empty));
+
+            var sesionActual = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = sesionActual?.Properties?.ExpiresUtc ?? DateTimeOffset.UtcNow.AddHours(8)
+            };
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
+                authProperties);
         }
     }
 }

@@ -29,6 +29,9 @@ namespace TurnoMolar.Controllers
         private readonly IAgendaTurnoService _agendaTurnoService;
         private readonly IEspecialidadRepository _especialidadRepository;
         private readonly IRegularizarDeudaService _regularizarDeudaService;
+        private readonly IRectificarDatosPacienteService _rectificarDatosService;
+        private readonly ICoberturaPacienteService _coberturaService;
+        private readonly ILogger<ResponsableController> _logger;
 
         public ResponsableController(
             IAsistenciaTurnoService asistenciaTurnoService,
@@ -38,7 +41,10 @@ namespace TurnoMolar.Controllers
             IGestionTurnoService gestionTurnoService,
             IAgendaTurnoService agendaTurnoService,
             IEspecialidadRepository especialidadRepository,
-            IRegularizarDeudaService regularizarDeudaService)
+            IRegularizarDeudaService regularizarDeudaService,
+            IRectificarDatosPacienteService rectificarDatosService,
+            ICoberturaPacienteService coberturaService,
+            ILogger<ResponsableController> logger)
         {
             _asistenciaTurnoService = asistenciaTurnoService;
             _turnoRepository = turnoRepository;
@@ -48,6 +54,9 @@ namespace TurnoMolar.Controllers
             _agendaTurnoService = agendaTurnoService;
             _especialidadRepository = especialidadRepository;
             _regularizarDeudaService = regularizarDeudaService;
+            _rectificarDatosService = rectificarDatosService;
+            _coberturaService = coberturaService;
+            _logger = logger;
         }
 
         // GET: /Responsable/Index -> Panel Principal del Responsable de la Clínica
@@ -510,6 +519,157 @@ namespace TurnoMolar.Controllers
             }
 
             return RedirectToAction("TurnosDelDia");
+        }
+
+        // =========================================================================
+        // RECTIFICAR DATOS DEL PACIENTE (CUF02, el responsable de la clínica como otro actor)
+        // =========================================================================
+        // El responsable identifica al paciente por tipo y número de documento, ve sus datos registrados y
+        // los rectifica (incluidos el tipo y el número de documento y la obra social). Es el mismo caso de
+        // uso que el paciente ejecuta desde su Configuración (IRectificarDatosPacienteService): se valida,
+        // se actualiza sin modificar el estado de habilitación y se confirma.
+
+        // GET: /Responsable/RectificarDatosPaciente
+        [HttpGet]
+        public async Task<IActionResult> RectificarDatosPaciente(string? tipoDocumento, string? nroDocumento)
+        {
+            var modelo = new RectificarDatosPacienteViewModel
+            {
+                TipoDocumento = string.IsNullOrWhiteSpace(tipoDocumento) ? "DNI" : tipoDocumento.Trim(),
+                NroDocumento = (nroDocumento ?? string.Empty).Trim()
+            };
+
+            if (!string.IsNullOrWhiteSpace(tipoDocumento) && modelo.NroDocumento.Length > 0)
+            {
+                modelo.Busco = true;
+                await CargarPacienteAsync(modelo, null);
+            }
+
+            return View(modelo);
+        }
+
+        // POST: /Responsable/GuardarDatosPaciente -> CUF02, pasos 2 y 3.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GuardarDatosPaciente(FormDatosPersonalesViewModel form)
+        {
+            var tipoActual = (form.TipoDocumentoActual ?? string.Empty).Trim();
+            var nroActual = (form.NroDocumentoActual ?? string.Empty).Trim();
+
+            RectificarDatosResultDTO resultado;
+            try
+            {
+                resultado = await _rectificarDatosService.RectificarDatosAsync(tipoActual, nroActual, form.ADatos(), form.VersionDatos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al rectificar los datos del paciente {TipoDocumento} {NroDocumento}.", tipoActual, nroActual);
+                TempData["MensajeError"] = "No pudimos guardar los datos por un problema del sistema. Intentá nuevamente en unos minutos.";
+                return RedirectToAction("RectificarDatosPaciente", new { tipoDocumento = tipoActual, nroDocumento = nroActual });
+            }
+
+            switch (resultado.Resultado)
+            {
+                case ResultadoRectificarDatos.Actualizada:
+                    TempData["MensajeExito"] = $"{resultado.Mensaje} Paciente: {resultado.NombreCompleto}.";
+                    // Si cambió el documento, se vuelve a mostrar al paciente con el documento nuevo.
+                    return RedirectToAction("RectificarDatosPaciente",
+                        new { tipoDocumento = resultado.TipoDocumento, nroDocumento = resultado.NroDocumento });
+
+                case ResultadoRectificarDatos.SinCambios:
+                    TempData["MensajeInfo"] = resultado.Mensaje;
+                    return RedirectToAction("RectificarDatosPaciente", new { tipoDocumento = tipoActual, nroDocumento = nroActual });
+
+                case ResultadoRectificarDatos.PacienteNoEncontrado:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return RedirectToAction("RectificarDatosPaciente");
+
+                case ResultadoRectificarDatos.ConflictoConcurrencia:
+                    // Otro usuario (p. ej. el propio paciente desde su portal) modificó la ficha mientras se
+                    // editaba: no se guardó nada y se vuelven a mostrar los datos vigentes, con su versión nueva.
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    return RedirectToAction("RectificarDatosPaciente", new { tipoDocumento = tipoActual, nroDocumento = nroActual });
+
+                default:
+                    // Datos inválidos o documento ya registrado: se muestra el formulario con lo cargado y el
+                    // error junto a cada campo.
+                    form.Controlador = "Responsable";
+                    form.Accion = "GuardarDatosPaciente";
+                    form.Errores = resultado.Errores;
+                    TempData["MensajeError"] = resultado.Mensaje;
+
+                    var modelo = new RectificarDatosPacienteViewModel
+                    {
+                        TipoDocumento = tipoActual,
+                        NroDocumento = nroActual,
+                        Busco = true
+                    };
+                    await CargarPacienteAsync(modelo, form);
+                    return View("RectificarDatosPaciente", modelo);
+            }
+        }
+
+        // POST: /Responsable/ActualizarObraSocialPaciente -> CUF02, alt 2.a (baja) y 2.b (alta / cambio).
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ActualizarObraSocialPaciente(
+            string tipoDocumento, string nroDocumento, string? idObraSocial, bool confirmaPasarAParticular = false)
+        {
+            ActualizarCoberturaResultDTO resultado;
+            try
+            {
+                resultado = await _coberturaService.ActualizarObraSocialAsync(
+                    tipoDocumento, nroDocumento, idObraSocial, confirmaPasarAParticular);
+            }
+            catch (ArgumentException)
+            {
+                TempData["MensajeError"] = "No se encontró un paciente con ese tipo y número de documento.";
+                return RedirectToAction("RectificarDatosPaciente");
+            }
+
+            switch (resultado.Resultado)
+            {
+                case ResultadoActualizarCobertura.Actualizada:
+                    TempData["MensajeExito"] = resultado.NombreObraSocial != null
+                        ? $"{resultado.Mensaje} La cobertura del paciente ahora es {resultado.NombreObraSocial}."
+                        : $"{resultado.Mensaje} El paciente ahora abona en la modalidad particular.";
+                    break;
+
+                case ResultadoActualizarCobertura.RequiereConfirmacion:
+                    // Alt 2.a.1: pasar a particular elimina el acuerdo de obra social; hay que confirmar.
+                    TempData["MensajeInfo"] = $"{resultado.Mensaje} Tildá la confirmación y volvé a guardar.";
+                    break;
+
+                default:
+                    TempData["MensajeError"] = resultado.Mensaje;
+                    break;
+            }
+
+            return RedirectToAction("RectificarDatosPaciente", new { tipoDocumento, nroDocumento });
+        }
+
+        // Carga en el modelo los datos registrados del paciente (CUF02, paso 1). formEnviado: formulario que el
+        // responsable acaba de enviar con errores (conserva lo que cargó) en lugar de los datos registrados.
+        private async Task CargarPacienteAsync(RectificarDatosPacienteViewModel modelo, FormDatosPersonalesViewModel? formEnviado)
+        {
+            try
+            {
+                var datos = await _rectificarDatosService.ConsultarDatosAsync(modelo.TipoDocumento, modelo.NroDocumento);
+
+                modelo.Form = formEnviado ?? FormDatosPersonalesViewModel.Desde(datos, "Responsable", "GuardarDatosPaciente");
+                modelo.Form.TipoDocumentoActual = datos.TipoDocumento;
+                modelo.Form.NroDocumentoActual = datos.NroDocumento;
+                modelo.TipoDocumento = datos.TipoDocumento ?? modelo.TipoDocumento;
+                modelo.NroDocumento = datos.NroDocumento ?? modelo.NroDocumento;
+                modelo.EstadoPaciente = datos.EstadoPaciente;
+                modelo.IdentificadorOS = datos.IdentificadorOS;
+                modelo.ObraSocialNombre = datos.NombreObraSocial;
+                modelo.ObrasSociales = await _coberturaService.ListarObrasSocialesConAcuerdoAsync();
+            }
+            catch (ArgumentException)
+            {
+                modelo.MensajeBusqueda = "No se encontró un paciente con ese tipo y número de documento.";
+            }
         }
 
         // =========================================================================

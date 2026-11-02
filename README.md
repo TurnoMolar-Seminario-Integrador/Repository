@@ -87,7 +87,7 @@ El proyecto implementa una arquitectura en capas orientada al dominio. **Fronten
 | **`WebAPI`** | API RESTful documentada con Swagger/OpenAPI, para consumidores externos a Frontend.MVC. |
 | **`Frontend.MVC`** | Portal web del paciente en ASP.NET Core MVC. |
 | **`Blazor.Server` / `Blazor.WebAssembly`** | Módulos administrativos para recepción y gestión de agendas. |
-| **`Application.Services.Tests` / `WebAPI.Tests`** | Proyectos de test scaffoldeados; todavía sin casos de prueba propios del dominio. |
+| **`WebAPI.Tests`** | Proyecto de test scaffoldeado; todavía sin casos de prueba propios del dominio. |
 
 ---
 

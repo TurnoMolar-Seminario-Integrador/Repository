@@ -64,15 +64,12 @@ namespace Frontend.MVC.Models
         public List<ObraSocial> ObrasSocialesDisponibles { get; set; } = new();
     }
 
+    // CUF02 - Configuración del paciente: sus datos personales (editables, ver FormDatosPersonalesViewModel)
+    // y, a modo informativo, su estado de habilitación y su cobertura. El número de documento ya no se
+    // modela como int: un pasaporte con letras salía como 0.
     public class ConfiguracionViewModel
     {
-        public string TipoDocumento { get; set; } = "DNI";
-        public int NroDocumento { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public string Apellido { get; set; } = string.Empty;
-        public string Telefono { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Domicilio { get; set; } = string.Empty;
+        public FormDatosPersonalesViewModel Form { get; set; } = new();
         public string EstadoPaciente { get; set; } = "HABILITADO";
         public string ObraSocialNombre { get; set; } = "Particular";
     }

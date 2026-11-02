@@ -73,6 +73,9 @@ namespace Data
 
             existing.SetNombre(paciente.Nombre);
             existing.SetApellido(paciente.Apellido);
+            // CUF02: la fecha de nacimiento también se rectifica (antes no se copiaba, así que un
+            // paciente que llegara como instancia nueva, como en el PUT de la WebAPI, nunca la cambiaba).
+            existing.SetFechaNacimiento(paciente.FechaNacimiento);
             existing.SetTelefono(paciente.Telefono);
             existing.SetEmail(paciente.Email);
             existing.SetDomicilio(paciente.Domicilio);
@@ -81,20 +84,100 @@ namespace Data
             existing.SetMontoAdeudado(paciente.MontoAdeudado);
             existing.SetCredenciales(paciente.Clave, paciente.SaltClave, paciente.Rol);
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _context.ChangeTracker.Clear();
+                throw new ConflictoConcurrenciaException("Los datos del paciente fueron modificados por otro usuario.", ex);
+            }
+
             return true;
         }
 
-        public async Task<bool> EmailExistsAsync(string email, string? excludeNroDoc = null)
+        public async Task<HistoriaClinica> AddConHistoriaClinicaAsync(Paciente paciente, HistoriaClinica historiaClinica)
         {
-            return await _context.Pacientes.AnyAsync(p =>
-                p.Email.ToLower() == email.ToLower() &&
-                (excludeNroDoc == null || p.NroDocumento != excludeNroDoc));
+            // Un único SaveChanges: EF Core guarda las dos filas en la misma transacción (primero el
+            // paciente, después su historia clínica, que lo referencia).
+            _context.Pacientes.Add(paciente);
+            _context.HistoriasClinicas.Add(historiaClinica);
+            await _context.SaveChangesAsync();
+            return historiaClinica;
         }
 
-        public async Task<bool> EmailExistsAsync(string email, int excludeNroDoc)
+        public async Task CambiarDocumentoAsync(Paciente paciente, string nuevoTipoDocumento, string nuevoNroDocumento)
         {
-            return await EmailExistsAsync(email, excludeNroDoc.ToString());
+            // La clave del paciente (TipoDocumento, NroDocumento) es la FK de su historia clínica y de sus
+            // turnos, y EF Core no permite modificar una clave ya guardada. Se resuelve en una sola
+            // transacción: se guarda la fila con la clave nueva, se pasan a ella la historia clínica y los
+            // turnos, y recién entonces se elimina la fila vieja.
+            var tipoViejo = paciente.TipoDocumento;
+            var nroViejo = paciente.NroDocumento;
+
+            // La estrategia de reintentos de SQL Server no admite transacciones propias si no es de esta forma.
+            var estrategia = _context.Database.CreateExecutionStrategy();
+            try
+            {
+                await estrategia.ExecuteAsync(async () =>
+                {
+                    await using var transaccion = await _context.Database.BeginTransactionAsync();
+
+                    // Cambios pendientes del paciente (datos personales), todavía bajo la clave vigente.
+                    await _context.SaveChangesAsync();
+
+                    // Misma cuenta con la clave nueva: contraseña, rol, alta, estado, deuda y obra social.
+                    var nuevo = new Paciente(
+                        nuevoTipoDocumento,
+                        nuevoNroDocumento,
+                        paciente.Nombre,
+                        paciente.Apellido,
+                        paciente.FechaNacimiento,
+                        paciente.Telefono,
+                        paciente.Email,
+                        paciente.Domicilio,
+                        paciente.EstadoPaciente,
+                        paciente.IdentificadorOS,
+                        paciente.MontoAdeudado,
+                        paciente.Clave,
+                        paciente.SaltClave,
+                        paciente.FechaAlta,
+                        paciente.Rol);
+                    _context.Pacientes.Add(nuevo);
+                    await _context.SaveChangesAsync();
+
+                    // Lo que referencia al paciente pasa a la clave nueva.
+                    await _context.HistoriasClinicas
+                        .Where(h => h.TipoDocumentoPaciente == tipoViejo && h.NroDocumentoPaciente == nroViejo)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(h => h.TipoDocumentoPaciente, nuevoTipoDocumento)
+                            .SetProperty(h => h.NroDocumentoPaciente, nuevoNroDocumento));
+
+                    await _context.Turnos
+                        .Where(t => t.TipoDocumentoPaciente == tipoViejo && t.NroDocumentoPaciente == nroViejo)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(t => t.TipoDocumentoPaciente, nuevoTipoDocumento)
+                            .SetProperty(t => t.NroDocumentoPaciente, nuevoNroDocumento));
+
+                    // Con la historia clínica y los turnos ya trasladados, la fila vieja no tiene nada que
+                    // arrastrar (la baja en cascada de la historia clínica no encuentra filas).
+                    await _context.Pacientes
+                        .Where(p => p.TipoDocumento == tipoViejo && p.NroDocumento == nroViejo)
+                        .ExecuteDeleteAsync();
+
+                    await transaccion.CommitAsync();
+                });
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Otro usuario modificó al paciente después de leerlo: la transacción se deshizo entera.
+                _context.ChangeTracker.Clear();
+                throw new ConflictoConcurrenciaException("Los datos del paciente fueron modificados por otro usuario.", ex);
+            }
+
+            // Las entidades que quedaron en memoria describen la clave vieja.
+            _context.ChangeTracker.Clear();
         }
 
         public async Task<IEnumerable<Paciente>> GetByCriteriaAsync(PacienteCriteria criteria)

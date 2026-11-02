@@ -2,6 +2,7 @@ using System.Text;
 using Application.Services;
 using Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -40,6 +41,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
+// Correo único por persona (clave primaria), en los tres roles: CUF01 y CUF02.
+builder.Services.AddScoped<IPersonaRepository, PersonaRepository>();
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IOdontologoRepository, OdontologoRepository>();
@@ -59,6 +62,12 @@ builder.Services.AddScoped<IAgendaTurnoService, AgendaTurnoService>();
 // CUF10 - Regularizar Deuda del Paciente (incluye la alt 2.a.1.a de CUU01): registra el pago del total
 // de la deuda, asociado al turno que la originó, y habilita al paciente.
 builder.Services.AddScoped<IRegularizarDeudaService, RegularizarDeudaService>();
+// CUF01 / CUF02 - PacienteService (POST y PUT /pacientes) delega en estos tres servicios: sin ellos,
+// resolver IPacienteService fallaría en tiempo de ejecución. Reutilizan IObraSocialRepository,
+// IPacienteRepository e ITurnoRepository (ya registrados más arriba).
+builder.Services.AddScoped<ICoberturaPacienteService, CoberturaPacienteService>();
+builder.Services.AddScoped<IIncorporarPacienteService, IncorporarPacienteService>();
+builder.Services.AddScoped<IRectificarDatosPacienteService, RectificarDatosPacienteService>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -79,7 +88,15 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+// Niega por defecto: todo endpoint exige un usuario autenticado salvo que declare AllowAnonymous (login y el
+// alta de pacientes). Un endpoint nuevo que se olvide de declarar su autorización queda protegido en vez de
+// abierto. Las políticas con nombre las usan los grupos de endpoints (ver AutorizacionApi).
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
+    .AddPolicy(AutorizacionApi.PoliticaPersonal, policy =>
+        policy.RequireRole(AutorizacionApi.RolResponsable, AutorizacionApi.RolAdmin))
+    .AddPolicy(AutorizacionApi.PoliticaAdmin, policy =>
+        policy.RequireRole(AutorizacionApi.RolAdmin));
 
 var app = builder.Build();
 

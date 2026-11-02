@@ -31,6 +31,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // negocio (compartida en Application.Services) en vez de manipular el DbContext
 // directamente, con el mismo criterio ya aplicado al login (ver AuthService).
 builder.Services.AddScoped<IPacienteRepository, PacienteRepository>();
+// Correo único por persona (clave primaria), en los tres roles: CUF01 y CUF02.
+builder.Services.AddScoped<IPersonaRepository, PersonaRepository>();
 builder.Services.AddScoped<ITurnoRepository, TurnoRepository>();
 builder.Services.AddScoped<IOdontologoRepository, OdontologoRepository>();
 builder.Services.AddScoped<IEspecialidadRepository, EspecialidadRepository>();
@@ -74,6 +76,18 @@ builder.Services.AddScoped<IRegularizarDeudaService, RegularizarDeudaService>();
 // CUF01 / CUF02 - Obra social del paciente (alta y pantalla Seguros): reutiliza
 // IObraSocialRepository, IPacienteRepository e ITurnoRepository.
 builder.Services.AddScoped<ICoberturaPacienteService, CoberturaPacienteService>();
+
+// CUF01 - Incorporar Paciente: alta del paciente con su historia clínica (inicialmente vacía) en una
+// única transacción. Usa IPacienteRepository y ICoberturaPacienteService.
+builder.Services.AddScoped<IIncorporarPacienteService, IncorporarPacienteService>();
+
+// CUF02 - Rectificar Datos del Paciente: la usan el paciente (Configuración) y el responsable de la
+// clínica (Rectificar datos del paciente). Usa IPacienteRepository.
+builder.Services.AddScoped<IRectificarDatosPacienteService, RectificarDatosPacienteService>();
+
+// CUF03 - Administrar Historia Clínica (odontólogo): consulta del historial y corrección de
+// observaciones. Usa IPacienteRepository, IHistoriaClinicaRepository e IAtencionOdontologicaRepository.
+builder.Services.AddScoped<IAdministrarHistoriaClinicaService, AdministrarHistoriaClinicaService>();
 
 // 3. Autenticación por Cookies (EC03 - Login)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

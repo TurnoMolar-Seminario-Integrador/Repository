@@ -195,11 +195,11 @@
             <div class="mb-3">
                 <label class="form-label">Documento de Identidad</label>
                 <div class="d-flex gap-2">
-                    <select asp-for="TipoDocumento" class="form-control-custom" style="max-width: 120px;">
-                        <option value="DNI">DNI</option>
-                        <option value="CUIL">CUIL</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                        <option value="Otros">Otros</option>
+                    <select asp-for="TipoDocumento" class="form-control-custom" style="max-width: 140px;">
+                        @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones)
+                        {
+                            <option value="@valor">@texto</option>
+                        }
                     </select>
                     <input asp-for="DniPers" class="form-control-custom flex-grow-1" placeholder="Número de documento sin puntos" required />
                 </div>
@@ -230,7 +230,22 @@
             <!-- Domicilio -->
             <div class="mb-3">
                 <label asp-for="Domicilio" class="form-label">Domicilio Residencial</label>
-                <input asp-for="Domicilio" class="form-control-custom" placeholder="Calle, Número, Ciudad" />
+                <input asp-for="Domicilio" class="form-control-custom" placeholder="Calle, Número, Ciudad" required />
+                <span asp-validation-for="Domicilio" class="text-danger small"></span>
+            </div>
+
+            <!-- Contraseña (RN3: la establece el paciente) -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Clave" class="form-label">Contraseña</label>
+                    <input asp-for="Clave" type="password" class="form-control-custom" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required />
+                    <span asp-validation-for="Clave" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ConfirmarClave" class="form-label">Repetir contraseña</label>
+                    <input asp-for="ConfirmarClave" type="password" class="form-control-custom" placeholder="Repetí la contraseña" autocomplete="new-password" required />
+                    <span asp-validation-for="ConfirmarClave" class="text-danger small"></span>
+                </div>
             </div>
 
             <!-- Obra Social -->

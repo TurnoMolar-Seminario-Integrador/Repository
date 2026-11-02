@@ -14,6 +14,15 @@ namespace Data
         // de una Atencion (relación 1:1, RN14). Mismo criterio que AgregarDetalleInsumoAsync:
         // el repositorio de AtencionOdontologica es dueño de sus entidades relacionadas.
         Task<Valoracion> AgregarValoracionAsync(Valoracion valoracion);
+
+        // CUF03 - Administrar Historia Clínica, pasos 2 y 3: las atenciones de una historia clínica en orden
+        // cronológico, con el turno (especialidad y odontólogo interviniente) y los insumos utilizados.
+        Task<IReadOnlyList<AtencionOdontologica>> GetByHistoriaClinicaAsync(int nroHC);
+
+        // CUF03, alt 3.a.1: corrige el campo de observaciones de una atención ya registrada. Devuelve
+        // false si la atención no existe. Lanza ConflictoConcurrenciaException si otro usuario modificó las
+        // observaciones entre que se leyó la atención y este guardado.
+        Task<bool> ActualizarObservacionesAsync(int idAtencion, string observaciones);
     }
 
     public class AtencionOdontologicaRepository : IAtencionOdontologicaRepository
@@ -62,6 +71,41 @@ namespace Data
             _context.Valoraciones.Add(valoracion);
             await _context.SaveChangesAsync();
             return valoracion;
+        }
+
+        public async Task<IReadOnlyList<AtencionOdontologica>> GetByHistoriaClinicaAsync(int nroHC)
+        {
+            return await _context.AtencionesOdontologicas
+                .Include(a => a.Turno)
+                    .ThenInclude(t => t.Odontologo)
+                .Include(a => a.Turno)
+                    .ThenInclude(t => t.Especialidad)
+                .Include(a => a.DetallesInsumos)
+                    .ThenInclude(d => d.Insumo)
+                .Where(a => a.NroHC == nroHC)
+                .OrderBy(a => a.FechaHoraAtencionInicio)
+                .ToListAsync();
+        }
+
+        public async Task<bool> ActualizarObservacionesAsync(int idAtencion, string observaciones)
+        {
+            var atencion = await _context.AtencionesOdontologicas
+                .FirstOrDefaultAsync(a => a.IdAtencion == idAtencion);
+            if (atencion == null)
+                return false;
+
+            atencion.Observaciones = observaciones;
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _context.ChangeTracker.Clear();
+                throw new ConflictoConcurrenciaException("Las observaciones de la atención fueron modificadas por otro usuario.", ex);
+            }
+
+            return true;
         }
     }
 }

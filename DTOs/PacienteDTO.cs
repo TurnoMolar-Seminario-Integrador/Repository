@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace DTOs
 {
@@ -36,7 +37,19 @@ namespace DTOs
         }
 
         public decimal? MontoAdeudado { get; set; }
+
+        // Pacientes.IdentificadorOS (NVARCHAR(20) NULL, MDF): nulo = paciente particular (RN6 / MU).
+        // En POST: nulo o vacío = particular. En PUT: nulo o vacío = no se modifica la obra social (un cliente
+        // que solo corrige un teléfono no debe dejar al paciente sin cobertura); "PARTICULAR" = pasar a particular.
         public string? IdentificadorOS { get; set; }
         public string? NombreObraSocial { get; set; }
+
+        // Solo se envía en POST (RN3: el paciente establece su contraseña). Nunca se devuelve.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Password { get; set; }
+
+        // GET lo devuelve y PUT lo exige: huella de los datos personales que el cliente vio (concurrencia
+        // optimista). Si otro usuario los modificó, PUT responde 409.
+        public string? VersionDatos { get; set; }
     }
 }

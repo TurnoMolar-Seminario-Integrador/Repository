@@ -1,0 +1,89 @@
+@model Frontend.MVC.Models.FormDatosPersonalesViewModel
+@{
+    // CUF02 - Rectificar Datos del Paciente. Los ocho datos personales son modificables (diccionario de
+    // datos: campoModificado); los mensajes de error los da el servicio (Model.Errores).
+    string? Error(string campo) => Model.Errores.TryGetValue(campo, out var mensaje) ? mensaje : null;
+    string Invalido(string campo) => Model.Errores.ContainsKey(campo) ? " is-invalid" : string.Empty;
+
+    // Los tipos de documento del sistema (DNI, LC, LE y Pasaporte), los mismos que en el login y el alta.
+    var tipoSeleccionado = (Model.TipoDocumento ?? string.Empty).Trim().ToUpperInvariant();
+    var tipoVigenteEsValido = DTOs.TiposDocumento.EsValido(tipoSeleccionado);
+}
+
+<form method="post" asp-controller="@Model.Controlador" asp-action="@Model.Accion">
+    <input type="hidden" name="TipoDocumentoActual" value="@Model.TipoDocumentoActual" />
+    <input type="hidden" name="NroDocumentoActual" value="@Model.NroDocumentoActual" />
+    <input type="hidden" name="VersionDatos" value="@Model.VersionDatos" />
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label" for="fdp-nombre">Nombre</label>
+            <input id="fdp-nombre" type="text" name="Nombre" class="form-control@(Invalido("Nombre"))" value="@Model.Nombre" maxlength="100" required>
+            @if (Error("Nombre") is { } errorNombre) { <div class="invalid-feedback d-block">@errorNombre</div> }
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="fdp-apellido">Apellido</label>
+            <input id="fdp-apellido" type="text" name="Apellido" class="form-control@(Invalido("Apellido"))" value="@Model.Apellido" maxlength="100" required>
+            @if (Error("Apellido") is { } errorApellido) { <div class="invalid-feedback d-block">@errorApellido</div> }
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <label class="form-label" for="fdp-tipodoc">Tipo de documento</label>
+            <select id="fdp-tipodoc" name="TipoDocumento" class="form-select@(Invalido("TipoDocumento"))" style="border-radius: 12px;">
+                @if (!tipoVigenteEsValido)
+                {
+                    @* Un tipo cargado con otra lista (p. ej. "PASAPORTE") no se ofrece más: hay que elegir uno. *@
+                    <option value="" selected="selected">Seleccioná un tipo...</option>
+                }
+                @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones)
+                {
+                    <option value="@valor" selected="@(valor == tipoSeleccionado ? "selected" : null)">@texto</option>
+                }
+            </select>
+            @if (Error("TipoDocumento") is { } errorTipoDoc) { <div class="invalid-feedback d-block">@errorTipoDoc</div> }
+        </div>
+        <div class="col-md-8">
+            <label class="form-label" for="fdp-nrodoc">Número de documento</label>
+            <input id="fdp-nrodoc" type="text" name="NroDocumento" class="form-control@(Invalido("NroDocumento"))" value="@Model.NroDocumento" maxlength="20" placeholder="Sin puntos ni espacios" required>
+            @if (Error("NroDocumento") is { } errorNroDoc) { <div class="invalid-feedback d-block">@errorNroDoc</div> }
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label" for="fdp-nacimiento">Fecha de nacimiento</label>
+            <input id="fdp-nacimiento" type="date" name="FechaNacimiento" class="form-control@(Invalido("FechaNacimiento"))" value="@(Model.FechaNacimiento?.ToString("yyyy-MM-dd"))" required>
+            @if (Error("FechaNacimiento") is { } errorFecha) { <div class="invalid-feedback d-block">@errorFecha</div> }
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="fdp-telefono">Teléfono móvil</label>
+            <input id="fdp-telefono" type="text" name="Telefono" class="form-control@(Invalido("Telefono"))" value="@Model.Telefono" maxlength="20" required>
+            @if (Error("Telefono") is { } errorTelefono) { <div class="invalid-feedback d-block">@errorTelefono</div> }
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label" for="fdp-email">Correo electrónico</label>
+            <input id="fdp-email" type="email" name="Email" class="form-control@(Invalido("Email"))" value="@Model.Email" maxlength="150" required>
+            @if (Error("Email") is { } errorEmail) { <div class="invalid-feedback d-block">@errorEmail</div> }
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="fdp-domicilio">Domicilio residencial</label>
+            <input id="fdp-domicilio" type="text" name="Domicilio" class="form-control@(Invalido("Domicilio"))" value="@Model.Domicilio" maxlength="150" placeholder="Calle, Número, Ciudad" required>
+            @if (Error("Domicilio") is { } errorDomicilio) { <div class="invalid-feedback d-block">@errorDomicilio</div> }
+        </div>
+    </div>
+
+    <p class="text-muted small mb-4">
+        <i class="bi bi-info-circle me-1"></i>
+        Guardar los cambios no modifica el estado de habilitación. Si cambiás el tipo o el número de documento,
+        el ingreso al sistema pasa a hacerse con el documento nuevo.
+    </p>
+
+    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+        <i class="bi bi-save me-1"></i> Guardar cambios
+    </button>
+</form>

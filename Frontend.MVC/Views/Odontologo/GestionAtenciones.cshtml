@@ -1,7 +1,12 @@
+@model Frontend.MVC.Models.GestionHistoriaClinicaViewModel
+@using DTOs
 @{
-    ViewData["Title"] = "Gestión de Atenciones - Clínica Dental Rosario";
+    ViewData["Title"] = "Historia Clínica - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "GestionAtenciones";
     Layout = "_LayoutOdontologo";
+
+    var historia = Model.Historia;
+    var encontrada = historia != null && historia.Resultado == ResultadoBusquedaHistoriaClinica.Encontrada;
 }
 
 @section Styles {
@@ -14,186 +19,284 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             margin-bottom: 20px;
         }
+
+        .atencion-card .etiqueta {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 2px;
+        }
+
+        .fila-seleccionada {
+            background-color: #eff6ff;
+        }
     </style>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold text-dark mb-1">Gestión de Atenciones Clínicas</h2>
-        <p class="text-muted mb-0">Registro y evolución médica de los pacientes atendidos en el consultorio.</p>
-    </div>
-    <button class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRegistrarAtencionGenerica">
-        <i class="bi bi-journal-plus me-2"></i>Registrar Evolución Clínica
-    </button>
+@* CUF03 - Administrar Historia Clínica (actor: Odontólogo). Paso 1: busca al paciente y ve sus datos
+   personales. Paso 2: historial de atenciones en orden cronológico. Paso 3: detalle de una atención.
+   Alt 2.a: historia clínica vacía. Alt 3.a: corrección de las observaciones de una atención. *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Historia Clínica</h2>
+    <p class="text-muted mb-0">Consultá el historial completo de un paciente y corregí las observaciones de sus atenciones.</p>
 </div>
 
-<!-- Registro de Atenciones Históricas -->
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Paso 1: búsqueda del paciente (eBusquedaPaciente: tipo y número de documento, o número de historia clínica) -->
 <div class="atencion-card">
-    <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-            <h5 class="fw-bold text-dark mb-1">Atención Odontológica - Carlos Silva</h5>
-            <div class="text-muted small">
-                <span class="badge bg-light text-dark border me-2">HC #09812</span>
-                <span><i class="bi bi-calendar3 me-1"></i> Hoy, 08 de Agosto 2026 - 08:00 AM</span>
-            </div>
-        </div>
-        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">Finalizada</span>
-    </div>
-    <div class="row g-3">
-        <div class="col-md-4">
-            <label class="fw-semibold text-muted small">Tratamiento Realizado</label>
-            <p class="fw-bold text-dark mb-0">Extracción Simple (Pieza 3.8)</p>
-        </div>
-        <div class="col-md-4">
-            <label class="fw-semibold text-muted small">Diagnóstico</label>
-            <p class="text-dark mb-0">Caries penetrante irreversible con indicación exodóncica.</p>
-        </div>
-        <div class="col-md-4">
-            <label class="fw-semibold text-muted small">Insumos Utilizados</label>
-            <p class="text-dark mb-0">Anestesia Tubaria (x2), Gasa estéril (x3), Hilo sutura 3-0.</p>
-        </div>
-    </div>
-    <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
-        <span class="text-muted small"><i class="bi bi-person-badge me-1"></i>Atendido por: Dra. Karina González</span>
-        <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Ver Ficha Completa</button>
-    </div>
-</div>
-
-<div class="atencion-card">
-    <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-            <h5 class="fw-bold text-dark mb-1">Atención Odontológica - Mariana López</h5>
-            <div class="text-muted small">
-                <span class="badge bg-light text-dark border me-2">HC #10110</span>
-                <span><i class="bi bi-calendar3 me-1"></i> 15 de Julio 2026</span>
-            </div>
-        </div>
-        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">Finalizada</span>
-    </div>
-    <div class="row g-3">
-        <div class="col-md-4">
-            <label class="fw-semibold text-muted small">Tratamiento Realizado</label>
-            <p class="fw-bold text-dark mb-0">Limpieza y Tartrectomía Ultrasonido</p>
-        </div>
-        <div class="col-md-4">
-            <label class="fw-semibold text-muted small">Diagnóstico</label>
-            <p class="text-dark mb-0">Gingivitis marginal crónica por placa bacteriana.</p>
-        </div>
-        <div class="col-md-4">
-            <label class="fw-semibold text-muted small">Insumos Utilizados</label>
-            <p class="text-dark mb-0">Pasta profiláctica, Cepillo suave, Revelador placa.</p>
-        </div>
-    </div>
-    <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
-        <span class="text-muted small"><i class="bi bi-person-badge me-1"></i>Atendido por: Dra. Karina González</span>
-        <button class="btn btn-sm btn-outline-primary rounded-pill px-3">Ver Ficha Completa</button>
-    </div>
-</div>
-
-<!-- MODAL REGISTRAR EVOLUCIÓN CLÍNICA GENÉRICA -->
-<div class="modal fade" id="modalRegistrarAtencionGenerica" tabindex="-1" aria-labelledby="modalRegistrarAtencionGenericaLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header bg-primary text-white border-0 py-3">
-                <h5 class="modal-title fw-bold" id="modalRegistrarAtencionGenericaLabel">
-                    <i class="bi bi-journal-plus me-2"></i>Registrar Evolución Clínica
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <form asp-controller="Odontologo" asp-action="GuardarAtencion" method="post">
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-dark">Nombre del Paciente</label>
-                            <input type="text" class="form-control" name="pacienteNombre" placeholder="Ej: Juan Pérez" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-dark">N° de Historia Clínica</label>
-                            <input type="text" class="form-control" name="numeroHc" placeholder="Ej: 10042" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-dark">Tipo de Tratamiento</label>
-                            <select class="form-select" name="tratamiento" required>
-                                <option value="Consulta General">Consulta General / Diagnóstico</option>
-                                <option value="Limpieza y Profilaxis">Limpieza y Profilaxis Ultrasonido</option>
-                                <option value="Restauración Estética">Restauración / Obstrucción con Resina</option>
-                                <option value="Endodoncia">Endodoncia / Tratamiento de Conducto</option>
-                                <option value="Extracción Simple">Extracción / Exodoncia Simple</option>
-                                <option value="Ortodoncia">Ajuste / Control de Ortodoncia</option>
-                                <option value="Implante Dental">Implante / Cirugía Implantológica</option>
-                                <option value="Blanqueamiento">Blanqueamiento Dental</option>
-                                <option value="Control Postoperatorio">Control Postoperatorio</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-dark">Valoración del Estado Bucal</label>
-                            <select class="form-select" name="valoracion">
-                                <option value="Excelente">Excelente estado de salud bucodental</option>
-                                <option value="Buena" selected>Buena higiene, control de rutina</option>
-                                <option value="Regular">Regular (requiere nuevos tratamientos)</option>
-                                <option value="Mala">Prioritario / Requiere tratamiento urgente</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold text-dark">Diagnóstico Odontológico</label>
-                            <textarea class="form-control" name="diagnostico" rows="2" placeholder="Describí el diagnóstico o estado dental del paciente..." required></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold text-dark">Evolución Clínica y Observaciones</label>
-                            <textarea class="form-control" name="observaciones" rows="3" placeholder="Detallá los procedimientos aplicados, piezas tratadas e indicaciones..." required></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold text-dark mb-2">Insumos Utilizados en la Sesión</label>
-                            <div class="p-3 border rounded-3 bg-light">
-                                <div class="row g-2">
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Anestesia Tubaria" id="gins1">
-                                            <label class="form-check-label small" for="gins1">Anestesia Tubaria (1 tubo)</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Resina Fotocurable A2" id="gins2">
-                                            <label class="form-check-label small" for="gins2">Resina Fotocurable A2</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Ácido Grabador + Adhesivo" id="gins3">
-                                            <label class="form-check-label small" for="gins3">Ácido Grabador + Adhesivo</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Gasa Estéril" id="gins4">
-                                            <label class="form-check-label small" for="gins4">Gasa Estéril (Paquete)</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Dique de Goma Aislante" id="gins5">
-                                            <label class="form-check-label small" for="gins5">Dique de Goma Aislante</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="insumos" value="Kit Profilaxis" id="gins6">
-                                            <label class="form-check-label small" for="gins6">Pasta Profiláctica + Cepillo</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <form method="get" asp-controller="Odontologo" asp-action="GestionAtenciones" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small text-muted mb-1">Tipo de documento</label>
+                    <select name="tipoDocumento" class="form-select">
+                        @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones)
+                        {
+                            <option value="@valor" selected="@(Model.TipoDocumento.Equals(valor, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@texto</option>
+                        }
+                    </select>
                 </div>
-                <div class="modal-footer bg-light border-0 justify-content-end gap-2 p-3">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
-                        <i class="bi bi-check-circle me-1"></i> Guardar Evolución en Historia Clínica
+                <div class="col">
+                    <label class="form-label small text-muted mb-1">Número de documento</label>
+                    <input type="text" name="nroDocumento" class="form-control" placeholder="Ej: 34567890" value="@Model.NroDocumento" maxlength="20" required />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                        <i class="bi bi-search me-1"></i> Buscar por documento
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="col-lg-5">
+            <form method="get" asp-controller="Odontologo" asp-action="GestionAtenciones" class="row g-2 align-items-end">
+                <div class="col">
+                    <label class="form-label small text-muted mb-1">N° de historia clínica</label>
+                    <input type="text" name="nroHC" class="form-control" placeholder="Ej: 10042" value="@Model.NroHCBuscada" inputmode="numeric" required />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-primary rounded-pill px-4">
+                        <i class="bi bi-search me-1"></i> Buscar por N° HC
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+@if (!Model.Busco)
+{
+    <div class="text-center text-muted py-5" id="sinBusqueda">
+        <i class="bi bi-journal-medical fs-1 d-block mb-2"></i>
+        Buscá a un paciente por su documento o por su número de historia clínica para ver su historial de atenciones.
+    </div>
+}
+else if (!string.IsNullOrEmpty(Model.MensajeBusqueda))
+{
+    <div class="alert alert-warning rounded-4 border-0 shadow-sm" id="busquedaInvalida">
+        <i class="bi bi-exclamation-circle me-2"></i> @Model.MensajeBusqueda
+    </div>
+}
+else if (historia != null && !encontrada)
+{
+    <div class="alert alert-secondary rounded-4 border-0 shadow-sm" id="pacienteNoEncontrado">
+        <i class="bi bi-info-circle me-2"></i> @historia.Mensaje
+    </div>
+}
+else if (historia != null)
+{
+    <!-- Paso 1 (respuesta): datos personales del paciente -->
+    <div class="atencion-card" id="datosPaciente">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold text-dark mb-1">@historia.Nombre @historia.Apellido</h5>
+                <div class="text-muted small">
+                    <span class="badge bg-light text-dark border me-2">HC #@(historia.NroHC!.Value.ToString("D5"))</span>
+                    <span><i class="bi bi-calendar3 me-1"></i> Historia creada el @(historia.FechaCreacion?.ToString("dd/MM/yyyy"))</span>
+                </div>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <span class="etiqueta">Documento</span>
+                <span class="text-dark">@historia.TipoDocumento @historia.NroDocumento</span>
+            </div>
+            <div class="col-md-3">
+                <span class="etiqueta">Fecha de nacimiento</span>
+                <span class="text-dark">@historia.FechaNacimiento.ToString("dd/MM/yyyy")</span>
+            </div>
+            <div class="col-md-3">
+                <span class="etiqueta">Teléfono</span>
+                <span class="text-dark">@historia.Telefono</span>
+            </div>
+            <div class="col-md-3">
+                <span class="etiqueta">Correo electrónico</span>
+                <span class="text-dark">@historia.Email</span>
+            </div>
+            <div class="col-12">
+                <span class="etiqueta">Domicilio</span>
+                <span class="text-dark">@historia.Domicilio</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paso 2: atenciones en orden cronológico -->
+    <h5 class="fw-bold text-dark mb-3">Atenciones odontológicas</h5>
+    if (historia.Vacia)
+    {
+        <!-- Alt 2.a.1: la historia clínica se encuentra vacía -->
+        <div class="alert alert-info rounded-4 border-0 shadow-sm" id="historiaVacia">
+            <i class="bi bi-info-circle me-2"></i> @historia.Mensaje
+        </div>
+    }
+    else
+    {
+        <div class="atencion-card p-0 overflow-hidden" id="historialAtenciones">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha y hora</th>
+                            <th>Especialidad</th>
+                            <th>Odontólogo</th>
+                            <th>Observaciones</th>
+                            <th>Insumos utilizados</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var atencion in historia.Atenciones)
+                        {
+                            <tr class="@(Model.NroTurnoSolicitado == atencion.NroTurno ? "fila-seleccionada" : "")">
+                                <td class="text-nowrap">@atencion.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@atencion.NombreEspecialidad</td>
+                                <td>@atencion.NombreOdontologo</td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 260px;" title="@atencion.Observaciones">@atencion.Observaciones</div>
+                                </td>
+                                <td>
+                                    @if (atencion.Insumos.Count == 0)
+                                    {
+                                        <span class="text-muted small">Sin insumos</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="small">@string.Join(", ", atencion.Insumos.Select(i => $"{i.NombreInsumo} (x{i.CantidadUtilizada})"))</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <a asp-controller="Odontologo" asp-action="GestionAtenciones"
+                                       asp-route-nroHC="@historia.NroHC" asp-route-nroTurno="@atencion.NroTurno"
+                                       class="btn btn-sm btn-outline-primary rounded-pill px-3">Ver detalle</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <!-- Paso 3: información ampliada de la atención seleccionada -->
+    if (Model.NroTurnoSolicitado.HasValue && Model.Detalle == null)
+    {
+        <div class="alert alert-warning rounded-4 border-0 shadow-sm" id="atencionNoEncontrada">
+            <i class="bi bi-exclamation-circle me-2"></i> No se encontró la atención seleccionada en la historia clínica del paciente.
+        </div>
+    }
+    else if (Model.Detalle != null)
+    {
+        var detalle = Model.Detalle;
+        <div class="atencion-card" id="detalleAtencion">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">Detalle de la atención</h5>
+                    <div class="text-muted small">Turno N° @detalle.NroTurno • @detalle.NombreEspecialidad • @detalle.NombreOdontologo</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <span class="etiqueta">Inicio</span>
+                    <span class="text-dark">@detalle.FechaHoraInicio.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+                <div class="col-md-3">
+                    <span class="etiqueta">Fin</span>
+                    <span class="text-dark">@detalle.FechaHoraFin.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+                <div class="col-md-3">
+                    <span class="etiqueta">Duración real</span>
+                    <span class="text-dark">@detalle.DuracionReal.TotalMinutes.ToString("0") min</span>
+                </div>
+                <div class="col-md-3">
+                    <span class="etiqueta">Monto total</span>
+                    <span class="text-dark">$@detalle.MontoTotal.ToString("N2")</span>
+                </div>
+            </div>
+
+            <span class="etiqueta">Insumos utilizados</span>
+            @if (detalle.Insumos.Count == 0)
+            {
+                <p class="text-muted small mb-3">No se registraron insumos en esta atención.</p>
+            }
+            else
+            {
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr><th>Insumo</th><th class="text-end">Cantidad</th><th class="text-end">Costo unitario</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var insumo in detalle.Insumos)
+                            {
+                                <tr>
+                                    <td>@insumo.NombreInsumo</td>
+                                    <td class="text-end">@insumo.CantidadUtilizada</td>
+                                    <td class="text-end">$@insumo.CostoUnitarioAlMomento.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <!-- Alt 3.a.1: corrección de las observaciones de la atención -->
+            <form method="post" asp-controller="Odontologo" asp-action="CorregirObservaciones"
+                  onsubmit="return confirm('¿Guardar la corrección de las observaciones de esta atención?');">
+                <input type="hidden" name="nroHC" value="@historia.NroHC" />
+                <input type="hidden" name="nroTurno" value="@detalle.NroTurno" />
+                <input type="hidden" name="versionObservaciones" value="@Model.VersionObservaciones" />
+                @if (Model.ObservacionesVigentesEnConflicto != null)
+                {
+                    <div class="alert alert-warning rounded-4 border-0 shadow-sm" id="conflictoObservaciones">
+                        <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Texto vigente registrado por otro usuario</div>
+                        <div class="small" style="white-space: pre-wrap;">@Model.ObservacionesVigentesEnConflicto</div>
+                        <div class="small text-muted mt-2">Abajo quedó lo que habías escrito. Si volvés a guardar, tu texto reemplaza al vigente.</div>
+                    </div>
+                }
+                <label class="etiqueta" for="observaciones">Observaciones</label>
+                <textarea id="observaciones" name="observaciones" class="form-control mb-3" rows="4" maxlength="1000" required>@Model.ObservacionesEnEdicion</textarea>
+                <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" id="btnCorregirObservaciones">
+                    <i class="bi bi-pencil-square me-1"></i> Guardar corrección
+                </button>
+                <span class="text-muted small ms-2">Solo se modifica el texto de las observaciones.</span>
+            </form>
+        </div>
+    }
+}

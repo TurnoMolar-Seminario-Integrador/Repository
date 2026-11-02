@@ -7,31 +7,22 @@ namespace WebAPI
 {
     public static class AgendaTurnoEndpoints
     {
-        // Roles del sistema (Persona.Rol): los mismos valores que usan los [Authorize(Roles = ...)] del
-        // frontend y que AuthService escribe en el claim de rol del token.
-        private const string RolPaciente = "Paciente";
-        private const string RolResponsable = "ResponsableClinica";
-        private const string RolAdmin = "Admin";
-
-        // CUF10, actores: el Paciente (primario) y el Responsable de la Clínica (otros). El Admin es un
-        // Responsable con rol superior.
-        private static bool EsPersonalDeLaClinica(ClaimsPrincipal user) =>
-            user.IsInRole(RolResponsable) || user.IsInRole(RolAdmin);
-
-        // El token trae el documento de quien inició sesión (claims TipoDocumento y NroDocumento, ver
-        // AuthService). Un paciente solo puede operar sobre su propia cuenta.
-        private static bool EsElPropioPaciente(ClaimsPrincipal user, string tipoDocumento, string nroDocumento) =>
-            user.IsInRole(RolPaciente)
-            && string.Equals(user.FindFirst("TipoDocumento")?.Value?.Trim(), tipoDocumento?.Trim(), StringComparison.OrdinalIgnoreCase)
-            && string.Equals(user.FindFirst("NroDocumento")?.Value?.Trim(), nroDocumento?.Trim(), StringComparison.Ordinal);
-
-        private static IResult SinPermiso(string mensaje) =>
-            Results.Json(new { error = mensaje }, statusCode: StatusCodes.Status403Forbidden);
-
+        // Autorización (ver AutorizacionApi). Antes, de /agenda solo pedían token la alta manual, la deuda y el
+        // pago de la deuda: consultar el estado de cualquier paciente por su documento y agendar turnos a
+        // nombre de cualquiera no pedían nada, y la alta manual (alt 3.a, del Responsable) la podía invocar
+        // cualquier usuario autenticado, incluso un paciente.
+        //   - Disponibilidad y política de cancelación: cualquier usuario autenticado (no llevan datos personales).
+        //   - Estado del paciente, deuda y reserva de un turno: el propio paciente o el personal de la clínica
+        //     (la reserva del paciente, solo para sí mismo; el personal usa la alta manual).
         public static void MapAgendaTurnoEndpoints(this WebApplication app)
         {
-            app.MapGet("/agenda/estado-paciente", async (string tipoDocumento, string nroDocumento, IAgendaTurnoService agendaService) =>
+            app.MapGet("/agenda/estado-paciente", async (string tipoDocumento, string nroDocumento, ClaimsPrincipal user, IAgendaTurnoService agendaService) =>
             {
+                if (!AutorizacionApi.EsPersonalDeLaClinica(user) && !AutorizacionApi.EsElPropioPaciente(user, tipoDocumento, nroDocumento))
+                {
+                    return AutorizacionApi.SinPermiso("Solo podés consultar tu propio estado.");
+                }
+
                 try
                 {
                     var estado = await agendaService.ConsultarEstadoParaAgendarAsync(tipoDocumento, nroDocumento);
@@ -42,8 +33,10 @@ namespace WebAPI
                     return Results.NotFound(new { error = ex.Message });
                 }
             })
+            .RequireAuthorization()
             .WithName("ConsultarEstadoParaAgendar")
             .Produces<EstadoPacienteTurnoDTO>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
             .WithOpenApi();
 
@@ -52,6 +45,7 @@ namespace WebAPI
                 var dias = await agendaService.ObtenerDiasDisponiblesAsync(idEspecialidad, diasHaciaAdelante ?? 30);
                 return Results.Ok(dias);
             })
+            .RequireAuthorization()
             .WithName("ObtenerDiasDisponibles")
             .Produces<List<DateTime>>(StatusCodes.Status200OK)
             .WithOpenApi();
@@ -61,6 +55,7 @@ namespace WebAPI
                 var horarios = await agendaService.ObtenerHorariosDisponiblesAsync(idEspecialidad, dia);
                 return Results.Ok(horarios);
             })
+            .RequireAuthorization()
             .WithName("ObtenerHorariosDisponibles")
             .Produces<List<HorarioDisponibleDTO>>(StatusCodes.Status200OK)
             .WithOpenApi();
@@ -69,11 +64,17 @@ namespace WebAPI
             {
                 return Results.Ok(new { mensaje = agendaService.ObtenerMensajePoliticaCancelacion() });
             })
+            .RequireAuthorization()
             .WithName("ObtenerPoliticaCancelacion")
             .WithOpenApi();
 
-            app.MapPost("/agenda/turnos", async (AgendarTurnoRequestDTO request, IAgendaTurnoService agendaService) =>
+            app.MapPost("/agenda/turnos", async (AgendarTurnoRequestDTO request, ClaimsPrincipal user, IAgendaTurnoService agendaService) =>
             {
+                if (!AutorizacionApi.EsElPropioPaciente(user, request.TipoDocumentoPaciente, request.NroDocumentoPaciente))
+                {
+                    return AutorizacionApi.SinPermiso("Solo el propio paciente puede reservar su turno. El personal de la clínica usa el alta manual (/agenda/turnos/manual).");
+                }
+
                 try
                 {
                     var resultado = await agendaService.AgendarTurnoAsync(request);
@@ -84,13 +85,15 @@ namespace WebAPI
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
+            .RequireAuthorization()
             .WithName("AgendarTurno")
             .Produces<AgendarTurnoResultDTO>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
             .WithOpenApi();
 
-            // Alt 3.a: alta manual por el Responsable de la Clínica. Requiere estar autenticado;
-            // el rol específico (Admin / ResponsableClinica) se valida en el frontend que lo invoca.
+            // Alt 3.a: alta manual por el Responsable de la Clínica (o el Admin). Antes alcanzaba con estar
+            // autenticado: un paciente podía invocarla y saltearse las reglas de la reserva propia.
             app.MapPost("/agenda/turnos/manual", async (AgendarTurnoRequestDTO request, IAgendaTurnoService agendaService) =>
             {
                 try
@@ -103,10 +106,11 @@ namespace WebAPI
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
-            .RequireAuthorization()
+            .RequireAuthorization(AutorizacionApi.PoliticaPersonal)
             .WithName("AgendarTurnoManual")
             .Produces<AgendarTurnoResultDTO>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
             .WithOpenApi();
 
             // CUF10, paso 1: saldo de deuda del paciente y detalle del turno que la originó (nroTurno, fecha
@@ -115,9 +119,9 @@ namespace WebAPI
             // personal de la clínica (Responsable / Admin), nadie más.
             app.MapGet("/agenda/deuda", async (string tipoDocumento, string nroDocumento, ClaimsPrincipal user, IRegularizarDeudaService deudaService) =>
             {
-                if (!EsPersonalDeLaClinica(user) && !EsElPropioPaciente(user, tipoDocumento, nroDocumento))
+                if (!AutorizacionApi.EsPersonalDeLaClinica(user) && !AutorizacionApi.EsElPropioPaciente(user, tipoDocumento, nroDocumento))
                 {
-                    return SinPermiso("Solo podés consultar tu propia deuda.");
+                    return AutorizacionApi.SinPermiso("Solo podés consultar tu propia deuda.");
                 }
 
                 try
@@ -151,14 +155,14 @@ namespace WebAPI
             {
                 if (presencial == true)
                 {
-                    if (!EsPersonalDeLaClinica(user))
+                    if (!AutorizacionApi.EsPersonalDeLaClinica(user))
                     {
-                        return SinPermiso("Solo el responsable de la clínica puede registrar un cobro presencial.");
+                        return AutorizacionApi.SinPermiso("Solo el responsable de la clínica puede registrar un cobro presencial.");
                     }
                 }
-                else if (!EsElPropioPaciente(user, tipoDocumento, nroDocumento))
+                else if (!AutorizacionApi.EsElPropioPaciente(user, tipoDocumento, nroDocumento))
                 {
-                    return SinPermiso("Solo el propio paciente puede abonar su deuda a través de la plataforma.");
+                    return AutorizacionApi.SinPermiso("Solo el propio paciente puede abonar su deuda a través de la plataforma.");
                 }
 
                 try

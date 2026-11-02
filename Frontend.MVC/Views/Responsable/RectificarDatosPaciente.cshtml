@@ -1,0 +1,147 @@
+@model Frontend.MVC.Models.RectificarDatosPacienteViewModel
+@{
+    ViewData["Title"] = "Rectificar Datos del Paciente - Clínica Dental Rosario";
+    ViewData["ActiveTab"] = "RectificarDatosPaciente";
+    Layout = "_LayoutResponsable";
+}
+
+@section Styles {
+    <style>
+        .card-paciente {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #eef2f6;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 15px;
+        }
+
+        .card-paciente .form-label {
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+}
+
+@* CUF02 (otro actor: el responsable de la clínica): identifica al paciente por tipo y número de documento,
+   ve sus datos registrados y los rectifica, sin afectar su estado de habilitación. *@
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Rectificar Datos del Paciente</h2>
+    <p class="text-muted">Buscá al paciente por su documento para corregir sus datos personales o su obra social. El estado de habilitación no se modifica.</p>
+</div>
+
+@if (TempData["MensajeExito"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["MensajeExito"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeInfo"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i> @TempData["MensajeInfo"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["MensajeError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["MensajeError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Identificación del paciente -->
+<div class="card-paciente">
+    <form method="get" asp-controller="Responsable" asp-action="RectificarDatosPaciente" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Tipo de documento</label>
+            <select name="tipoDocumento" class="form-select">
+                @foreach (var (valor, texto) in DTOs.TiposDocumento.Opciones)
+                {
+                    <option value="@valor" selected="@(Model.TipoDocumento.Equals(valor, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@texto</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">Número de documento</label>
+            <input type="text" name="nroDocumento" class="form-control" placeholder="Ej: 34567890" value="@Model.NroDocumento" maxlength="20" required />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-search me-1"></i> Buscar paciente
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (Model.Busco && Model.Form == null)
+{
+    <div class="alert alert-secondary rounded-4 border-0 shadow-sm" id="pacienteNoEncontrado">
+        <i class="bi bi-info-circle me-2"></i> @Model.MensajeBusqueda
+    </div>
+}
+else if (Model.Form != null)
+{
+    // La cobertura vigente puede no estar entre las ofrecidas (si su obra social ya no tiene acuerdo activo):
+    // sin una opción propia, el desplegable mostraría "Particular" como si fuera lo registrado.
+    var osVigenteEnLista = string.IsNullOrEmpty(Model.IdentificadorOS)
+        || Model.ObrasSociales.Any(o => string.Equals(o.IdentificadorOS, Model.IdentificadorOS, StringComparison.OrdinalIgnoreCase));
+
+    <!-- CUF02 paso 1: datos personales registrados; pasos 2 y 3: modificar y confirmar -->
+    <div class="card-paciente" id="datosPaciente">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold text-dark mb-1">@Model.Form.Nombre @Model.Form.Apellido</h5>
+                <p class="text-muted small mb-0">@Model.TipoDocumento @Model.NroDocumento</p>
+            </div>
+            <span class="badge @(Model.EstadoPaciente == "HABILITADO" ? "bg-success" : "bg-danger") px-3 py-1 rounded-pill">@Model.EstadoPaciente</span>
+        </div>
+
+        <partial name="_FormDatosPersonales" model="Model.Form" />
+    </div>
+
+    <!-- CUF02 alt 2.a y 2.b: baja, alta o cambio de obra social -->
+    <div class="card-paciente" id="obraSocialPaciente">
+        <h6 class="fw-bold text-dark mb-1">Obra social</h6>
+        <p class="text-muted small mb-3">
+            Cobertura actual: <strong>@(Model.ObraSocialNombre ?? "Particular (sin obra social)")</strong>
+        </p>
+
+        <form method="post" asp-controller="Responsable" asp-action="ActualizarObraSocialPaciente" class="row g-2 align-items-end">
+            <input type="hidden" name="tipoDocumento" value="@Model.TipoDocumento" />
+            <input type="hidden" name="nroDocumento" value="@Model.NroDocumento" />
+
+            <div class="col-md-5">
+                <label class="form-label" for="idObraSocial">Nueva cobertura</label>
+                <select id="idObraSocial" name="idObraSocial" class="form-select">
+                    <option value="" selected="@(string.IsNullOrEmpty(Model.IdentificadorOS) ? "selected" : null)">Particular (sin obra social)</option>
+                    @if (!osVigenteEnLista)
+                    {
+                        <option value="@Model.IdentificadorOS" selected="selected">@(Model.ObraSocialNombre ?? Model.IdentificadorOS) (vigente, sin acuerdo activo)</option>
+                    }
+                    @foreach (var obraSocial in Model.ObrasSociales)
+                    {
+                        <option value="@obraSocial.IdentificadorOS" selected="@(string.Equals(obraSocial.IdentificadorOS, Model.IdentificadorOS, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@obraSocial.NombreOS</option>
+                    }
+                </select>
+                <div class="form-text">Solo se pueden elegir obras sociales con acuerdo activo con la clínica.</div>
+            </div>
+            <div class="col-md-5">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="confirmaPasarAParticular" id="confirmaPasarAParticular" value="true" />
+                    <label class="form-check-label small" for="confirmaPasarAParticular">
+                        Confirmo pasar al paciente a modalidad particular (se elimina el acuerdo de obra social de su cuenta).
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary rounded-pill px-4 w-100">Guardar</button>
+            </div>
+        </form>
+    </div>
+}

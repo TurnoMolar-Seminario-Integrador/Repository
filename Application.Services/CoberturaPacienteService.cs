@@ -185,7 +185,19 @@ namespace Application.Services
 
             // CUF02: la obra social cambia "sin afectar su estado de habilitación".
             paciente.AsignarObraSocial(nueva);
-            await _pacienteRepository.UpdateAsync(paciente);
+            try
+            {
+                await _pacienteRepository.UpdateAsync(paciente);
+            }
+            catch (ConflictoConcurrenciaException)
+            {
+                // Otro usuario modificó al paciente entre la lectura y este guardado: no se guardó nada.
+                return new ActualizarCoberturaResultDTO
+                {
+                    Resultado = ResultadoActualizarCobertura.ConflictoConcurrencia,
+                    Mensaje = "Los datos del paciente fueron modificados por otro usuario mientras se guardaba la obra social. No se guardó ningún cambio: volvé a intentarlo."
+                };
+            }
 
             return new ActualizarCoberturaResultDTO
             {

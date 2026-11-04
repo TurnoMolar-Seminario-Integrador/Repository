@@ -109,6 +109,10 @@ namespace Application.Services
 
         public async Task<IEnumerable<DateTime>> ObtenerDiasDisponiblesAsync(int idEspecialidad, int diasHaciaAdelante = 30)
         {
+            // CUF12 E4.R02 alt 1.d.2: una especialidad deshabilitada no se ofrece para agendar turnos.
+            if (!await EspecialidadHabilitadaAsync(idEspecialidad))
+                return Enumerable.Empty<DateTime>();
+
             // CUF04 alt 5.d.1 / RN15: un odontólogo inhabilitado queda desafectado de la oferta de turnos.
             var odontologos = (await _odontologoRepository.GetByEspecialidadAsync(idEspecialidad))
                 .Where(o => o.EstaHabilitado)
@@ -141,6 +145,8 @@ namespace Application.Services
         public async Task<IEnumerable<HorarioDisponibleDTO>> ObtenerHorariosDisponiblesAsync(int idEspecialidad, DateTime dia)
         {
             var especialidad = await _especialidadRepository.GetAsync(idEspecialidad);
+            if (especialidad != null && !especialidad.EstaHabilitada)
+                return Enumerable.Empty<HorarioDisponibleDTO>();
             var nombreEspecialidad = especialidad?.Nombre ?? string.Empty;
             var nombreDia = DiasSemanaEs[(int)dia.DayOfWeek];
 
@@ -255,6 +261,9 @@ namespace Application.Services
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
 
+            if (!await EspecialidadHabilitadaAsync(request.IdEspecialidad))
+                return EspecialidadDeshabilitada();
+
             if (!odontologo.EstaHabilitado || !TieneDisponibilidadValida(odontologo, request.IdEspecialidad, request.FechaHoraTurno))
             {
                 return new AgendarTurnoResultDTO
@@ -354,6 +363,9 @@ namespace Application.Services
                 };
             }
 
+            if (!await EspecialidadHabilitadaAsync(request.IdEspecialidad))
+                return EspecialidadDeshabilitada();
+
             // Alt 3.a.2: el responsable "indica la especialidad requerida" y "asigna un odontólogo
             // disponible": el odontólogo tiene que atender esa especialidad. En el circuito estándar
             // eso lo garantiza la grilla de disponibilidad horaria (DisponibilidadHoraria es la clase
@@ -447,6 +459,18 @@ namespace Application.Services
 
         // internal (antes private): GestionTurnoService (CUF08 - Reprogramar) reutiliza esta
         // validación en vez de duplicarla -- antes Reprogramar no validaba disponibilidad.
+        private async Task<bool> EspecialidadHabilitadaAsync(int idEspecialidad)
+        {
+            var especialidad = await _especialidadRepository.GetAsync(idEspecialidad);
+            return especialidad == null || especialidad.EstaHabilitada;
+        }
+
+        private static AgendarTurnoResultDTO EspecialidadDeshabilitada() => new()
+        {
+            Resultado = ResultadoAgendarTurno.EspecialidadDeshabilitada,
+            Mensaje = AdministrarEspecialidadService.MensajeEspecialidadDeshabilitada
+        };
+
         internal static bool TieneDisponibilidadValida(Odontologo odontologo, int idEspecialidad, DateTime fechaHoraTurno)
         {
             var nombreDia = DiasSemanaEs[(int)fechaHoraTurno.DayOfWeek];

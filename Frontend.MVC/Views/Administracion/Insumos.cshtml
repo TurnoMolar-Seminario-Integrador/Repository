@@ -7,7 +7,7 @@
 @* CUF09 - Abastecer Insumos y Materiales *@
 <div class="mb-4">
     <h2 class="fw-bold text-dark mb-1">Insumos y materiales</h2>
-    <p class="text-muted">Alta de insumos, reposición de stock y ajuste del costo unitario. El cambio de costo no afecta atenciones previas.</p>
+    <p class="text-muted">Alta de insumos, reposición de stock y ajuste del costo unitario. El cambio de costo no afecta atenciones previas. Un insumo deshabilitado deja de ofrecerse en las atenciones y conserva su historial; solo se puede eliminar si nunca se usó.</p>
 </div>
 <partial name="_Alertas" />
 
@@ -23,7 +23,7 @@
 
 <div class="card border-0 shadow-sm rounded-4 p-4">
     <table class="table align-middle mb-0">
-        <thead><tr><th>Insumo</th><th>Costo unitario</th><th>Stock</th><th>Reponer stock</th><th>Modificar costo</th></tr></thead>
+        <thead><tr><th>Insumo</th><th>Costo unitario</th><th>Stock</th><th>Estado</th><th>Reponer stock</th><th>Modificar costo</th><th>Acciones</th></tr></thead>
         <tbody>
         @foreach (var i in Model)
         {
@@ -31,6 +31,7 @@
                 <td class="fw-semibold">@i.Nombre</td>
                 <td>$@i.CostoUnitario.ToString("N2")</td>
                 <td>@i.StockDisponible</td>
+                <td><span class="badge rounded-pill @(i.Habilitado ? "bg-success" : "bg-secondary")">@(i.Habilitado ? "Habilitado" : "Deshabilitado")</span></td>
                 <td>
                     <form method="post" asp-action="ReponerStock" class="d-flex gap-2">
                         <input type="hidden" name="idInsumo" value="@i.IdInsumo" />
@@ -43,6 +44,17 @@
                         <input type="hidden" name="idInsumo" value="@i.IdInsumo" />
                         <input name="costoUnitario" type="number" step="0.01" min="0.01" class="form-control form-control-sm" placeholder="Nuevo costo" style="max-width:130px" required />
                         <button class="btn btn-sm btn-outline-primary">Guardar</button>
+                    </form>
+                </td>
+                <td class="text-nowrap">
+                    <form method="post" asp-action="@(i.Habilitado ? "DeshabilitarInsumo" : "RehabilitarInsumo")" class="d-inline"
+                          onsubmit="return confirm('@(i.Habilitado ? "¿Deshabilitar el insumo? Deja de ofrecerse en las atenciones." : "¿Rehabilitar el insumo?")');">
+                        <input type="hidden" name="idInsumo" value="@i.IdInsumo" />
+                        <button class="btn btn-sm @(i.Habilitado ? "btn-outline-warning" : "btn-outline-success")">@(i.Habilitado ? "Deshabilitar" : "Rehabilitar")</button>
+                    </form>
+                    <form method="post" asp-action="EliminarInsumo" class="d-inline" onsubmit="return confirm('¿Eliminar el insumo?');">
+                        <input type="hidden" name="idInsumo" value="@i.IdInsumo" />
+                        <button class="btn btn-sm btn-outline-danger">Eliminar</button>
                     </form>
                 </td>
             </tr>

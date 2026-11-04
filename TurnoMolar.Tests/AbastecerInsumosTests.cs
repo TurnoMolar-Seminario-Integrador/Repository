@@ -68,5 +68,66 @@ namespace TurnoMolar.Tests
             using var ctx = bd.NuevoContexto();
             Assert.Equal(3000m, (await ctx.Insumos.FindAsync(1))!.CostoUnitario);
         }
+
+        // ===== E4.R02: alt 3.c (deshabilitar), 3.d (rehabilitar), 3.e (eliminar) =====
+
+        private static Task<DTOs.RegistrarAtencionOdontologicaResultDTO> AtenderConInsumo(BaseDeDatosDePrueba bd, int idInsumo)
+        {
+            int nro;
+            using (var ctx = bd.NuevoContexto())
+                nro = Datos.AgregarTurno(ctx, DateTime.Today.AddHours(10), Datos.PacienteParticular, Datos.OdontologoA, Datos.General, estado: "PRESENTE").NroTurno;
+            return Servicios.FinalizarAtencion(bd.NuevoContexto()).RegistrarAtencionAsync(nro, "DNI", Datos.OdontologoA,
+                DateTime.Today.AddHours(10), DateTime.Today.AddHours(11), "Control",
+                new List<DTOs.DetalleInsumoInputDTO> { new() { IdInsumo = idInsumo, Cantidad = 1 } });
+        }
+
+        [Fact]
+        public async Task Alt_3c_deshabilita_y_no_se_ofrece_en_atenciones()
+        {
+            using var bd = new BaseDeDatosDePrueba();
+            var r = await new AbastecerInsumosService(bd.NuevoContexto()).DeshabilitarAsync(1);
+            Assert.True(r.Exito);
+            Assert.Equal(AbastecerInsumosService.MensajeConfirmacionDeshabilitacionInsumo, r.Mensaje);
+            Assert.False((await new AbastecerInsumosService(bd.NuevoContexto()).ListarAsync()).Single(i => i.IdInsumo == 1).Habilitado);
+
+            var atencion = await AtenderConInsumo(bd, 1);
+            Assert.Equal(DTOs.ResultadoRegistrarAtencion.DatosInvalidos, atencion.Resultado);
+            Assert.StartsWith(AbastecerInsumosService.MensajeInsumoDeshabilitado, atencion.Mensaje);
+        }
+
+        [Fact]
+        public async Task Alt_3d_rehabilita()
+        {
+            using var bd = new BaseDeDatosDePrueba();
+            var servicio = new AbastecerInsumosService(bd.NuevoContexto());
+            await servicio.DeshabilitarAsync(1);
+            var r = await servicio.RehabilitarAsync(1);
+            Assert.True(r.Exito);
+            Assert.Equal(AbastecerInsumosService.MensajeConfirmacionRehabilitacionInsumo, r.Mensaje);
+        }
+
+        [Fact]
+        public async Task Alt_3e_elimina_un_insumo_sin_uso()
+        {
+            using var bd = new BaseDeDatosDePrueba();
+            var r = await new AbastecerInsumosService(bd.NuevoContexto()).EliminarAsync(1);
+            Assert.True(r.Exito);
+            Assert.Equal(AbastecerInsumosService.MensajeConfirmacionEliminacionInsumo, r.Mensaje);
+            using var ctx = bd.NuevoContexto();
+            Assert.False(await ctx.Insumos.AnyAsync(i => i.IdInsumo == 1));
+        }
+
+        [Fact]
+        public async Task Alt_3e2a_no_elimina_un_insumo_usado_en_atenciones()
+        {
+            using var bd = new BaseDeDatosDePrueba();
+            var atencion = await AtenderConInsumo(bd, 1);
+            Assert.Equal(DTOs.ResultadoRegistrarAtencion.Registrada, atencion.Resultado);
+
+            var r = await new AbastecerInsumosService(bd.NuevoContexto()).EliminarAsync(1);
+            Assert.False(r.Exito);
+            Assert.Equal("3.e.2.a.1", r.Codigo);
+            Assert.Equal(AbastecerInsumosService.MensajeInsumoConHistorial, r.Mensaje);
+        }
     }
 }

@@ -294,7 +294,8 @@ namespace TurnoMolar.Controllers
                     .ThenInclude(d => d.Especialidad)
                 .ToListAsync();
 
-            var especialidades = await _context.Especialidades.ToListAsync();
+            // CUF12 E4.R02 alt 1.d.2: solo se muestran las especialidades que la clínica ofrece.
+            var especialidades = (await _context.Especialidades.ToListAsync()).Where(e => e.EstaHabilitada).ToList();
 
             var viewModel = new DashboardPacienteViewModel
             {
@@ -335,7 +336,8 @@ namespace TurnoMolar.Controllers
                 .Include(o => o.DisponibilidadesHorarias)
                     .ThenInclude(d => d.Especialidad)
                 .ToListAsync();
-            var especialidades = await _context.Especialidades.ToListAsync();
+            // CUF12 E4.R02 alt 1.d.2: solo se muestran las especialidades que la clínica ofrece.
+            var especialidades = (await _context.Especialidades.ToListAsync()).Where(e => e.EstaHabilitada).ToList();
 
             // CUU04 - Valorar Atención Odontológica, camino básico paso 1: listado de
             // atenciones finalizadas pendientes de valoración (pestaña "Para Valorar").

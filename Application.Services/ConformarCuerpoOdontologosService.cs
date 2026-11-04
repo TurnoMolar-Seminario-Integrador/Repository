@@ -102,8 +102,12 @@ namespace Application.Services
                 return ResultadoOperacionDTO.Error("3", MensajeEspecialidadYaAsignada);
             foreach (var esp in datos.Especialidades)
             {
-                if (!await _contexto.Especialidades.AnyAsync(e => e.IdEspecialidad == esp.IdEspecialidad))
+                var especialidad = await _contexto.Especialidades.FindAsync(esp.IdEspecialidad);
+                if (especialidad == null)
                     return ResultadoOperacionDTO.Error("3", MensajeEspecialidadInexistente);
+                // CUF12 E4.R02 alt 1.d.2: una especialidad deshabilitada no se asigna a odontólogos.
+                if (!especialidad.EstaHabilitada)
+                    return ResultadoOperacionDTO.Error("3", AdministrarEspecialidadService.MensajeEspecialidadDeshabilitada);
                 if (esp.Franjas == null || esp.Franjas.Count == 0)
                     return ResultadoOperacionDTO.Error("4", MensajeFranjaRequerida);
             }
@@ -170,8 +174,12 @@ namespace Application.Services
             var odontologo = await CargarAsync(tipoDocumento, nroDocumento);
             if (odontologo == null)
                 return ResultadoOperacionDTO.Error("5.b.1", MensajeOdontologoInexistente);
-            if (!await _contexto.Especialidades.AnyAsync(e => e.IdEspecialidad == idEspecialidad))
+            var especialidad = await _contexto.Especialidades.FindAsync(idEspecialidad);
+            if (especialidad == null)
                 return ResultadoOperacionDTO.Error("5.b.1", MensajeEspecialidadInexistente);
+            // CUF12 E4.R02 alt 1.d.2.
+            if (!especialidad.EstaHabilitada)
+                return ResultadoOperacionDTO.Error("5.b.1", AdministrarEspecialidadService.MensajeEspecialidadDeshabilitada);
             if (odontologo.DisponibilidadesHorarias.Any(d => d.IdEspecialidad == idEspecialidad))
                 return ResultadoOperacionDTO.Error("5.b.1", MensajeEspecialidadYaAsignada);
             if (franjas == null || franjas.Count == 0)

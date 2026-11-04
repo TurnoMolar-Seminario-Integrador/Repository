@@ -55,6 +55,19 @@ namespace TurnoMolar.Controllers
         public async Task<IActionResult> ModificarArancel(int idEspecialidad, decimal? arancelParticular) =>
             Volver(await _especialidades.ModificarArancelAsync(idEspecialidad, arancelParticular), nameof(Especialidades));
 
+        // CUF12 E4.R02, alt 1.d / 1.e / 1.f.
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeshabilitarEspecialidad(int idEspecialidad) =>
+            Volver(await _especialidades.DeshabilitarAsync(idEspecialidad), nameof(Especialidades));
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> RehabilitarEspecialidad(int idEspecialidad) =>
+            Volver(await _especialidades.RehabilitarAsync(idEspecialidad), nameof(Especialidades));
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> EliminarEspecialidad(int idEspecialidad) =>
+            Volver(await _especialidades.EliminarAsync(idEspecialidad), nameof(Especialidades));
+
         // ===================== CUF09 - Insumos =====================
 
         [HttpGet]
@@ -72,12 +85,25 @@ namespace TurnoMolar.Controllers
         public async Task<IActionResult> ModificarCostoInsumo(int idInsumo, decimal? costoUnitario) =>
             Volver(await _insumos.ModificarCostoAsync(idInsumo, costoUnitario), nameof(Insumos));
 
+        // CUF09 E4.R02, alt 3.c / 3.d / 3.e.
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeshabilitarInsumo(int idInsumo) =>
+            Volver(await _insumos.DeshabilitarAsync(idInsumo), nameof(Insumos));
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> RehabilitarInsumo(int idInsumo) =>
+            Volver(await _insumos.RehabilitarAsync(idInsumo), nameof(Insumos));
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> EliminarInsumo(int idInsumo) =>
+            Volver(await _insumos.EliminarAsync(idInsumo), nameof(Insumos));
+
         // ===================== CUF06 - Obras sociales y convenios =====================
 
         [HttpGet]
         public async Task<IActionResult> ObrasSociales()
         {
-            ViewBag.Especialidades = await _especialidades.ListarAsync();
+            ViewBag.Especialidades = await _especialidades.ListarHabilitadasAsync();
             return View(await _convenios.ListarAsync());
         }
 
@@ -126,7 +152,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public async Task<IActionResult> Odontologos()
         {
-            ViewBag.Especialidades = await _especialidades.ListarAsync();
+            ViewBag.Especialidades = await _especialidades.ListarHabilitadasAsync();
             return View(await _odontologos.ListarAsync());
         }
 
@@ -206,7 +232,7 @@ namespace TurnoMolar.Controllers
         [HttpGet]
         public async Task<IActionResult> AtencionExtraordinaria(string? tipoDocumento, string? nroDocumento)
         {
-            ViewBag.Especialidades = await _especialidades.ListarAsync();
+            ViewBag.Especialidades = await _especialidades.ListarHabilitadasAsync();
             ViewBag.Odontologos = (await _odontologos.ListarAsync()).Where(o => o.Habilitado).ToList();
             ViewBag.TipoDocumento = tipoDocumento ?? "DNI";
             ViewBag.NroDocumento = nroDocumento;

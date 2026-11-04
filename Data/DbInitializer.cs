@@ -13,6 +13,18 @@ namespace Data
                 // Asegura la creación de las 15 tablas según el MDF
                 await context.Database.EnsureCreatedAsync();
 
+                // EnsureCreated no modifica una base ya creada: agrega las columnas de estado de
+                // CUF12 / CUF09 (E4.R02) si faltan, para no tener que borrar la base.
+                if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        "IF COL_LENGTH('Especialidades', 'EstadoEspecialidad') IS NULL " +
+                        "ALTER TABLE Especialidades ADD EstadoEspecialidad NVARCHAR(20) NOT NULL CONSTRAINT DF_Especialidades_EstadoEspecialidad DEFAULT 'HABILITADA';");
+                    await context.Database.ExecuteSqlRawAsync(
+                        "IF COL_LENGTH('Insumos', 'EstadoInsumo') IS NULL " +
+                        "ALTER TABLE Insumos ADD EstadoInsumo NVARCHAR(20) NOT NULL CONSTRAINT DF_Insumos_EstadoInsumo DEFAULT 'HABILITADO';");
+                }
+
                 // 1. OBRAS SOCIALES (PK NVARCHAR(20))
                 if (!await context.ObrasSociales.AnyAsync())
                 {

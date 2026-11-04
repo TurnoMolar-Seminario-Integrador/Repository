@@ -46,6 +46,8 @@ namespace Data
                 e.Property(es => es.Nombre).IsRequired().HasMaxLength(100);
                 e.HasIndex(es => es.Nombre).IsUnique();
                 e.Property(es => es.ArancelParticular).HasPrecision(12, 2);
+                // CUF12 E4.R02, alt 1.d / 1.e.
+                e.Property(es => es.EstadoEspecialidad).IsRequired().HasMaxLength(20).HasDefaultValue(EstadosEspecialidad.Habilitada);
             });
 
             // 2. DISPONIBILIDADES HORARIAS (PK Compuesta)
@@ -279,6 +281,8 @@ namespace Data
                 e.Property(i => i.Nombre).IsRequired().HasMaxLength(150);
                 e.HasIndex(i => i.Nombre).IsUnique();
                 e.Property(i => i.CostoUnitario).HasPrecision(12, 2);
+                // CUF09 E4.R02, alt 3.c / 3.d.
+                e.Property(i => i.EstadoInsumo).IsRequired().HasMaxLength(20).HasDefaultValue(EstadosInsumo.Habilitado);
             });
 
             // 13. VALORACIONES

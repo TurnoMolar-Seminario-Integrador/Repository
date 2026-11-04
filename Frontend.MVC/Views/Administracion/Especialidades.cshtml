@@ -7,7 +7,7 @@
 @* CUF12 - Administrar Especialidad *@
 <div class="mb-4">
     <h2 class="fw-bold text-dark mb-1">Especialidades</h2>
-    <p class="text-muted">Catálogo de especialidades y su arancel particular. Un cambio de arancel no modifica los pagos ya registrados.</p>
+    <p class="text-muted">Catálogo de especialidades y su arancel particular. Un cambio de arancel no modifica los pagos ya registrados. Una especialidad deshabilitada deja de ofrecerse y conserva su historial; solo se puede eliminar si nunca se usó.</p>
 </div>
 <partial name="_Alertas" />
 
@@ -28,18 +28,30 @@
 
 <div class="card border-0 shadow-sm rounded-4 p-4">
     <table class="table align-middle mb-0">
-        <thead><tr><th>Especialidad</th><th>Arancel particular</th><th style="width:320px">Modificar arancel</th></tr></thead>
+        <thead><tr><th>Especialidad</th><th>Arancel particular</th><th>Estado</th><th style="width:320px">Modificar arancel</th><th>Acciones</th></tr></thead>
         <tbody>
         @foreach (var e in Model)
         {
             <tr>
                 <td class="fw-semibold">@e.Nombre</td>
                 <td>$@e.ArancelParticular.ToString("N2")</td>
+                <td><span class="badge rounded-pill @(e.Habilitada ? "bg-success" : "bg-secondary")">@(e.Habilitada ? "Habilitada" : "Deshabilitada")</span></td>
                 <td>
                     <form method="post" asp-action="ModificarArancel" class="d-flex gap-2">
                         <input type="hidden" name="idEspecialidad" value="@e.IdEspecialidad" />
                         <input name="arancelParticular" type="number" step="0.01" min="0.01" class="form-control form-control-sm" placeholder="Nuevo arancel" required />
                         <button class="btn btn-sm btn-outline-primary">Guardar</button>
+                    </form>
+                </td>
+                <td class="text-nowrap">
+                    <form method="post" asp-action="@(e.Habilitada ? "DeshabilitarEspecialidad" : "RehabilitarEspecialidad")" class="d-inline"
+                          onsubmit="return confirm('@(e.Habilitada ? "¿Deshabilitar la especialidad? Deja de ofrecerse para turnos, odontólogos y convenios." : "¿Rehabilitar la especialidad?")');">
+                        <input type="hidden" name="idEspecialidad" value="@e.IdEspecialidad" />
+                        <button class="btn btn-sm @(e.Habilitada ? "btn-outline-warning" : "btn-outline-success")">@(e.Habilitada ? "Deshabilitar" : "Rehabilitar")</button>
+                    </form>
+                    <form method="post" asp-action="EliminarEspecialidad" class="d-inline" onsubmit="return confirm('¿Eliminar la especialidad del catálogo?');">
+                        <input type="hidden" name="idEspecialidad" value="@e.IdEspecialidad" />
+                        <button class="btn btn-sm btn-outline-danger">Eliminar</button>
                     </form>
                 </td>
             </tr>

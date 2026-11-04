@@ -44,7 +44,7 @@ Convención: cada servicio cita el paso del caso de uso en un comentario (`// Al
 | ME Obra social | Disponible ↔ No Disponible | `EstadosObraSocial` | — |
 | MDF | Convenios.ArancelConvenio CHECK > 0 | `MensajeArancelInvalido` | — |
 
-## CUF09 – Abastecer insumos y materiales (E4.R01 v1.02)
+## CUF09 – Abastecer insumos y materiales (E4.R02 v1.03)
 
 | Artefacto | Elemento | Código | Prueba |
 | :--- | :--- | :--- | :--- |
@@ -54,6 +54,9 @@ Convención: cada servicio cita el paso del caso de uso en un comentario (`// Al
 | Alt 3.a | eReposicionStock → sConfirmacionReposicionStock | `ReponerStockAsync`, `Insumo.ReponerStock` | `Alt_3a_repone_stock_e_informa_el_total`, `Alt_3a_rechaza_cantidad_no_positiva` |
 | Alt 3.b / RN16 | eAjusteCostoUnitario | `ModificarCostoAsync`, `MensajeAjusteCostoExitoso` | `Alt_3b_modifica_el_costo` |
 | MDF | CostoUnitario > 0, StockDisponible ≥ 0 | `MensajeCostoInvalido`, `MensajeStockInvalido` | — |
+| Alt 3.c (R02) | deshabilitar; estadoInsumo(d) = "Deshabilitado"; no se ofrece en CUU03 | `DeshabilitarAsync`, `Insumo.Deshabilitar`, `EstadosInsumo`, filtro en `OdontologoController` y `FinalizarAtencionService` | `Alt_3c_deshabilita_y_no_se_ofrece_en_atenciones` |
+| Alt 3.d (R02) | rehabilitar | `RehabilitarAsync`, `Insumo.Rehabilitar` | `Alt_3d_rehabilita` |
+| Alt 3.e (R02) | eliminar si nunca se usó; si no, mensajeInsumoConHistorial | `EliminarAsync`, `MensajeInsumoConHistorial` | `Alt_3e_elimina_un_insumo_sin_uso`, `Alt_3e2a_no_elimina_un_insumo_usado_en_atenciones` |
 
 ## CUF11 – Coordinar atención extraordinaria (E4.R01 v1.01)
 
@@ -66,7 +69,7 @@ Convención: cada servicio cita el paso del caso de uso en un comentario (`// Al
 | Alt 3.a | el responsable cancela: no se registra nada | botón Cancelar en la vista | prueba manual |
 | GUI | Atención Extraordinaria + comprobante | `AtencionExtraordinaria.cshtml`, `ComprobanteExtraordinario.cshtml` | prueba manual |
 
-## CUF12 – Administrar especialidad (E4.R01 v1.01)
+## CUF12 – Administrar especialidad (E4.R02 v1.02)
 
 | Artefacto | Elemento | Código | Prueba |
 | :--- | :--- | :--- | :--- |
@@ -74,6 +77,10 @@ Convención: cada servicio cita el paso del caso de uso en un comentario (`// Al
 | Alt 1.a | mensajeSobreNombre | `MensajeSobreNombre` | `Alt_1a_rechaza_nombre_repetido_sin_distinguir_mayusculas` |
 | Alt 1.b | mensajeSobreArancel | `MensajeSobreArancel` | `Alt_1b_rechaza_arancel_no_positivo` |
 | Alt 1.c / RN16 | modificar arancel; mensajeConfirmacionUpdate | `ModificarArancelAsync` | `Alt_1c_modifica_el_arancel`, `Alt_1c2a_rechaza_arancel_invalido_al_modificar` |
+| Alt 1.d (R02) | deshabilitar; estadoEspecialidad(d) = "Deshabilitada"; deja de ofrecerse en CUU01, CUF04, CUF06 y CUF11 | `DeshabilitarAsync`, `Especialidad.Deshabilitar`, `EstadosEspecialidad`, `ListarHabilitadasAsync`, validaciones en `AgendaTurnoService`, `ConformarCuerpoOdontologosService`, `AdministrarConveniosService`, `CoordinarAtencionExtraordinariaService` | `Alt_1d_deshabilita_y_deja_de_ofrecerse`, `Alt_1d_especialidad_deshabilitada_no_se_ofrece_para_convenios_nuevos` |
+| Alt 1.d.2.a (R02) | turnos pendientes; mensajeTurnosPendientes | `MensajeTurnosPendientes` | `Alt_1d2a_no_deshabilita_con_turnos_pendientes` |
+| Alt 1.e (R02) | rehabilitar | `RehabilitarAsync`, `Especialidad.Rehabilitar` | `Alt_1e_rehabilita` |
+| Alt 1.f (R02) | eliminar si no tiene odontólogos, convenios ni turnos; si no, mensajeEspecialidadConHistorial | `EliminarAsync`, `MensajeEspecialidadConHistorial` | `Alt_1f_elimina_una_especialidad_sin_uso`, `Alt_1f2a_no_elimina_una_especialidad_con_historial` |
 
 ## Cierre de jornada (decisión del usuario sobre la ambigüedad A3)
 

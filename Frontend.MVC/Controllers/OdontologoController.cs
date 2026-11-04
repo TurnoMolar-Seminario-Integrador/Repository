@@ -7,23 +7,24 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TurnoMolar.Controllers
 {
-    [Authorize(Roles = "Odontologo,ResponsableClinica,Admin")]
+    // Consola del Odontólogo: solo sus propios turnos y su parte de la atención (CUU03, pasos 1 a
+    // 4). Todo lo que es del responsable de la clínica (control de asistencia, gestión de turnos,
+    // alta manual y cobro) está en ResponsableController. Una persona que es odontólogo y
+    // responsable entra a cada consola con la contraseña del rol correspondiente.
+    [Authorize(Roles = "Odontologo")]
     public class OdontologoController : Controller
     {
-        private readonly IAsistenciaTurnoService _asistenciaTurnoService;
         private readonly ITurnoRepository _turnoRepository;
         private readonly IFinalizarAtencionService _finalizarAtencionService;
         private readonly IInsumoRepository _insumoRepository;
         private readonly IOdontologoRepository _odontologoRepository;
 
         public OdontologoController(
-            IAsistenciaTurnoService asistenciaTurnoService,
             ITurnoRepository turnoRepository,
             IFinalizarAtencionService finalizarAtencionService,
             IInsumoRepository insumoRepository,
             IOdontologoRepository odontologoRepository)
         {
-            _asistenciaTurnoService = asistenciaTurnoService;
             _turnoRepository = turnoRepository;
             _finalizarAtencionService = finalizarAtencionService;
             _insumoRepository = insumoRepository;
@@ -32,66 +33,87 @@ namespace TurnoMolar.Controllers
 
         // Defecto corregido: la matrícula quedaba hardcodeada en "MP 3840" (la de Karina
         // González) sin importar qué profesional estuviera logueado. Ahora se busca la del
-        // odontólogo real; si quien inició sesión es un ResponsableClinica/Admin sin fila propia
-        // en Odontologos, se deja en blanco en vez de mostrar una matrícula ajena.
+        // odontólogo real.
         private async Task CargarDatosOdontologoViewDataAsync()
         {
             ViewData["NombreDoctor"] = User.FindFirst("NombreCompleto")?.Value ?? "Profesional";
-            ViewData["RolDoctor"] = User.IsInRole("ResponsableClinica") ? "RESPONSABLE CLÍNICO" : "ODONTÓLOGO";
+            ViewData["RolDoctor"] = "ODONTÓLOGO";
 
             var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
             var nroDocumento = User.FindFirst("NroDocumento")?.Value;
 
             string? matricula = null;
+            string? email = null;
+            string? telefono = null;
+            string? estadoOdontologo = null;
+
             if (!string.IsNullOrWhiteSpace(tipoDocumento) && !string.IsNullOrWhiteSpace(nroDocumento))
             {
                 var odontologo = await _odontologoRepository.GetAsync(tipoDocumento, nroDocumento);
                 matricula = odontologo?.Matricula;
+                email = odontologo?.Email;
+                telefono = odontologo?.Telefono;
+                estadoOdontologo = odontologo?.EstadoOdontologo;
             }
 
             ViewData["Matricula"] = matricula ?? string.Empty;
+            ViewData["Email"] = email ?? string.Empty;
+            ViewData["Telefono"] = telefono ?? string.Empty;
+            ViewData["EstadoOdontologo"] = estadoOdontologo ?? string.Empty;
         }
 
-        // GET: /Odontologo/Index -> Panel Principal del Odontólogo / Responsable de la Clínica
+        // Turnos de hoy del odontólogo con la sesión iniciada (y solo los suyos), sin los
+        // cancelados ni los reprogramados.
+        private async Task<List<Turno>> ObtenerTurnosDeHoyAsync()
+        {
+            var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
+            var nroDocumento = User.FindFirst("NroDocumento")?.Value;
+
+            if (string.IsNullOrWhiteSpace(tipoDocumento) || string.IsNullOrWhiteSpace(nroDocumento))
+            {
+                return new List<Turno>();
+            }
+
+            var turnosOdontologo = await _turnoRepository.GetByOdontologoAsync(tipoDocumento, nroDocumento);
+            return turnosOdontologo
+                .Where(t => t.FechaHoraTurno.Date == DateTime.Today
+                        && t.EstadoTurno != "CANCELADO"
+                        && t.EstadoTurno != "REPROGRAMADO")
+                .OrderBy(t => t.FechaHoraTurno)
+                .ToList();
+        }
+
+        // GET: /Odontologo/Index -> Panel Principal del Odontólogo
         [HttpGet]
         public async Task<IActionResult> Index()
         {
             await CargarDatosOdontologoViewDataAsync();
+            ViewData["TurnosHoy"] = (await ObtenerTurnosDeHoyAsync()).Count;
             return View();
         }
 
         // GET: /Odontologo/TurnosDelDia -> Agenda de Hoy. Cada odontólogo ve únicamente sus
         // propios turnos de hoy, con el estado real (reflejo de lo que CUU02 haya registrado).
+        // El cobro no se hace desde acá: lo registra el responsable de la clínica en su propia
+        // agenda (Responsable/TurnosDelDia), que reúne los turnos de todos los odontólogos.
         [HttpGet]
         public async Task<IActionResult> TurnosDelDia()
         {
             await CargarDatosOdontologoViewDataAsync();
 
-            var tipoDocumento = User.FindFirst("TipoDocumento")?.Value;
-            var nroDocumento = User.FindFirst("NroDocumento")?.Value;
-
-            var agenda = new List<TurnoAgendaDelDiaDTO>();
-            if (!string.IsNullOrWhiteSpace(tipoDocumento) && !string.IsNullOrWhiteSpace(nroDocumento))
-            {
-                var turnosOdontologo = await _turnoRepository.GetByOdontologoAsync(tipoDocumento, nroDocumento);
-                agenda = turnosOdontologo
-                    .Where(t => t.FechaHoraTurno.Date == DateTime.Today
-                            && t.EstadoTurno != "CANCELADO"
-                            && t.EstadoTurno != "REPROGRAMADO")
-                    .OrderBy(t => t.FechaHoraTurno)
-                    .Select(t => new TurnoAgendaDelDiaDTO
-                    {
-                        NroTurno = t.NroTurno,
-                        FechaHoraTurno = t.FechaHoraTurno,
-                        NombrePaciente = t.Paciente?.Nombre ?? string.Empty,
-                        ApellidoPaciente = t.Paciente?.Apellido ?? string.Empty,
-                        NombreEspecialidad = t.Especialidad?.Nombre ?? string.Empty,
-                        ModalidadPago = t.ModalidadPagoElegida == "OBRA_SOCIAL" ? "Obra Social" : "Particular",
-                        EstadoTurno = t.EstadoTurno,
-                        DescripcionMaterial = t.DescripcionMaterial
-                    })
-                    .ToList();
-            }
+            var agenda = (await ObtenerTurnosDeHoyAsync())
+                .Select(t => new TurnoAgendaDelDiaDTO
+                {
+                    NroTurno = t.NroTurno,
+                    FechaHoraTurno = t.FechaHoraTurno,
+                    NombrePaciente = t.Paciente?.Nombre ?? string.Empty,
+                    ApellidoPaciente = t.Paciente?.Apellido ?? string.Empty,
+                    NombreEspecialidad = t.Especialidad?.Nombre ?? string.Empty,
+                    ModalidadPago = t.ModalidadPagoElegida == "OBRA_SOCIAL" ? "Obra Social" : "Particular",
+                    EstadoTurno = t.EstadoTurno,
+                    DescripcionMaterial = t.DescripcionMaterial
+                })
+                .ToList();
 
             // Paso 3: catálogo de insumos para el formulario de "Iniciar Atención".
             var insumos = await _insumoRepository.GetAllAsync();
@@ -106,75 +128,6 @@ namespace TurnoMolar.Controllers
                 .ToList();
 
             return View(agenda);
-        }
-
-        // GET: /Odontologo/GestionTurnos -> Calendario completo, cancelaciones y reprogramaciones
-        [HttpGet]
-        public async Task<IActionResult> GestionTurnos()
-        {
-            await CargarDatosOdontologoViewDataAsync();
-            return View();
-        }
-
-        // GET: /Odontologo/ControlAsistencias -> CUU02, camino básico, paso 1: el responsable
-        // de la clínica busca el turno del paciente por tipo y número de documento.
-        // Actor primario de CUU02: Responsable de la Clínica. El Odontólogo es actor
-        // secundario (solo recibe la notificación de que el paciente llegó) y no debe poder
-        // ejecutar esta acción él mismo.
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpGet]
-        public async Task<IActionResult> ControlAsistencias(string? tipoDocumento, string? nroDocumento)
-        {
-            await CargarDatosOdontologoViewDataAsync();
-
-            if (!string.IsNullOrWhiteSpace(tipoDocumento) && !string.IsNullOrWhiteSpace(nroDocumento))
-            {
-                ViewBag.TipoDocumentoBuscado = tipoDocumento.Trim();
-                ViewBag.NroDocumentoBuscado = nroDocumento.Trim();
-                ViewBag.Busqueda = await _asistenciaTurnoService.BuscarTurnoDelDiaAsync(tipoDocumento.Trim(), nroDocumento.Trim());
-            }
-
-            return View();
-        }
-
-        // POST: /Odontologo/RegistrarPresente -> CUU02, camino básico, paso 2.
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarPresente(int nroTurno)
-        {
-            var resultado = await _asistenciaTurnoService.RegistrarPresenteAsync(nroTurno);
-
-            if (resultado.Resultado == ResultadoRegistrarAsistencia.Presente)
-            {
-                TempData["MensajeExito"] = resultado.Mensaje;
-            }
-            else
-            {
-                TempData["MensajeError"] = resultado.Mensaje;
-            }
-
-            return RedirectToAction("ControlAsistencias");
-        }
-
-        // POST: /Odontologo/RegistrarAusente -> CUU02, alt 1.b (registra ausencia + penalización).
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarAusente(int nroTurno)
-        {
-            var resultado = await _asistenciaTurnoService.RegistrarAusenteAsync(nroTurno);
-
-            if (resultado.Resultado == ResultadoRegistrarAsistencia.Ausente)
-            {
-                TempData["MensajeAdvertencia"] = resultado.Mensaje;
-            }
-            else
-            {
-                TempData["MensajeError"] = resultado.Mensaje;
-            }
-
-            return RedirectToAction("ControlAsistencias");
         }
 
         // GET: /Odontologo/GestionAtenciones -> Registro de fichas médicas e historias clínicas
@@ -225,78 +178,6 @@ namespace TurnoMolar.Controllers
             if (resultado.Resultado == ResultadoRegistrarAtencion.Registrada)
             {
                 TempData["MensajeExito"] = resultado.Mensaje;
-            }
-            else
-            {
-                TempData["MensajeError"] = resultado.Mensaje;
-            }
-
-            return RedirectToAction("TurnosDelDia");
-        }
-
-        // GET: /Odontologo/DatosParaCobro -> CUU03, camino básico, paso 5 (la respuesta del
-        // sistema): "El responsable de la clínica indica al sistema que se procederá al cobro.
-        // El sistema muestra el monto total a pagar según la modalidad de pago del paciente."
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpGet]
-        public async Task<IActionResult> DatosParaCobro(int nroTurno)
-        {
-            var resultado = await _finalizarAtencionService.ObtenerDatosParaCobroAsync(nroTurno);
-            return Json(resultado);
-        }
-
-        // POST: /Odontologo/RegistrarCobroParticular -> CUU03, camino básico, paso 6.
-        // Actor: Responsable de la Clínica (el Odontólogo no cobra).
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarCobroParticular(int nroTurno, decimal monto, string tipoMetodoPago)
-        {
-            var resultado = await _finalizarAtencionService.RegistrarCobroParticularAsync(nroTurno, monto, tipoMetodoPago);
-
-            if (resultado.Resultado == ResultadoRegistrarCobro.Finalizado)
-            {
-                TempData["MensajeExito"] = resultado.Mensaje;
-            }
-            else
-            {
-                TempData["MensajeError"] = resultado.Mensaje;
-            }
-
-            return RedirectToAction("TurnosDelDia");
-        }
-
-        // POST: /Odontologo/RegistrarCobroObraSocial -> CUU03, alt 6.a.
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarCobroObraSocial(int nroTurno, string tipoMetodoPago, decimal aportePaciente, decimal aporteObraSocial)
-        {
-            var resultado = await _finalizarAtencionService.RegistrarCobroObraSocialAsync(nroTurno, tipoMetodoPago, aportePaciente, aporteObraSocial);
-
-            if (resultado.Resultado == ResultadoRegistrarCobro.Finalizado)
-            {
-                TempData["MensajeExito"] = resultado.Mensaje;
-            }
-            else
-            {
-                TempData["MensajeError"] = resultado.Mensaje;
-            }
-
-            return RedirectToAction("TurnosDelDia");
-        }
-
-        // POST: /Odontologo/RegistrarFaltaDePago -> CUU03, alt 6.b (inhabilita al paciente).
-        [Authorize(Roles = "ResponsableClinica,Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarFaltaDePago(int nroTurno)
-        {
-            var resultado = await _finalizarAtencionService.RegistrarFaltaDePagoAsync(nroTurno);
-
-            if (resultado.Resultado == ResultadoRegistrarCobro.FaltaDePago)
-            {
-                TempData["MensajeAdvertencia"] = resultado.Mensaje;
             }
             else
             {

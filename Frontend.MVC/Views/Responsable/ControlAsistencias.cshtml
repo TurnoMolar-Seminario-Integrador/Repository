@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Control de Asistencias - Clínica Dental Rosario";
     ViewData["ActiveTab"] = "ControlAsistencias";
-    Layout = "_LayoutOdontologo";
+    Layout = "_LayoutResponsable";
 
     var busqueda = ViewBag.Busqueda as BuscarTurnoAsistenciaResultDTO;
     var tipoDocumentoBuscado = ViewBag.TipoDocumentoBuscado as string ?? "DNI";
@@ -51,7 +51,7 @@
 
 <!-- CUU02, camino básico, paso 1: búsqueda del turno por tipo y número de documento del paciente -->
 <div class="card-asistencia">
-    <form method="get" asp-controller="Odontologo" asp-action="ControlAsistencias" class="row g-2 align-items-end">
+    <form method="get" asp-controller="Responsable" asp-action="ControlAsistencias" class="row g-2 align-items-end">
         <div class="col-auto">
             <label class="form-label small text-muted mb-1">Tipo de documento</label>
             <select name="tipoDocumento" class="form-select">
@@ -103,7 +103,7 @@
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <!-- CUU02, camino básico, paso 2 -->
-                    <form asp-controller="Odontologo" asp-action="RegistrarPresente" method="post" class="d-inline">
+                    <form asp-controller="Responsable" asp-action="RegistrarPresente" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="nroTurno" value="@busqueda.NroTurno" />
                         <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">
@@ -111,7 +111,7 @@
                         </button>
                     </form>
                     <!-- CUU02, alt 1.b -->
-                    <form asp-controller="Odontologo" asp-action="RegistrarAusente" method="post" class="d-inline"
+                    <form asp-controller="Responsable" asp-action="RegistrarAusente" method="post" class="d-inline"
                         onsubmit="return confirm('¿Confirmás que el paciente no se presentó? Se le aplicará una multa y quedará inhabilitado hasta regularizar su situación.');">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="nroTurno" value="@busqueda.NroTurno" />

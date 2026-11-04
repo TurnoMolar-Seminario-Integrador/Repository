@@ -335,6 +335,21 @@ namespace Application.Services
             var odontologo = await _odontologoRepository.GetAsync(request.OdontologoTipoDocumento, request.OdontologoNroDocumento)
                 ?? throw new ArgumentException("No se encontró el odontólogo indicado.");
 
+            // Alt 3.a.2: el responsable "indica la especialidad requerida" y "asigna un odontólogo
+            // disponible": el odontólogo tiene que atender esa especialidad. En el circuito estándar
+            // eso lo garantiza la grilla de disponibilidad horaria (DisponibilidadHoraria es la clase
+            // asociativa Odontólogo-Especialidad); acá no se valida la grilla, así que se comprueba
+            // la relación de forma directa.
+            var atiendenLaEspecialidad = await _odontologoRepository.GetByEspecialidadAsync(request.IdEspecialidad);
+            if (!atiendenLaEspecialidad.Any(o => o.TipoDocumento == odontologo.TipoDocumento && o.NroDocumento == odontologo.NroDocumento))
+            {
+                return new AgendarTurnoResultDTO
+                {
+                    Resultado = ResultadoAgendarTurno.OdontologoNoAtiendeEspecialidad,
+                    Mensaje = "El odontólogo seleccionado no atiende la especialidad indicada."
+                };
+            }
+
             // Alt 3.a.2.b / RN19 (ver comentario al inicio del método).
             if (!ReglaAntelacion.CumpleAntelacionMinima(request.FechaHoraTurno, DateTime.Now))
             {

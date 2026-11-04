@@ -10,6 +10,7 @@ namespace DTOs
         TurnoPendienteExistente,    // Alt 2.b: ya tiene un turno pendiente de atención (RN8): Reservado, Presente o Atención Registrada.
         ObraSocialSinConvenio,      // Alt 3.a.2.a / 5.b: la obra social no cubre la especialidad.
         HorarioNoDisponible,        // El horario elegido ya no está libre (choque de agenda).
+        OdontologoNoAtiendeEspecialidad, // Alt 3.a.2 (reserva manual): el odontólogo asignado no atiende la especialidad indicada.
         AntelacionInsuficiente      // RN19: el turno se solicita con menos de 24 horas de antelación.
     }
 

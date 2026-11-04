@@ -44,13 +44,10 @@ namespace TurnoMolar.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
-                if (User.IsInRole("ResponsableClinica") || User.IsInRole("Responsable de la Clínica") || User.IsInRole("Odontologo") || User.IsInRole("Admin"))
+                var inicio = InicioDelRol(User.FindFirst(ClaimTypes.Role)?.Value);
+                if (inicio != null)
                 {
-                    return RedirectToAction("Index", "Odontologo");
-                }
-                else if (User.IsInRole("Paciente"))
-                {
-                    return RedirectToAction("Index", "Home");
+                    return RedirectToAction(inicio.Value.Action, inicio.Value.Controller);
                 }
             }
 
@@ -112,14 +109,13 @@ namespace TurnoMolar.Controllers
                     return Redirect(returnUrl);
                 }
 
-                if (respuesta.Rol == "ResponsableClinica" || respuesta.Rol == "Responsable de la Clínica" || respuesta.Rol == "Odontologo" || respuesta.Rol == "Admin")
+                var inicioDelRol = InicioDelRol(respuesta.Rol);
+                if (inicioDelRol != null)
                 {
-                    return RedirectToAction("Index", "Odontologo");
+                    return RedirectToAction(inicioDelRol.Value.Action, inicioDelRol.Value.Controller);
                 }
-                else
-                {
-                    return RedirectToAction("Index", "Home");
-                }
+
+                return RedirectToAction("Index", "Home");
             }
             catch (Exception ex)
             {
@@ -137,9 +133,24 @@ namespace TurnoMolar.Controllers
             return RedirectToAction("Login", "Home");
         }
 
+        // Cada rol tiene sus propias secciones. Si alguien con la sesión iniciada entra a una que es de
+        // otro rol (por la barra de direcciones o un favorito), se lo devuelve a la consola de su rol
+        // con un aviso. Antes se lo mandaba al login, que por tener sesión lo volvía a redirigir y el
+        // aviso no se veía.
         [HttpGet]
         public IActionResult AccessDenied()
         {
+            var rol = User.FindFirst(ClaimTypes.Role)?.Value;
+            var inicio = User.Identity?.IsAuthenticated == true ? InicioDelRol(rol) : null;
+
+            if (inicio != null)
+            {
+                TempData["MensajeError"] =
+                    $"No tenés acceso a esa sección con tu rol actual ({NombreDelRol(rol)}). " +
+                    "Si también tenés otro rol, cerrá sesión e ingresá con la contraseña de ese rol.";
+                return RedirectToAction(inicio.Value.Action, inicio.Value.Controller);
+            }
+
             TempData["ErrorLogin"] = "No tenés permisos para acceder a la sección solicitada con tu rol actual.";
             return RedirectToAction("Login", "Home");
         }
@@ -147,6 +158,26 @@ namespace TurnoMolar.Controllers
         // =========================================================================
         // MÉTODOS PRIVADOS DE APOYO
         // =========================================================================
+
+        // Pantalla de inicio de cada rol. El odontólogo entra a su consola; el responsable de la
+        // clínica y el admin (un responsable con rango superior) a la del responsable; el paciente a
+        // su portal. Devuelve null si el rol no tiene una consola propia.
+        private static (string Action, string Controller)? InicioDelRol(string? rol) => rol switch
+        {
+            "Odontologo" => ("Index", "Odontologo"),
+            "ResponsableClinica" or "Admin" => ("Index", "Responsable"),
+            "Paciente" => ("Index", "Home"),
+            _ => null
+        };
+
+        private static string NombreDelRol(string? rol) => rol switch
+        {
+            "Odontologo" => "Odontólogo",
+            "ResponsableClinica" => "Responsable de la Clínica",
+            "Admin" => "Administrador",
+            "Paciente" => "Paciente",
+            _ => rol ?? "sin rol"
+        };
 
         // Defecto corregido: esta resolución caía silenciosamente en "el primer paciente de la
         // base" para CUALQUIER sesión sin claims que matchearan un paciente real -- lo que

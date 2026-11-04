@@ -10,8 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Frontend.MVC.Controllers
 {
-    // Responsable de la Clínica también puede acceder (alta manual de turnos, CUU01 alt 3.a).
-    [Authorize(Roles = "Paciente,Admin,ResponsableClinica")]
+    // Portal del paciente (el Admin lo ve en vista previa). El responsable de la clínica ya no entra
+    // acá: el alta manual de turnos (CUU01 alt 3.a) está en su propia consola, Responsable/NuevoTurno,
+    // y estas acciones resuelven al paciente de la sesión, que un responsable no tiene.
+    [Authorize(Roles = "Paciente,Admin")]
     public class TurnoController : Controller
     {
         private readonly TurnoMolarDbContext _context;
@@ -298,54 +300,16 @@ namespace Frontend.MVC.Controllers
 
         // =========================================================================
         // CUU01 ALT 3.a - ALTA MANUAL DE TURNO POR EL RESPONSABLE DE LA CLÍNICA
-        // Cuando el paciente no encuentra turnos disponibles/convenientes y acuerda
-        // directamente con la clínica una fecha y hora. Formulario simple orientado al
-        // personal administrativo (no reutiliza el wizard de autoservicio del paciente).
         // =========================================================================
-
+        // Esta pantalla vivía acá con el layout del portal del paciente, y tras registrar el turno
+        // redirigía al comprobante del paciente (que falla para el rol Responsable). Ahora es parte
+        // de la consola del responsable: Responsable/NuevoTurno. Se deja esta ruta para no romper
+        // enlaces guardados. Es [AllowAnonymous] porque solo redirige (el [Authorize] de la clase ya
+        // no incluye al responsable) y la pantalla de destino exige el rol: quien no tenga sesión pasa
+        // por el login y quien tenga otro rol recibe el aviso de acceso denegado.
         [HttpGet]
-        public async Task<IActionResult> ReservarManual()
-        {
-            if (!User.IsInRole("Admin") && !User.IsInRole("ResponsableClinica"))
-            {
-                return Forbid();
-            }
-
-            ViewBag.Especialidades = await _especialidadRepository.GetAllAsync();
-            ViewBag.Odontologos = await _odontologoRepository.GetAllAsync();
-
-            return View(new AgendarTurnoRequestDTO());
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ReservarManual(AgendarTurnoRequestDTO request)
-        {
-            if (!User.IsInRole("Admin") && !User.IsInRole("ResponsableClinica"))
-            {
-                return Forbid();
-            }
-
-            AgendarTurnoResultDTO resultado;
-            try
-            {
-                resultado = await _agendaTurnoService.AgendarTurnoManualAsync(request);
-            }
-            catch (ArgumentException ex)
-            {
-                TempData["MensajeError"] = ex.Message;
-                return RedirectToAction("ReservarManual");
-            }
-
-            if (resultado.Resultado == ResultadoAgendarTurno.Reservado)
-            {
-                TempData["MensajeExito"] = resultado.Mensaje;
-                return RedirectToAction("Comprobante", new { idTurno = resultado.NroTurno });
-            }
-
-            TempData["MensajeError"] = resultado.Mensaje;
-            return RedirectToAction("ReservarManual");
-        }
+        [AllowAnonymous]
+        public IActionResult ReservarManual() => RedirectToActionPermanent("NuevoTurno", "Responsable");
 
         // =========================================================================
         // COMPROBANTE DE TURNO
@@ -372,7 +336,7 @@ namespace Frontend.MVC.Controllers
 
             ViewData["IdTurno"] = turno.NroTurno;
             ViewData["FechaTurno"] = turno.FechaHoraTurno.ToString("dd 'de' MMMM, yyyy • HH:mm 'hs'", new CultureInfo("es-ES"));
-            ViewData["Doctor"] = $"{turno.Odontologo.Nombre} {turno.Odontologo.Apellido} (MP {turno.Odontologo.Matricula})";
+            ViewData["Doctor"] = $"{turno.Odontologo.Nombre} {turno.Odontologo.Apellido} ({turno.Odontologo.MatriculaVisible})";
             ViewData["Especialidad"] = turno.Especialidad.Nombre;
             ViewData["ModalidadPago"] = turno.ModalidadPagoElegida == "OBRA_SOCIAL" ? "Obra Social / Prepaga" : "Particular";
             ViewData["EstadoTurno"] = turno.EstadoTurno;

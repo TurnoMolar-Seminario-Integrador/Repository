@@ -3,6 +3,12 @@ namespace Domain.Model
     public class Odontologo : Persona
     {
         public string Matricula { get; private set; } = string.Empty;
+
+        // Matrícula para mostrar en pantalla. El dato guardado ya incluye el prefijo (en el seed,
+        // "MP 3840"), así que se antepone "MP" solo si falta; antes las pantallas lo agregaban siempre
+        // y mostraban "MP MP 3840". Propiedad de solo lectura: EF no la mapea.
+        public string MatriculaVisible =>
+            Matricula.StartsWith("MP", StringComparison.OrdinalIgnoreCase) ? Matricula : $"MP {Matricula}";
         public string EstadoOdontologo { get; private set; } = "ACTIVO";
 
         public virtual ICollection<DisponibilidadHoraria> DisponibilidadesHorarias { get; private set; } = new List<DisponibilidadHoraria>();

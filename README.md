@@ -207,9 +207,9 @@ Si el equipo trabaja contra un servidor remoto compartido, **no subas usuario y 
 
 2. No hace falta correr migraciones a mano: al iniciar cualquiera de los dos proyectos (`WebAPI` o `Frontend.MVC`), `DbInitializer` crea la base si no existe (`EnsureCreatedAsync`) y siembra los datos iniciales automáticamente.
 
-3. **Si ya tenías la base creada de una versión anterior, borrala y dejá que se vuelva a crear.** `EnsureCreated` no modifica una base existente, y esta versión cambia el esquema: la clave de `DisponibilidadesHorarias` ahora incluye `HoraInicio` (como en el MDF), y los estados por defecto de odontólogo y obra social pasan a `HABILITADO` y `DISPONIBLE`. Por ejemplo, desde SQL Server Management Studio: `DROP DATABASE clinicakarina_local;` y luego iniciar `Frontend.MVC`.
+3. **La base local se mantiene al día sola.** Al iniciar en Development, si el modelo cambió (por ejemplo, un compañero agregó una columna), `DbInitializer` borra `clinicakarina_local` y la vuelve a crear con los datos iniciales. Para eso guarda una huella del esquema en la tabla `__EsquemaTurnoMolar`. Se pierden los datos cargados a mano, así que conviene tener a mano el script de datos de prueba. Fuera de Development no se borra nada.
 
-   Las columnas `Especialidades.EstadoEspecialidad` e `Insumos.EstadoInsumo` (CUF12 y CUF09 E4.R02, deshabilitar especialidades e insumos) no requieren borrar la base: `DbInitializer` las agrega al iniciar si faltan, con valor `HABILITADA` / `HABILITADO`.
+4. **Datos de prueba completos:** después de iniciar la aplicación una vez, abrí `docs/scripts/DatosDePrueba.sql` en SQL Server Management Studio y ejecutalo. Borra los datos y carga un juego coherente para todas las clases del dominio: turnos en todos los estados (con fechas calculadas desde el día en que se corre), atenciones con insumos, pagos particulares y por obra social, deudas, valoraciones, una especialidad y un insumo deshabilitados, un odontólogo inhabilitado y una obra social dada de baja. Los usuarios y claves están al principio del script.
 
 ---
 

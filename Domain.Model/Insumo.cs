@@ -13,6 +13,10 @@ namespace Domain.Model
         public decimal CostoUnitario { get; private set; }
         public int StockDisponible { get; private set; }
 
+        // CUF09 alt 3.c / 3.d: estadoInsumo(d) = [ "Habilitado" | "Deshabilitado" ].
+        public string EstadoInsumo { get; private set; } = EstadosInsumo.Habilitado;
+        public bool EstaHabilitado => EstadosInsumo.EsHabilitado(EstadoInsumo);
+
         public virtual ICollection<DetalleInsumoUtilizado> DetallesInsumos { get; private set; } = new List<DetalleInsumoUtilizado>();
 
         protected Insumo() { }
@@ -60,6 +64,12 @@ namespace Domain.Model
                 throw new ArgumentException("La cantidad a incorporar debe ser mayor a 0.", nameof(cantidadIncorporada));
             StockDisponible += cantidadIncorporada;
         }
+
+        // CUF09 alt 3.c.1: deja de ofrecerse en las atenciones, conservando su stock y su historial.
+        public void Deshabilitar() => EstadoInsumo = EstadosInsumo.Deshabilitado;
+
+        // CUF09 alt 3.d.1: vuelve a ofrecerse en las atenciones.
+        public void Rehabilitar() => EstadoInsumo = EstadosInsumo.Habilitado;
 
         public void DescontarStock(int cantidad)
         {

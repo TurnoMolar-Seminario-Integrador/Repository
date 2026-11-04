@@ -163,6 +163,16 @@ namespace Application.Services
                         EstadoTurno = turno.EstadoTurno
                     };
                 }
+                // CUF09 E4.R02 alt 3.c: un insumo deshabilitado ya no se ofrece en las atenciones.
+                if (!insumo.EstaHabilitado)
+                {
+                    return new RegistrarAtencionOdontologicaResultDTO
+                    {
+                        Resultado = ResultadoRegistrarAtencion.DatosInvalidos,
+                        Mensaje = $"{AbastecerInsumosService.MensajeInsumoDeshabilitado} ({insumo.Nombre})",
+                        EstadoTurno = turno.EstadoTurno
+                    };
+                }
                 if (insumo.StockDisponible < input.Cantidad)
                 {
                     return new RegistrarAtencionOdontologicaResultDTO

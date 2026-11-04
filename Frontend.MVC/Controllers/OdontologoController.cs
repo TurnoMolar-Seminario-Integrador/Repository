@@ -141,6 +141,7 @@ namespace TurnoMolar.Controllers
             // Paso 3: catálogo de insumos para el formulario de "Iniciar Atención".
             var insumos = await _insumoRepository.GetAllAsync();
             ViewBag.Insumos = insumos
+                .Where(i => i.EstaHabilitado) // CUF09 E4.R02 alt 3.c
                 .Select(i => new InsumoDisponibleDTO
                 {
                     IdInsumo = i.IdInsumo,

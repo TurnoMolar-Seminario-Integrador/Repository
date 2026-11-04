@@ -87,8 +87,12 @@ namespace Application.Services
             {
                 if (convenio.ArancelConvenio <= 0m)
                     return ResultadoOperacionDTO.Error("2", MensajeArancelInvalido);
-                if (!await _contexto.Especialidades.AnyAsync(e => e.IdEspecialidad == convenio.IdEspecialidad))
+                var especialidad = await _contexto.Especialidades.FindAsync(convenio.IdEspecialidad);
+                if (especialidad == null)
                     return ResultadoOperacionDTO.Error("2", MensajeEspecialidadInexistente);
+                // CUF12 E4.R02 alt 1.d.2: una especialidad deshabilitada no se ofrece para nuevos convenios.
+                if (!especialidad.EstaHabilitada)
+                    return ResultadoOperacionDTO.Error("2", AdministrarEspecialidadService.MensajeEspecialidadDeshabilitada);
             }
 
             // Paso 3: queda en estado "Disponible".
@@ -144,7 +148,8 @@ namespace Application.Services
                 return ResultadoOperacionDTO.Error("3.d.1", MensajeObraSocialInexistente);
             if (arancelConvenio is null or <= 0m)
                 return ResultadoOperacionDTO.Error("3.d.1", MensajeArancelInvalido);
-            if (!await _contexto.Especialidades.AnyAsync(e => e.IdEspecialidad == idEspecialidad))
+            var especialidad = await _contexto.Especialidades.FindAsync(idEspecialidad);
+            if (especialidad == null)
                 return ResultadoOperacionDTO.Error("3.d.1", MensajeEspecialidadInexistente);
 
             // RN16: el cambio de arancel no afecta pagos ya registrados (cada AtencionOdontologica guarda
@@ -152,6 +157,10 @@ namespace Application.Services
             var existente = obra.Convenios.FirstOrDefault(c => c.IdEspecialidad == idEspecialidad);
             if (existente != null)
                 existente.SetArancelConvenio(arancelConvenio.Value);
+            // CUF12 E4.R02 alt 1.d.2: no se agregan convenios nuevos para una especialidad deshabilitada
+            // (el arancel de un convenio existente sí puede seguir ajustándose).
+            else if (!especialidad.EstaHabilitada)
+                return ResultadoOperacionDTO.Error("3.d.1", AdministrarEspecialidadService.MensajeEspecialidadDeshabilitada);
             else
                 _contexto.Convenios.Add(new Convenio(identificadorOS, idEspecialidad, arancelConvenio.Value));
 

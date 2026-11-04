@@ -33,3 +33,39 @@ namespace Domain.Model
         public static string Legible(string? estado) => EsDisponible(estado) ? "Disponible" : "No Disponible";
     }
 }
+
+namespace Domain.Model
+{
+    // CUF12 E4.R02 (diccionario de datos): estadoEspecialidad(d) = [ "Habilitada" | "Deshabilitada" ].
+    // Una especialidad deshabilitada deja de ofrecerse (turnos, odontólogos, convenios) pero conserva su historial.
+    public static class EstadosEspecialidad
+    {
+        public const string Habilitada = "HABILITADA";
+        public const string Deshabilitada = "DESHABILITADA";
+
+        // Nulo o vacío cuenta como habilitada: así se leen las filas creadas antes de agregar la columna.
+        public static bool EsHabilitada(string? estado)
+        {
+            var e = estado?.Trim().ToUpperInvariant();
+            return string.IsNullOrEmpty(e) || e == Habilitada;
+        }
+
+        public static string Legible(string? estado) => EsHabilitada(estado) ? "Habilitada" : "Deshabilitada";
+    }
+
+    // CUF09 E4.R02 (diccionario de datos): estadoInsumo(d) = [ "Habilitado" | "Deshabilitado" ].
+    // Un insumo deshabilitado deja de ofrecerse al registrar atenciones (CUU03) pero conserva su historial.
+    public static class EstadosInsumo
+    {
+        public const string Habilitado = "HABILITADO";
+        public const string Deshabilitado = "DESHABILITADO";
+
+        public static bool EsHabilitado(string? estado)
+        {
+            var e = estado?.Trim().ToUpperInvariant();
+            return string.IsNullOrEmpty(e) || e == Habilitado;
+        }
+
+        public static string Legible(string? estado) => EsHabilitado(estado) ? "Habilitado" : "Deshabilitado";
+    }
+}

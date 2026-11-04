@@ -78,6 +78,10 @@ namespace Application.Services
             // saber qué especialidades atiende, no para validar día y hora.
             if (!odontologo.DisponibilidadesHorarias.Any(d => d.IdEspecialidad == s.IdEspecialidad))
                 return Error("3", MensajeNoAtiendeEspecialidad);
+            // CUF12 E4.R02 alt 1.d.2: una especialidad deshabilitada ya no se ofrece.
+            var especialidadElegida = await _contexto.Especialidades.FindAsync(s.IdEspecialidad);
+            if (especialidadElegida != null && !especialidadElegida.EstaHabilitada)
+                return Error("3", AdministrarEspecialidadService.MensajeEspecialidadDeshabilitada);
             if (s.FechaHoraTurno <= DateTime.Now)
                 return Error("3", MensajeFechaPasada);
             if (string.IsNullOrWhiteSpace(s.DescripcionMaterial))

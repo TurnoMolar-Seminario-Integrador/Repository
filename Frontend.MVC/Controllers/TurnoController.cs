@@ -124,7 +124,8 @@ namespace Frontend.MVC.Controllers
         {
             var paciente = await ObtenerPacienteActualAsync();
 
-            var especialidades = (await _especialidadRepository.GetAllAsync()).ToList();
+            // CUF12 E4.R02 alt 1.d.2: solo se ofrecen las especialidades habilitadas.
+            var especialidades = (await _especialidadRepository.GetAllAsync()).Where(e => e.EstaHabilitada).ToList();
 
             Especialidad? especialidadSeleccionada;
             if (idEspecialidad.HasValue)

@@ -324,7 +324,8 @@ namespace TurnoMolar.Controllers
 
         private async Task CargarListasNuevoTurnoAsync()
         {
-            var especialidades = (await _especialidadRepository.GetAllAsync()).ToList();
+            // CUF12 E4.R02 alt 1.d.2: solo se ofrecen las especialidades habilitadas.
+            var especialidades = (await _especialidadRepository.GetAllAsync()).Where(e => e.EstaHabilitada).ToList();
             ViewBag.Especialidades = especialidades;
             ViewBag.Odontologos = (await _odontologoRepository.GetAllAsync()).OrderBy(o => o.Apellido).ThenBy(o => o.Nombre).ToList();
 

@@ -21,6 +21,8 @@ namespace DTOs
         public int IdEspecialidad { get; set; }
         public string Nombre { get; set; } = string.Empty;
         public decimal ArancelParticular { get; set; }
+        // CUF12 E4.R02: estadoEspecialidad(d).
+        public bool Habilitada { get; set; } = true;
     }
 
     // ===== CUF09 - Abastecer Insumos y Materiales =====
@@ -31,6 +33,8 @@ namespace DTOs
         public string Nombre { get; set; } = string.Empty;
         public decimal CostoUnitario { get; set; }
         public int StockDisponible { get; set; }
+        // CUF09 E4.R02: estadoInsumo(d).
+        public bool Habilitado { get; set; } = true;
     }
 
     // ===== CUF06 - Administrar Convenios de Obra Social =====

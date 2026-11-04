@@ -209,6 +209,8 @@ Si el equipo trabaja contra un servidor remoto compartido, **no subas usuario y 
 
 3. **Si ya tenías la base creada de una versión anterior, borrala y dejá que se vuelva a crear.** `EnsureCreated` no modifica una base existente, y esta versión cambia el esquema: la clave de `DisponibilidadesHorarias` ahora incluye `HoraInicio` (como en el MDF), y los estados por defecto de odontólogo y obra social pasan a `HABILITADO` y `DISPONIBLE`. Por ejemplo, desde SQL Server Management Studio: `DROP DATABASE clinicakarina_local;` y luego iniciar `Frontend.MVC`.
 
+   Las columnas `Especialidades.EstadoEspecialidad` e `Insumos.EstadoInsumo` (CUF12 y CUF09 E4.R02, deshabilitar especialidades e insumos) no requieren borrar la base: `DbInitializer` las agrega al iniciar si faltan, con valor `HABILITADA` / `HABILITADO`.
+
 ---
 
 ## Ejecución del Proyecto

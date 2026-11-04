@@ -12,6 +12,10 @@ namespace Domain.Model
         public string Nombre { get; private set; } = string.Empty;
         public decimal ArancelParticular { get; private set; }
 
+        // CUF12 alt 1.d / 1.e: estadoEspecialidad(d) = [ "Habilitada" | "Deshabilitada" ].
+        public string EstadoEspecialidad { get; private set; } = EstadosEspecialidad.Habilitada;
+        public bool EstaHabilitada => EstadosEspecialidad.EsHabilitada(EstadoEspecialidad);
+
         public virtual ICollection<Convenio> Convenios { get; private set; } = new List<Convenio>();
         public virtual ICollection<DisponibilidadHoraria> DisponibilidadesHorarias { get; private set; } = new List<DisponibilidadHoraria>();
         public virtual ICollection<Turno> Turnos { get; private set; } = new List<Turno>();
@@ -46,5 +50,11 @@ namespace Domain.Model
                 throw new ArgumentException("El arancel particular no puede ser negativo.", nameof(arancel));
             ArancelParticular = arancel;
         }
+
+        // CUF12 alt 1.d.2: deja de ofrecerse, conservando turnos, atenciones, convenios y pagos previos.
+        public void Deshabilitar() => EstadoEspecialidad = EstadosEspecialidad.Deshabilitada;
+
+        // CUF12 alt 1.e.2: vuelve a ofrecerse.
+        public void Rehabilitar() => EstadoEspecialidad = EstadosEspecialidad.Habilitada;
     }
 }

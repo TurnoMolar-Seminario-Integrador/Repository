@@ -215,19 +215,23 @@ Si el equipo trabaja contra un servidor remoto compartido, **no subas usuario y 
 
 ## Ejecución del Proyecto
 
-### 1. Iniciar la API Backend
+### Desde Visual Studio (API + Web juntos)
+La solución trae el perfil de inicio **"WebAPI + Web (MVC)"** (`DentalClinic.slnLaunch`), que levanta los dos proyectos a la vez. Elegilo en el desplegable de proyecto de inicio (junto al botón ▶) y presioná F5. Requiere Visual Studio 2022 17.11 o posterior; en versiones anteriores: clic derecho en la solución → *Configurar proyectos de inicio* → *Varios proyectos de inicio* → `WebAPI` y `WebApplication1` en *Iniciar*.
+
+- WebAPI (Swagger): `https://localhost:7266/swagger`
+- Portal web (MVC): `https://localhost:7172`
+
+La primera vez, con la base todavía sin crear, los dos proyectos intentan crearla al mismo tiempo; si la WebAPI muestra un error de inicialización en la consola, detené y volvé a iniciar.
+
+### Desde la consola
 ```bash
 cd WebAPI
-dotnet run
+dotnet run --launch-profile https
 ```
-Swagger UI disponible en: `https://localhost:7043/swagger`
-
-### 2. Iniciar el Portal Web Paciente (MVC)
 ```bash
 cd Frontend.MVC
-dotnet run
+dotnet run --launch-profile https
 ```
-Portal del Paciente disponible en: `http://localhost:5247` o `https://localhost:7172`
 
 ---
 

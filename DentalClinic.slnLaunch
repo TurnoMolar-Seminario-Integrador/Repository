@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "WebAPI + Web (MVC)",
+    "Projects": [
+      {
+        "Path": "WebAPI\\WebAPI.csproj",
+        "Action": "Start",
+        "DebugTarget": "https"
+      },
+      {
+        "Path": "Frontend.MVC\\WebApplication1.csproj",
+        "Action": "Start",
+        "DebugTarget": "https"
+      }
+    ]
+  }
+]

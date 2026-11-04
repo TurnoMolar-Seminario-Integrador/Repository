@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
 using Domain.Model;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -6,24 +9,31 @@ namespace Data
 {
     public static class DbInitializer
     {
-        public static async Task InitializeAsync(TurnoMolarDbContext context, ILogger? logger = null)
+        // recrearSiCambioElEsquema (solo en Development): EnsureCreated no modifica una base que ya
+        // existe, así que cuando alguien del equipo cambia el modelo (una columna, una tabla) la base
+        // local queda desfasada. Con esta opción se guarda una huella del esquema en la tabla
+        // __EsquemaTurnoMolar; si al iniciar no coincide con la del modelo actual, la base se borra y
+        // se vuelve a crear con los datos iniciales. Se pierden los datos cargados a mano: para tener
+        // datos de prueba completos, correr docs/scripts/DatosDePrueba.sql.
+        public static async Task InitializeAsync(TurnoMolarDbContext context, ILogger? logger = null, bool recrearSiCambioElEsquema = false)
         {
+            var sincronizarEsquema = recrearSiCambioElEsquema && EsSqlServer(context);
+            SqlConnection? candado = null;
             try
             {
+                if (sincronizarEsquema)
+                {
+                    // WebAPI y Frontend.MVC pueden arrancar a la vez: el candado evita que los dos
+                    // borren o creen la base al mismo tiempo.
+                    candado = await TomarCandadoAsync(context);
+                    await BorrarSiCambioElEsquemaAsync(context, logger);
+                }
+
                 // Asegura la creación de las 15 tablas según el MDF
                 await context.Database.EnsureCreatedAsync();
 
-                // EnsureCreated no modifica una base ya creada: agrega las columnas de estado de
-                // CUF12 / CUF09 (E4.R02) si faltan, para no tener que borrar la base.
-                if (context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer")
-                {
-                    await context.Database.ExecuteSqlRawAsync(
-                        "IF COL_LENGTH('Especialidades', 'EstadoEspecialidad') IS NULL " +
-                        "ALTER TABLE Especialidades ADD EstadoEspecialidad NVARCHAR(20) NOT NULL CONSTRAINT DF_Especialidades_EstadoEspecialidad DEFAULT 'HABILITADA';");
-                    await context.Database.ExecuteSqlRawAsync(
-                        "IF COL_LENGTH('Insumos', 'EstadoInsumo') IS NULL " +
-                        "ALTER TABLE Insumos ADD EstadoInsumo NVARCHAR(20) NOT NULL CONSTRAINT DF_Insumos_EstadoInsumo DEFAULT 'HABILITADO';");
-                }
+                if (sincronizarEsquema)
+                    await GuardarHuellaAsync(context);
 
                 // 1. OBRAS SOCIALES (PK NVARCHAR(20))
                 if (!await context.ObrasSociales.AnyAsync())
@@ -301,6 +311,68 @@ namespace Data
             {
                 logger?.LogError(ex, "Error durante la inicialización de la base de datos.");
             }
+            finally
+            {
+                candado?.Dispose();
+            }
+        }
+
+        private const string TablaHuella = "__EsquemaTurnoMolar";
+
+        private static bool EsSqlServer(TurnoMolarDbContext context) =>
+            context.Database.ProviderName == "Microsoft.EntityFrameworkCore.SqlServer";
+
+        // Huella del esquema que generaría el modelo actual (tablas, columnas, claves e índices).
+        private static string CalcularHuella(TurnoMolarDbContext context)
+        {
+            var script = context.Database.GenerateCreateScript();
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(script)));
+        }
+
+        private static async Task<SqlConnection> TomarCandadoAsync(TurnoMolarDbContext context)
+        {
+            var datos = new SqlConnectionStringBuilder(context.Database.GetConnectionString());
+            var recurso = "TurnoMolarInit_" + datos.InitialCatalog;
+            datos.InitialCatalog = "master";
+            var conexion = new SqlConnection(datos.ConnectionString);
+            await conexion.OpenAsync();
+            using var comando = conexion.CreateCommand();
+            comando.CommandText = "EXEC sp_getapplock @Resource = @recurso, @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = 120000;";
+            comando.Parameters.AddWithValue("@recurso", recurso);
+            await comando.ExecuteNonQueryAsync();
+            return conexion; // al cerrarla se libera el candado
+        }
+
+        private static async Task BorrarSiCambioElEsquemaAsync(TurnoMolarDbContext context, ILogger? logger)
+        {
+            if (!await context.Database.CanConnectAsync())
+                return; // la base no existe: EnsureCreated la crea
+
+            string? guardada = null;
+            try
+            {
+                guardada = (await context.Database
+                    .SqlQueryRaw<string>($"SELECT Huella AS Value FROM {TablaHuella}")
+                    .ToListAsync()).FirstOrDefault();
+            }
+            catch (SqlException)
+            {
+                // Base creada antes de que existiera la huella: se considera desfasada.
+            }
+
+            if (guardada == CalcularHuella(context))
+                return;
+
+            logger?.LogWarning("El esquema de la base local no coincide con el modelo actual: se borra y se vuelve a crear con los datos iniciales.");
+            await context.Database.EnsureDeletedAsync();
+        }
+
+        private static async Task GuardarHuellaAsync(TurnoMolarDbContext context)
+        {
+            var huella = CalcularHuella(context);
+            await context.Database.ExecuteSqlRawAsync(
+                $"IF OBJECT_ID('{TablaHuella}') IS NULL CREATE TABLE {TablaHuella} (Huella NVARCHAR(64) NOT NULL); " +
+                $"DELETE FROM {TablaHuella}; INSERT INTO {TablaHuella} (Huella) VALUES ({{0}});", huella);
         }
     }
 }

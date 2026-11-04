@@ -107,7 +107,9 @@ using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<TurnoMolarDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        await DbInitializer.InitializeAsync(dbContext, logger);
+        // En Development, si el modelo cambió (por ejemplo, un compañero agregó una columna), la base
+        // local se vuelve a crear para que no quede desfasada. Ver DbInitializer.
+        await DbInitializer.InitializeAsync(dbContext, logger, recrearSiCambioElEsquema: app.Environment.IsDevelopment());
     }
     catch (Exception ex)
     {
